@@ -550,86 +550,167 @@ class TodoistApiClient {
             throw new Error('Failed to create task');
         }
     }
-    // Project description helpers
-    static async getProjectDescription(projectId) {
+    // Project metadata helpers
+    static async getProjectMetadata(projectId) {
         try {
-            const tasks = await this.getProjectTasks(projectId);
-            const descriptionTask = tasks.find((task)=>task.content.startsWith('* ') && task.labels.includes('project description'));
-            if (descriptionTask) {
-                // Remove the '* ' prefix and return the description
-                return descriptionTask.content.substring(2).trim();
+            const [tasks, projects] = await Promise.all([
+                this.getProjectTasks(projectId),
+                this.getProjects()
+            ]);
+            const project = projects.find((p)=>p.id === projectId);
+            if (!project) return null;
+            const metadataTask = tasks.find((task)=>task.labels.includes('project-metadata'));
+            if (metadataTask) {
+                // Extract category from labels
+                let category = null;
+                if (metadataTask.labels.includes('area-of-responsibility')) {
+                    category = 'area';
+                } else if (metadataTask.labels.includes('project-type')) {
+                    category = 'project';
+                }
+                return {
+                    description: metadataTask.description || '',
+                    category,
+                    priority: metadataTask.priority,
+                    due: metadataTask.due,
+                    deadline: metadataTask.deadline
+                };
             }
-            return null;
+            return {
+                description: '',
+                category: null,
+                priority: null
+            };
         } catch (error) {
-            console.error('Error fetching project description:', error);
+            console.error('Error fetching project metadata:', error);
             return null;
         }
     }
-    static async setProjectDescription(projectId, description) {
+    // Legacy method for backward compatibility
+    static async getProjectDescription(projectId) {
+        const metadata = await this.getProjectMetadata(projectId);
+        return metadata?.description || null;
+    }
+    static async setProjectMetadata(projectId, metadata) {
         try {
-            const tasks = await this.getProjectTasks(projectId);
-            const existingDescriptionTask = tasks.find((task)=>task.content.startsWith('* ') && task.labels.includes('project description'));
-            if (existingDescriptionTask) {
-                // Update existing description task
-                await this.updateTask(existingDescriptionTask.id, {
-                    content: `* ${description}`
-                });
+            const [tasks, projects] = await Promise.all([
+                this.getProjectTasks(projectId),
+                this.getProjects()
+            ]);
+            const project = projects.find((p)=>p.id === projectId);
+            if (!project) {
+                throw new Error(`Project with ID ${projectId} not found`);
+            }
+            const existingMetadataTask = tasks.find((task)=>task.labels.includes('project-metadata'));
+            // Build labels array
+            const labels = [
+                'project-metadata'
+            ];
+            if (metadata.category === 'area') {
+                labels.push('area-of-responsibility');
+            } else if (metadata.category === 'project') {
+                labels.push('project-type');
+            }
+            const taskData = {
+                content: project.name,
+                description: metadata.description || '',
+                labels,
+                ...metadata.priority && {
+                    priority: metadata.priority
+                },
+                ...metadata.dueString && {
+                    dueString: metadata.dueString
+                },
+                ...metadata.deadline && {
+                    deadline: metadata.deadline
+                }
+            };
+            if (existingMetadataTask) {
+                // Update existing metadata task
+                await this.updateTask(existingMetadataTask.id, taskData);
             } else {
-                // Create new description task
-                await this.createTask(`* ${description}`, {
+                // Create new metadata task
+                await this.createTask(project.name, {
                     projectId,
-                    labels: [
-                        'project description'
-                    ],
-                    priority: 1 // P4 (lowest priority) but still appears at top due to * prefix
+                    ...taskData
                 });
             }
             return true;
         } catch (error) {
-            console.error('Error setting project description:', error);
-            throw new Error('Failed to set project description');
+            console.error('Error setting project metadata:', error);
+            throw new Error('Failed to set project metadata');
         }
     }
-    // Project hierarchy with descriptions
-    static async fetchProjectHierarchyWithDescriptions() {
+    // Legacy method for backward compatibility
+    static async setProjectDescription(projectId, description) {
+        return this.setProjectMetadata(projectId, {
+            description
+        });
+    }
+    // Project hierarchy with metadata
+    static async fetchProjectHierarchyWithMetadata() {
         try {
             // 1. Get all projects
             const projects = await this.getProjects();
-            // 2. Get descriptions for all projects in parallel
-            const projectsWithDescriptions = await Promise.all(projects.map(async (project)=>{
-                const description = await this.getProjectDescription(project.id);
+            // 2. Get metadata for all projects in parallel
+            const projectsWithMetadata = await Promise.all(projects.map(async (project)=>{
+                const metadata = await this.getProjectMetadata(project.id);
                 return {
                     ...project,
-                    description: description || ''
+                    description: metadata?.description || '',
+                    category: metadata?.category || null,
+                    priority: metadata?.priority || null,
+                    due: metadata?.due,
+                    deadline: metadata?.deadline
                 };
             }));
             // 3. Build hierarchy map
-            const rootProjects = projectsWithDescriptions.filter((p)=>!p.parentId);
-            const childProjects = projectsWithDescriptions.filter((p)=>p.parentId);
+            const rootProjects = projectsWithMetadata.filter((p)=>!p.parentId);
+            const childProjects = projectsWithMetadata.filter((p)=>p.parentId);
             const hierarchy = rootProjects.map((parent)=>({
                     ...parent,
                     children: childProjects.filter((child)=>child.parentId === parent.id)
                 }));
             return {
-                flat: projectsWithDescriptions,
+                flat: projectsWithMetadata,
                 hierarchical: hierarchy
             };
         } catch (error) {
             console.error('Error fetching project hierarchy:', error);
-            throw new Error('Failed to fetch project hierarchy with descriptions');
+            throw new Error('Failed to fetch project hierarchy with metadata');
         }
+    }
+    // Legacy method for backward compatibility
+    static async fetchProjectHierarchyWithDescriptions() {
+        const result = await this.fetchProjectHierarchyWithMetadata();
+        return {
+            flat: result.flat.map((p)=>({
+                    ...p,
+                    description: p.description
+                })),
+            hierarchical: result.hierarchical.map((p)=>({
+                    ...p,
+                    description: p.description,
+                    children: p.children.map((c)=>({
+                            ...c,
+                            description: c.description
+                        }))
+                }))
+        };
     }
     // Generate context for LLM requests
     static async generateTodoistContext() {
         try {
-            const { flat, hierarchical } = await this.fetchProjectHierarchyWithDescriptions();
+            const { flat, hierarchical } = await this.fetchProjectHierarchyWithMetadata();
             return {
                 projects: flat,
                 hierarchy: hierarchical,
                 summary: {
                     totalProjects: flat.length,
                     projectsWithDescriptions: flat.filter((p)=>p.description.trim()).length,
-                    rootProjects: hierarchical.length
+                    rootProjects: hierarchical.length,
+                    areas: flat.filter((p)=>p.category === 'area').length,
+                    projects: flat.filter((p)=>p.category === 'project').length
                 }
             };
         } catch (error) {

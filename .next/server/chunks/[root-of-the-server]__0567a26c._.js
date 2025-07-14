@@ -265,6 +265,10 @@ class TodoistApiClient {
                         string: task.due.string,
                         datetime: task.due.datetime || undefined
                     } : undefined,
+                    deadline: task.deadline ? {
+                        date: task.deadline.date,
+                        string: task.deadline.string
+                    } : undefined,
                     createdAt: task.createdAt,
                     isCompleted: task.isCompleted || false
                 }));
@@ -308,6 +312,10 @@ class TodoistApiClient {
                         date: task.due.date,
                         string: task.due.string,
                         datetime: task.due.datetime || undefined
+                    } : undefined,
+                    deadline: task.deadline ? {
+                        date: task.deadline.date,
+                        string: task.deadline.string
                     } : undefined,
                     createdAt: task.createdAt,
                     isCompleted: task.isCompleted || false
@@ -372,7 +380,7 @@ class TodoistApiClient {
                 taskId,
                 updates
             });
-            // Handle project move separately using REST API
+            // Handle project move separately using Sync API
             if (updates.projectId && updates.projectId !== '') {
                 try {
                     const projects = await this.getProjects();
@@ -389,14 +397,82 @@ class TodoistApiClient {
                         id: targetProject.id,
                         name: targetProject.name
                     });
-                    // Use REST API for project move
+                    // Use Sync API for project move
                     await this.moveTaskToProject(taskId, updates.projectId);
                 } catch (moveError) {
                     console.error('❌ Project move failed:', moveError);
                     throw new Error(`Failed to move task to project: ${moveError}`);
                 }
             }
-            // Build updates object for other fields (excluding projectId)
+            // Handle deadline separately using Sync API
+            if (updates.deadline !== undefined) {
+                try {
+                    console.log('🔄 Updating deadline via Sync API:', {
+                        taskId,
+                        deadline: updates.deadline
+                    });
+                    // Generate a unique UUID for the command
+                    const uuid = crypto.randomUUID();
+                    // Parse natural language date to ISO format
+                    let deadlineDate = null;
+                    if (updates.deadline) {
+                        // First try to parse natural language using Todoist's due date parser
+                        try {
+                            const parseResponse = await api.addTask({
+                                content: 'temp',
+                                dueString: updates.deadline
+                            });
+                            if (parseResponse.due) {
+                                deadlineDate = {
+                                    date: parseResponse.due.date
+                                };
+                            }
+                            // Delete the temporary task
+                            await api.deleteTask(parseResponse.id);
+                        } catch (parseError) {
+                            console.error('Failed to parse deadline date:', parseError);
+                            throw new Error('Invalid deadline date format');
+                        }
+                    }
+                    const response = await fetch('https://api.todoist.com/sync/v9/sync', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${process.env.TODOIST_API_KEY}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            commands: [
+                                {
+                                    type: 'item_update',
+                                    args: {
+                                        id: taskId,
+                                        deadline: deadlineDate
+                                    },
+                                    uuid: uuid
+                                }
+                            ]
+                        })
+                    });
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error('Sync API deadline update failed:', response.status, errorText);
+                        throw new Error(`Sync API deadline update failed: ${response.status} ${errorText}`);
+                    }
+                    const result = await response.json();
+                    console.log('✅ Sync API deadline result:', result);
+                    // Check if the command was successful
+                    if (result.sync_status && result.sync_status[uuid] === 'ok') {
+                        console.log('✅ Deadline update confirmed successful');
+                    } else {
+                        console.error('❌ Deadline update failed:', result.sync_status);
+                        throw new Error(`Deadline update failed: ${JSON.stringify(result.sync_status)}`);
+                    }
+                } catch (deadlineError) {
+                    console.error('❌ Deadline update error:', deadlineError);
+                    throw new Error(`Failed to update deadline: ${deadlineError}`);
+                }
+            }
+            // Build updates object for other fields (excluding projectId and deadline)
             const cleanUpdates = {};
             if (updates.content !== undefined) cleanUpdates.content = updates.content;
             if (updates.description !== undefined) cleanUpdates.description = updates.description;
@@ -409,7 +485,7 @@ class TodoistApiClient {
                 const result = await api.updateTask(taskId, cleanUpdates);
                 console.log('✅ Update task result:', result);
             } else {
-                console.log('ℹ️  No additional fields to update (only project was changed)');
+                console.log('ℹ️  No additional fields to update');
             }
             return true;
         } catch (error) {
@@ -462,6 +538,10 @@ class TodoistApiClient {
                     string: response.due.string,
                     datetime: response.due.datetime || undefined
                 } : undefined,
+                deadline: response.deadline ? {
+                    date: response.deadline.date,
+                    string: response.deadline.string
+                } : undefined,
                 createdAt: response.createdAt || new Date().toISOString(),
                 isCompleted: !!response.completedAt
             };
@@ -470,86 +550,167 @@ class TodoistApiClient {
             throw new Error('Failed to create task');
         }
     }
-    // Project description helpers
-    static async getProjectDescription(projectId) {
+    // Project metadata helpers
+    static async getProjectMetadata(projectId) {
         try {
-            const tasks = await this.getProjectTasks(projectId);
-            const descriptionTask = tasks.find((task)=>task.content.startsWith('* ') && task.labels.includes('project description'));
-            if (descriptionTask) {
-                // Remove the '* ' prefix and return the description
-                return descriptionTask.content.substring(2).trim();
+            const [tasks, projects] = await Promise.all([
+                this.getProjectTasks(projectId),
+                this.getProjects()
+            ]);
+            const project = projects.find((p)=>p.id === projectId);
+            if (!project) return null;
+            const metadataTask = tasks.find((task)=>task.labels.includes('project-metadata'));
+            if (metadataTask) {
+                // Extract category from labels
+                let category = null;
+                if (metadataTask.labels.includes('area-of-responsibility')) {
+                    category = 'area';
+                } else if (metadataTask.labels.includes('project-type')) {
+                    category = 'project';
+                }
+                return {
+                    description: metadataTask.description || '',
+                    category,
+                    priority: metadataTask.priority,
+                    due: metadataTask.due,
+                    deadline: metadataTask.deadline
+                };
             }
-            return null;
+            return {
+                description: '',
+                category: null,
+                priority: null
+            };
         } catch (error) {
-            console.error('Error fetching project description:', error);
+            console.error('Error fetching project metadata:', error);
             return null;
         }
     }
-    static async setProjectDescription(projectId, description) {
+    // Legacy method for backward compatibility
+    static async getProjectDescription(projectId) {
+        const metadata = await this.getProjectMetadata(projectId);
+        return metadata?.description || null;
+    }
+    static async setProjectMetadata(projectId, metadata) {
         try {
-            const tasks = await this.getProjectTasks(projectId);
-            const existingDescriptionTask = tasks.find((task)=>task.content.startsWith('* ') && task.labels.includes('project description'));
-            if (existingDescriptionTask) {
-                // Update existing description task
-                await this.updateTask(existingDescriptionTask.id, {
-                    content: `* ${description}`
-                });
+            const [tasks, projects] = await Promise.all([
+                this.getProjectTasks(projectId),
+                this.getProjects()
+            ]);
+            const project = projects.find((p)=>p.id === projectId);
+            if (!project) {
+                throw new Error(`Project with ID ${projectId} not found`);
+            }
+            const existingMetadataTask = tasks.find((task)=>task.labels.includes('project-metadata'));
+            // Build labels array
+            const labels = [
+                'project-metadata'
+            ];
+            if (metadata.category === 'area') {
+                labels.push('area-of-responsibility');
+            } else if (metadata.category === 'project') {
+                labels.push('project-type');
+            }
+            const taskData = {
+                content: project.name,
+                description: metadata.description || '',
+                labels,
+                ...metadata.priority && {
+                    priority: metadata.priority
+                },
+                ...metadata.dueString && {
+                    dueString: metadata.dueString
+                },
+                ...metadata.deadline && {
+                    deadline: metadata.deadline
+                }
+            };
+            if (existingMetadataTask) {
+                // Update existing metadata task
+                await this.updateTask(existingMetadataTask.id, taskData);
             } else {
-                // Create new description task
-                await this.createTask(`* ${description}`, {
+                // Create new metadata task
+                await this.createTask(project.name, {
                     projectId,
-                    labels: [
-                        'project description'
-                    ],
-                    priority: 1 // P4 (lowest priority) but still appears at top due to * prefix
+                    ...taskData
                 });
             }
             return true;
         } catch (error) {
-            console.error('Error setting project description:', error);
-            throw new Error('Failed to set project description');
+            console.error('Error setting project metadata:', error);
+            throw new Error('Failed to set project metadata');
         }
     }
-    // Project hierarchy with descriptions
-    static async fetchProjectHierarchyWithDescriptions() {
+    // Legacy method for backward compatibility
+    static async setProjectDescription(projectId, description) {
+        return this.setProjectMetadata(projectId, {
+            description
+        });
+    }
+    // Project hierarchy with metadata
+    static async fetchProjectHierarchyWithMetadata() {
         try {
             // 1. Get all projects
             const projects = await this.getProjects();
-            // 2. Get descriptions for all projects in parallel
-            const projectsWithDescriptions = await Promise.all(projects.map(async (project)=>{
-                const description = await this.getProjectDescription(project.id);
+            // 2. Get metadata for all projects in parallel
+            const projectsWithMetadata = await Promise.all(projects.map(async (project)=>{
+                const metadata = await this.getProjectMetadata(project.id);
                 return {
                     ...project,
-                    description: description || ''
+                    description: metadata?.description || '',
+                    category: metadata?.category || null,
+                    priority: metadata?.priority || null,
+                    due: metadata?.due,
+                    deadline: metadata?.deadline
                 };
             }));
             // 3. Build hierarchy map
-            const rootProjects = projectsWithDescriptions.filter((p)=>!p.parentId);
-            const childProjects = projectsWithDescriptions.filter((p)=>p.parentId);
+            const rootProjects = projectsWithMetadata.filter((p)=>!p.parentId);
+            const childProjects = projectsWithMetadata.filter((p)=>p.parentId);
             const hierarchy = rootProjects.map((parent)=>({
                     ...parent,
                     children: childProjects.filter((child)=>child.parentId === parent.id)
                 }));
             return {
-                flat: projectsWithDescriptions,
+                flat: projectsWithMetadata,
                 hierarchical: hierarchy
             };
         } catch (error) {
             console.error('Error fetching project hierarchy:', error);
-            throw new Error('Failed to fetch project hierarchy with descriptions');
+            throw new Error('Failed to fetch project hierarchy with metadata');
         }
+    }
+    // Legacy method for backward compatibility
+    static async fetchProjectHierarchyWithDescriptions() {
+        const result = await this.fetchProjectHierarchyWithMetadata();
+        return {
+            flat: result.flat.map((p)=>({
+                    ...p,
+                    description: p.description
+                })),
+            hierarchical: result.hierarchical.map((p)=>({
+                    ...p,
+                    description: p.description,
+                    children: p.children.map((c)=>({
+                            ...c,
+                            description: c.description
+                        }))
+                }))
+        };
     }
     // Generate context for LLM requests
     static async generateTodoistContext() {
         try {
-            const { flat, hierarchical } = await this.fetchProjectHierarchyWithDescriptions();
+            const { flat, hierarchical } = await this.fetchProjectHierarchyWithMetadata();
             return {
                 projects: flat,
                 hierarchy: hierarchical,
                 summary: {
                     totalProjects: flat.length,
                     projectsWithDescriptions: flat.filter((p)=>p.description.trim()).length,
-                    rootProjects: hierarchical.length
+                    rootProjects: hierarchical.length,
+                    areas: flat.filter((p)=>p.category === 'area').length,
+                    projects: flat.filter((p)=>p.category === 'project').length
                 }
             };
         } catch (error) {

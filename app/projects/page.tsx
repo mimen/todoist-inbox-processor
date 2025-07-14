@@ -1,15 +1,20 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import { TodoistProject } from '@/lib/types'
-import ProjectCard from '@/components/ProjectCard'
+import EnhancedProjectCard from '@/components/EnhancedProjectCard'
 
-interface ProjectWithDescription extends TodoistProject {
+interface ProjectWithMetadata extends TodoistProject {
   description: string
+  category: 'area' | 'project' | null
+  priority: 1 | 2 | 3 | 4 | null
+  due?: { date: string; string: string }
+  deadline?: { date: string; string: string }
 }
 
 export default function ProjectsPage() {
-  const [projects, setProjects] = useState<ProjectWithDescription[]>([])
+  const [projects, setProjects] = useState<ProjectWithMetadata[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -20,7 +25,7 @@ export default function ProjectsPage() {
         setLoading(true)
         setError(null)
 
-        const response = await fetch('/api/projects/with-descriptions')
+        const response = await fetch('/api/projects/with-metadata')
         if (!response.ok) {
           throw new Error('Failed to fetch projects')
         }
@@ -38,47 +43,59 @@ export default function ProjectsPage() {
     loadProjects()
   }, [])
 
-  const handleDescriptionChange = useCallback(async (projectId: string, newDescription: string) => {
+  const handleMetadataChange = useCallback(async (projectId: string, metadata: {
+    description?: string
+    category?: 'area' | 'project' | null
+    priority?: 1 | 2 | 3 | 4 | null
+    dueString?: string
+    deadline?: string
+  }) => {
     try {
-      console.log('Updating project description:', { projectId, newDescription })
+      console.log('Updating project metadata:', { projectId, metadata })
       
-      // Update the project description via API
-      const response = await fetch(`/api/projects/${projectId}/description`, {
+      // Update the project metadata via API
+      const response = await fetch(`/api/projects/${projectId}/metadata`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ description: newDescription }),
+        body: JSON.stringify(metadata),
       })
 
       if (!response.ok) {
         const errorData = await response.json()
         console.error('API Response error:', errorData)
-        throw new Error(`Failed to update project description: ${errorData.error || response.statusText}`)
+        throw new Error(`Failed to update project metadata: ${errorData.error || response.statusText}`)
       }
 
       // Update local state
       setProjects(prev => prev.map(project => 
         project.id === projectId 
-          ? { ...project, description: newDescription }
+          ? { 
+              ...project, 
+              ...metadata,
+              // Handle date parsing for display
+              ...(metadata.dueString && { due: { date: '', string: metadata.dueString } }),
+              ...(metadata.deadline && { deadline: { date: '', string: metadata.deadline } })
+            }
           : project
       ))
 
-      console.log('Project description updated successfully')
+      console.log('Project metadata updated successfully')
     } catch (err) {
-      console.error('Error updating project description:', err)
-      setError(err instanceof Error ? err.message : 'Failed to update project description')
+      console.error('Error updating project metadata:', err)
+      setError(err instanceof Error ? err.message : 'Failed to update project metadata')
     }
   }, [])
 
   // Group projects by hierarchy (handles unlimited nesting depth)
-  const organizeProjects = (projects: ProjectWithDescription[]) => {
+  const organizeProjects = (projects: ProjectWithMetadata[]) => {
     const projectMap = new Map(projects.map(p => [p.id, p]))
-    const organizedProjects: Array<ProjectWithDescription & { nestingDepth: number }> = []
+    const organizedProjects: Array<ProjectWithMetadata & { nestingDepth: number }> = []
     const processedIds = new Set<string>()
     
     // Calculate nesting depth for a project
-    const calculateDepth = (project: ProjectWithDescription, visited = new Set<string>()): number => {
+    const calculateDepth = (project: ProjectWithMetadata, visited = new Set<string>()): number => {
       if (!project.parentId) return 0
       if (visited.has(project.id)) return 0 // Avoid circular references
       
@@ -90,7 +107,7 @@ export default function ProjectsPage() {
     }
     
     // Recursive function to add a project and all its descendants
-    const addProjectAndChildren = (project: ProjectWithDescription, depth: number = 0) => {
+    const addProjectAndChildren = (project: ProjectWithMetadata, depth: number = 0) => {
       if (processedIds.has(project.id)) return
       
       organizedProjects.push({ ...project, nestingDepth: depth })
@@ -156,7 +173,15 @@ export default function ProjectsPage() {
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Project Management</h1>
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-3xl font-bold text-gray-900">Project Management</h1>
+            <Link
+              href="/"
+              className="px-3 py-1 text-sm bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 rounded-md transition-colors"
+            >
+              Task Processor
+            </Link>
+          </div>
           <p className="text-gray-600">
             Manage your Todoist projects and their descriptions. Descriptions are stored as special tasks 
             within each project for compatibility with other Todoist clients.
@@ -164,9 +189,9 @@ export default function ProjectsPage() {
         </div>
 
         {/* Project Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div className="bg-white p-4 rounded-lg shadow-sm border">
-            <div className="text-2xl font-bold text-todoist-blue">{projects.length}</div>
+            <div className="text-2xl font-bold text-blue-600">{projects.length}</div>
             <div className="text-sm text-gray-600">Total Projects</div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm border">
@@ -177,9 +202,15 @@ export default function ProjectsPage() {
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm border">
             <div className="text-2xl font-bold text-purple-600">
-              {projects.filter(p => p.parentId).length}
+              {projects.filter(p => p.category === 'area').length}
             </div>
-            <div className="text-sm text-gray-600">Nested Projects</div>
+            <div className="text-sm text-gray-600">Areas of Responsibility</div>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow-sm border">
+            <div className="text-2xl font-bold text-indigo-600">
+              {projects.filter(p => p.category === 'project').length}
+            </div>
+            <div className="text-sm text-gray-600">Projects</div>
           </div>
         </div>
 
@@ -198,11 +229,11 @@ export default function ProjectsPage() {
         ) : (
           <div className="space-y-4">
             {organizedProjects.map((project) => (
-              <ProjectCard
+              <EnhancedProjectCard
                 key={project.id}
                 project={project}
                 nestingDepth={project.nestingDepth}
-                onDescriptionChange={handleDescriptionChange}
+                onMetadataChange={handleMetadataChange}
               />
             ))}
           </div>
@@ -210,13 +241,14 @@ export default function ProjectsPage() {
 
         {/* Instructions */}
         <div className="mt-12 p-6 bg-blue-50 rounded-lg border border-blue-200">
-          <h3 className="text-lg font-medium text-blue-900 mb-2">How Project Descriptions Work</h3>
+          <h3 className="text-lg font-medium text-blue-900 mb-2">How Project Metadata Works</h3>
           <ul className="text-sm text-blue-800 space-y-1">
-            <li>• Project descriptions are stored as special tasks within each project</li>
-            <li>• These tasks start with "*" and have the "project description" label</li>
-            <li>• They appear at the top of the project due to highest priority (P1)</li>
-            <li>• This approach ensures compatibility with all Todoist clients and LLM integrations</li>
-            <li>• Descriptions auto-save after 1 second of inactivity</li>
+            <li>• Project metadata is stored as special tasks within each project</li>
+            <li>• These tasks use the project name as content and have the "project-metadata" label</li>
+            <li>• The description field contains the actual project description</li>
+            <li>• Project type (Area/Project) is stored using additional labels</li>
+            <li>• Priority, due dates, and deadlines are stored in the task fields</li>
+            <li>• All metadata auto-saves after 1 second of inactivity</li>
           </ul>
         </div>
       </div>

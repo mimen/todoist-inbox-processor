@@ -463,79 +463,170 @@ export class TodoistApiClient {
     }
   }
 
-  // Project description helpers
-  static async getProjectDescription(projectId: string): Promise<string | null> {
+  // Project metadata helpers
+  static async getProjectMetadata(projectId: string): Promise<{
+    description: string
+    category: 'area' | 'project' | null
+    priority: 1 | 2 | 3 | 4 | null
+    due?: { date: string; string: string }
+    deadline?: { date: string; string: string }
+  } | null> {
     try {
-      const tasks = await this.getProjectTasks(projectId)
-      const descriptionTask = tasks.find(task => 
-        task.content.startsWith('* ') && 
-        task.labels.includes('project description')
+      const [tasks, projects] = await Promise.all([
+        this.getProjectTasks(projectId),
+        this.getProjects()
+      ])
+      
+      const project = projects.find(p => p.id === projectId)
+      if (!project) return null
+      
+      const metadataTask = tasks.find(task => 
+        task.labels.includes('project-metadata')
       )
       
-      if (descriptionTask) {
-        // Remove the '* ' prefix and return the description
-        return descriptionTask.content.substring(2).trim()
+      if (metadataTask) {
+        // Extract category from labels
+        let category: 'area' | 'project' | null = null
+        if (metadataTask.labels.includes('area-of-responsibility')) {
+          category = 'area'
+        } else if (metadataTask.labels.includes('project-type')) {
+          category = 'project'
+        }
+        
+        return {
+          description: metadataTask.description || '',
+          category,
+          priority: metadataTask.priority,
+          due: metadataTask.due,
+          deadline: metadataTask.deadline
+        }
       }
       
-      return null
+      return {
+        description: '',
+        category: null,
+        priority: null
+      }
     } catch (error) {
-      console.error('Error fetching project description:', error)
+      console.error('Error fetching project metadata:', error)
       return null
     }
   }
+  
+  // Legacy method for backward compatibility
+  static async getProjectDescription(projectId: string): Promise<string | null> {
+    const metadata = await this.getProjectMetadata(projectId)
+    return metadata?.description || null
+  }
 
-  static async setProjectDescription(projectId: string, description: string): Promise<boolean> {
+  static async setProjectMetadata(projectId: string, metadata: {
+    description?: string
+    category?: 'area' | 'project' | null
+    priority?: 1 | 2 | 3 | 4 | null
+    dueString?: string
+    deadline?: string
+  }): Promise<boolean> {
     try {
-      const tasks = await this.getProjectTasks(projectId)
-      const existingDescriptionTask = tasks.find(task => 
-        task.content.startsWith('* ') && 
-        task.labels.includes('project description')
+      const [tasks, projects] = await Promise.all([
+        this.getProjectTasks(projectId),
+        this.getProjects()
+      ])
+      
+      const project = projects.find(p => p.id === projectId)
+      if (!project) {
+        throw new Error(`Project with ID ${projectId} not found`)
+      }
+      
+      const existingMetadataTask = tasks.find(task => 
+        task.labels.includes('project-metadata')
       )
-
-      if (existingDescriptionTask) {
-        // Update existing description task
-        await this.updateTask(existingDescriptionTask.id, {
-          content: `* ${description}`,
-        })
+      
+      // Build labels array
+      const labels = ['project-metadata']
+      if (metadata.category === 'area') {
+        labels.push('area-of-responsibility')
+      } else if (metadata.category === 'project') {
+        labels.push('project-type')
+      }
+      
+      const taskData = {
+        content: project.name, // Use actual project name as content
+        description: metadata.description || '',
+        labels,
+        ...(metadata.priority && { priority: metadata.priority }),
+        ...(metadata.dueString && { dueString: metadata.dueString }),
+        ...(metadata.deadline && { deadline: metadata.deadline })
+      }
+      
+      if (existingMetadataTask) {
+        // Update existing metadata task
+        await this.updateTask(existingMetadataTask.id, taskData)
       } else {
-        // Create new description task
-        await this.createTask(`* ${description}`, {
+        // Create new metadata task
+        await this.createTask(project.name, {
           projectId,
-          labels: ['project description'],
-          priority: 1 // P4 (lowest priority) but still appears at top due to * prefix
+          ...taskData
         })
       }
 
       return true
     } catch (error) {
-      console.error('Error setting project description:', error)
-      throw new Error('Failed to set project description')
+      console.error('Error setting project metadata:', error)
+      throw new Error('Failed to set project metadata')
     }
   }
+  
+  // Legacy method for backward compatibility
+  static async setProjectDescription(projectId: string, description: string): Promise<boolean> {
+    return this.setProjectMetadata(projectId, { description })
+  }
 
-  // Project hierarchy with descriptions
-  static async fetchProjectHierarchyWithDescriptions(): Promise<{
-    flat: (TodoistProjectApi & { description: string })[]
-    hierarchical: (TodoistProjectApi & { description: string; children: (TodoistProjectApi & { description: string })[] })[]
+  // Project hierarchy with metadata
+  static async fetchProjectHierarchyWithMetadata(): Promise<{
+    flat: (TodoistProjectApi & { 
+      description: string
+      category: 'area' | 'project' | null
+      priority: 1 | 2 | 3 | 4 | null
+      due?: { date: string; string: string }
+      deadline?: { date: string; string: string }
+    })[]
+    hierarchical: (TodoistProjectApi & { 
+      description: string
+      category: 'area' | 'project' | null
+      priority: 1 | 2 | 3 | 4 | null
+      due?: { date: string; string: string }
+      deadline?: { date: string; string: string }
+      children: (TodoistProjectApi & { 
+        description: string
+        category: 'area' | 'project' | null
+        priority: 1 | 2 | 3 | 4 | null
+        due?: { date: string; string: string }
+        deadline?: { date: string; string: string }
+      })[]
+    })[]
   }> {
     try {
       // 1. Get all projects
       const projects = await this.getProjects()
       
-      // 2. Get descriptions for all projects in parallel
-      const projectsWithDescriptions = await Promise.all(
+      // 2. Get metadata for all projects in parallel
+      const projectsWithMetadata = await Promise.all(
         projects.map(async (project) => {
-          const description = await this.getProjectDescription(project.id)
+          const metadata = await this.getProjectMetadata(project.id)
           return {
             ...project,
-            description: description || ''
+            description: metadata?.description || '',
+            category: metadata?.category || null,
+            priority: metadata?.priority || null,
+            due: metadata?.due,
+            deadline: metadata?.deadline
           }
         })
       )
       
       // 3. Build hierarchy map
-      const rootProjects = projectsWithDescriptions.filter(p => !p.parentId)
-      const childProjects = projectsWithDescriptions.filter(p => p.parentId)
+      const rootProjects = projectsWithMetadata.filter(p => !p.parentId)
+      const childProjects = projectsWithMetadata.filter(p => p.parentId)
       
       const hierarchy = rootProjects.map(parent => ({
         ...parent,
@@ -543,27 +634,58 @@ export class TodoistApiClient {
       }))
       
       return {
-        flat: projectsWithDescriptions,
+        flat: projectsWithMetadata,
         hierarchical: hierarchy
       }
     } catch (error) {
       console.error('Error fetching project hierarchy:', error)
-      throw new Error('Failed to fetch project hierarchy with descriptions')
+      throw new Error('Failed to fetch project hierarchy with metadata')
+    }
+  }
+  
+  // Legacy method for backward compatibility
+  static async fetchProjectHierarchyWithDescriptions(): Promise<{
+    flat: (TodoistProjectApi & { description: string })[]
+    hierarchical: (TodoistProjectApi & { description: string; children: (TodoistProjectApi & { description: string })[] })[]
+  }> {
+    const result = await this.fetchProjectHierarchyWithMetadata()
+    return {
+      flat: result.flat.map(p => ({ ...p, description: p.description })),
+      hierarchical: result.hierarchical.map(p => ({
+        ...p,
+        description: p.description,
+        children: p.children.map(c => ({ ...c, description: c.description }))
+      }))
     }
   }
 
   // Generate context for LLM requests
   static async generateTodoistContext(): Promise<{
-    projects: (TodoistProjectApi & { description: string })[]
-    hierarchy: (TodoistProjectApi & { description: string; children: (TodoistProjectApi & { description: string })[] })[]
+    projects: (TodoistProjectApi & { 
+      description: string
+      category: 'area' | 'project' | null
+      priority: 1 | 2 | 3 | 4 | null
+    })[]
+    hierarchy: (TodoistProjectApi & { 
+      description: string
+      category: 'area' | 'project' | null
+      priority: 1 | 2 | 3 | 4 | null
+      children: (TodoistProjectApi & { 
+        description: string
+        category: 'area' | 'project' | null
+        priority: 1 | 2 | 3 | 4 | null
+      })[]
+    })[]
     summary: {
       totalProjects: number
       projectsWithDescriptions: number
       rootProjects: number
+      areas: number
+      projects: number
     }
   }> {
     try {
-      const { flat, hierarchical } = await this.fetchProjectHierarchyWithDescriptions()
+      const { flat, hierarchical } = await this.fetchProjectHierarchyWithMetadata()
       
       return {
         projects: flat,
@@ -571,7 +693,9 @@ export class TodoistApiClient {
         summary: {
           totalProjects: flat.length,
           projectsWithDescriptions: flat.filter(p => p.description.trim()).length,
-          rootProjects: hierarchical.length
+          rootProjects: hierarchical.length,
+          areas: flat.filter(p => p.category === 'area').length,
+          projects: flat.filter(p => p.category === 'project').length
         }
       }
     } catch (error) {

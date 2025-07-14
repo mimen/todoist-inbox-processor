@@ -83,11 +83,21 @@ export default function TaskCard({
     adjustHeight(descriptionRef.current)
   }, [content, description])
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    })
+    try {
+      const date = new Date(dateString)
+      // Check if the date is valid
+      if (isNaN(date.getTime())) {
+        return 'Invalid date'
+      }
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    } catch (error) {
+      console.error('Error formatting date:', error, 'Input:', dateString)
+      return 'Invalid date'
+    }
   }
 
   const getTodoistColor = (colorName: string) => {

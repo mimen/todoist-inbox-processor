@@ -1,10 +1,13 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
   "/api/llm/generate-project-suggestions/route": "app/api/llm/generate-project-suggestions/route.js",
+  "/api/projects/[projectId]/metadata/route": "app/api/projects/[projectId]/metadata/route.js",
   "/api/projects/hierarchy/route": "app/api/projects/hierarchy/route.js",
+  "/api/projects/with-descriptions/route": "app/api/projects/with-descriptions/route.js",
+  "/api/projects/with-metadata/route": "app/api/projects/with-metadata/route.js",
   "/api/todoist/labels/route": "app/api/todoist/labels/route.js",
   "/api/todoist/projects/route": "app/api/todoist/projects/route.js",
-  "/api/todoist/tasks/[taskId]/route": "app/api/todoist/tasks/[taskId]/route.js",
   "/api/todoist/tasks/route": "app/api/todoist/tasks/route.js",
-  "/page": "app/page.js"
+  "/page": "app/page.js",
+  "/projects/page": "app/projects/page.js"
 }

@@ -175,7 +175,7 @@ export default function TaskForm({ task, projects, labels, suggestions, onAutoSa
           disabled={!canGoNext}
           className={`flex-1 py-3 px-4 rounded-md font-medium transition-colors focus:ring-2 focus:ring-offset-2 ${
             canGoNext
-              ? 'bg-todoist-blue text-white hover:bg-blue-600 focus:ring-todoist-blue'
+              ? 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-gray-500'
               : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
           }`}
         >

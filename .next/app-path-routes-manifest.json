@@ -1,8 +1,0 @@
-{
-  "/api/todoist/labels/route": "/api/todoist/labels",
-  "/api/todoist/projects/route": "/api/todoist/projects",
-  "/api/todoist/tasks/route": "/api/todoist/tasks",
-  "/api/todoist/tasks/[taskId]/route": "/api/todoist/tasks/[taskId]",
-  "/_not-found/page": "/_not-found",
-  "/page": "/"
-}

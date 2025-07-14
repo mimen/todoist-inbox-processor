@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import { TodoistTask, TodoistProject, TodoistLabel, ProcessingState, TaskUpdate } from '@/lib/types'
 import { generateMockSuggestions } from '@/lib/mock-data'
 import { suggestionsCache } from '@/lib/suggestions-cache'
@@ -104,22 +105,24 @@ export default function TaskProcessor() {
 
       const tasksData = await tasksRes.json()
       console.log('Loaded tasks:', tasksData)
-      setAllTasks(tasksData)
+      // Filter out description tasks (those starting with "* ")
+      const filteredTasks = tasksData.filter((task: any) => !task.content.startsWith('* '))
+      setAllTasks(filteredTasks)
 
       // Prefetch suggestions for all tasks when they're loaded
-      if (tasksData.length > 0 && projectHierarchy) {
+      if (filteredTasks.length > 0 && projectHierarchy) {
         try {
-          await suggestionsCache.prefetchSuggestions(tasksData, projectHierarchy)
+          await suggestionsCache.prefetchSuggestions(filteredTasks, projectHierarchy)
         } catch (error) {
           console.warn('Failed to prefetch suggestions:', error)
         }
       }
 
       // Set up task processing queue and force form re-render
-      if (tasksData.length > 0) {
+      if (filteredTasks.length > 0) {
         setState({
-          currentTask: tasksData[0],
-          queuedTasks: tasksData.slice(1),
+          currentTask: filteredTasks[0],
+          queuedTasks: filteredTasks.slice(1),
           processedTasks: [],
           skippedTasks: [],
         })
@@ -681,12 +684,20 @@ export default function TaskProcessor() {
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-3xl font-bold text-gray-900">Task Processor</h1>
-              <button
-                onClick={() => setShowShortcuts(!showShortcuts)}
-                className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
-              >
-                Shortcuts <span className="kbd">?</span>
-              </button>
+              <div className="flex items-center gap-3">
+                <Link
+                  href="/projects"
+                  className="px-3 py-1 text-sm bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 rounded-md transition-colors"
+                >
+                  Projects
+                </Link>
+                <button
+                  onClick={() => setShowShortcuts(!showShortcuts)}
+                  className="px-3 py-1 text-sm bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 rounded-md transition-colors"
+                >
+                  Shortcuts
+                </button>
+              </div>
             </div>
             
             {/* Project Switcher */}
@@ -755,12 +766,20 @@ export default function TaskProcessor() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-3xl font-bold text-gray-900">Task Processor</h1>
-            <button
-              onClick={() => setShowShortcuts(!showShortcuts)}
-              className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
-            >
-              Shortcuts <span className="kbd">?</span>
-            </button>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/projects"
+                className="px-3 py-1 text-sm bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 rounded-md transition-colors"
+              >
+                Projects
+              </Link>
+              <button
+                onClick={() => setShowShortcuts(!showShortcuts)}
+                className="px-3 py-1 text-sm bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 rounded-md transition-colors"
+              >
+                Shortcuts
+              </button>
+            </div>
           </div>
           
           {/* Project Switcher */}
@@ -836,21 +855,31 @@ export default function TaskProcessor() {
 
         {/* Queue Preview */}
         {state.queuedTasks.length > 0 && (
-          <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-            <h3 className="text-sm font-medium text-gray-700 mb-3">
-              Next in queue ({state.queuedTasks.length} remaining)
-            </h3>
-            <div className="space-y-2">
-              {state.queuedTasks.slice(0, 3).map((task, index) => (
-                <div key={task.id} className="text-sm text-gray-600 truncate">
-                  {index + 1}. {task.content}
-                </div>
-              ))}
-              {state.queuedTasks.length > 3 && (
-                <div className="text-sm text-gray-400">
-                  + {state.queuedTasks.length - 3} more...
-                </div>
-              )}
+          <div className="mt-8 flex flex-col items-center">
+            <div className="w-full max-w-2xl p-4 bg-gray-50 rounded-lg">
+              <h3 className="text-sm font-medium text-gray-700 mb-3 text-center">
+                Next in queue ({state.queuedTasks.length} remaining)
+              </h3>
+              <div className="space-y-2">
+                {state.queuedTasks.slice(0, 10).map((task, index) => {
+                  // Calculate opacity - fade out from task 5 to task 10
+                  const opacity = index < 5 ? 1 : 1 - ((index - 4) * 0.2)
+                  return (
+                    <div 
+                      key={task.id} 
+                      className="text-sm text-gray-600 truncate text-center"
+                      style={{ opacity }}
+                    >
+                      {index + 1}. {task.content}
+                    </div>
+                  )
+                })}
+                {state.queuedTasks.length > 10 && (
+                  <div className="text-sm text-gray-400 text-center" style={{ opacity: 0.3 }}>
+                    + {state.queuedTasks.length - 10} more...
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}

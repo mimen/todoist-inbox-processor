@@ -22,6 +22,8 @@ export default function ProjectDropdown({
 }: ProjectDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [taskCounts, setTaskCounts] = useState<{ [key: string]: number }>({})
+  const [loadingCounts, setLoadingCounts] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
@@ -44,6 +46,67 @@ export default function ProjectDropdown({
       searchInputRef.current.focus()
     }
   }, [isOpen])
+
+  // Load task counts when projects change (on page load)
+  useEffect(() => {
+    if (projects.length > 0 && Object.keys(taskCounts).length === 0) {
+      loadTaskCounts()
+    }
+  }, [projects.length])
+
+  const loadTaskCounts = async () => {
+    setLoadingCounts(true)
+    try {
+      const counts: { [key: string]: number } = {}
+      
+      // Load task counts for all projects in parallel
+      const countPromises = projects.map(async (project) => {
+        try {
+          const response = await fetch(`/api/todoist/tasks?projectId=${project.id}`)
+          if (response.ok) {
+            const tasks = await response.json()
+            // Filter out description tasks (starting with "* ")
+            const filteredTasks = tasks.filter((task: any) => !task.content.startsWith('* '))
+            counts[project.id] = filteredTasks.length
+          } else {
+            counts[project.id] = 0
+          }
+        } catch (error) {
+          console.error(`Error loading tasks for project ${project.id}:`, error)
+          counts[project.id] = 0
+        }
+      })
+      
+      // Add inbox count if included
+      if (includeInbox) {
+        const inboxProject = projects.find(p => p.isInboxProject)
+        if (inboxProject) {
+          countPromises.push(
+            fetch(`/api/todoist/tasks?projectId=${inboxProject.id}`)
+              .then(response => response.ok ? response.json() : [])
+              .then(tasks => {
+                const filteredTasks = tasks.filter((task: any) => !task.content.startsWith('* '))
+                counts[inboxProject.id] = filteredTasks.length
+                counts['inbox'] = filteredTasks.length // Also set for 'inbox' key
+              })
+              .catch(() => {
+                counts[inboxProject.id] = 0
+                counts['inbox'] = 0
+              })
+          )
+        } else {
+          counts['inbox'] = 0
+        }
+      }
+      
+      await Promise.all(countPromises)
+      setTaskCounts(counts)
+    } catch (error) {
+      console.error('Error loading task counts:', error)
+    } finally {
+      setLoadingCounts(false)
+    }
+  }
 
   const getTodoistColor = (colorName: string) => {
     const colorMap: { [key: string]: string } = {
@@ -207,7 +270,16 @@ export default function ProjectDropdown({
                     className="w-4 h-4 rounded-full flex-shrink-0"
                     style={{ backgroundColor: project.color }}
                   ></div>
-                  <span className="font-medium flex-1">{project.name}</span>
+                  <div className="flex-1 flex items-center space-x-2">
+                    <span className="font-medium">{project.name}</span>
+                    {loadingCounts ? (
+                      <span className="text-xs text-gray-400">...</span>
+                    ) : (
+                      <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                        {taskCounts[project.id] || 0}
+                      </span>
+                    )}
+                  </div>
                   {selectedProjectId === project.id && (
                     <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
