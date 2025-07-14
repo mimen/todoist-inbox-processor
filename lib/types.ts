@@ -15,6 +15,16 @@ export interface TodoistTask {
     timezone?: string
     recurring: boolean
   }
+  duration?: {
+    amount: number
+    unit: string
+  }
+  deadline?: {
+    date: string
+    datetime?: string
+    string: string
+    timezone?: string
+  }
   url: string
   commentCount: number
   assigneeId?: string
@@ -62,6 +72,9 @@ export interface TaskUpdate {
   dueDate?: string
   dueDatetime?: string
   dueString?: string
+  duration?: number
+  durationUnit?: 'minute' | 'hour'
+  deadline?: string
 }
 
 export interface MockAISuggestion {

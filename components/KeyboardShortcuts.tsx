@@ -6,12 +6,26 @@ interface KeyboardShortcutsProps {
 
 export default function KeyboardShortcuts({ onClose }: KeyboardShortcutsProps) {
   const shortcuts = [
-    { key: 'Enter', description: 'Process current task' },
-    { key: 'S', description: 'Skip current task' },
-    { key: '?', description: 'Toggle this help' },
-    { key: 'Esc', description: 'Close this help' },
-    { key: 'Tab', description: 'Navigate between form fields' },
-    { key: '1-4', description: 'Set priority (P1-P4)' },
+    { category: 'Navigation', items: [
+      { key: 'j / Enter / →', description: 'Next task' },
+      { key: 'k / ←', description: 'Previous task' },
+      { key: '?', description: 'Toggle this help' },
+      { key: 'Esc', description: 'Close overlays/help' },
+    ]},
+    { category: 'Task Management', items: [
+      { key: 'p', description: 'Set priority' },
+      { key: '#', description: 'Change project' },
+      { key: '@', description: 'Add/remove labels' },
+      { key: 's', description: 'Set scheduled date' },
+      { key: 'd', description: 'Set deadline' },
+      { key: 'e', description: 'Archive task (with confirmation)' },
+      { key: 'c', description: 'Complete task (with confirmation)' },
+    ]},
+    { category: 'Quick Actions', items: [
+      { key: '1-4', description: 'Quick priority (when priority overlay open)' },
+      { key: '↑↓', description: 'Navigate in overlays' },
+      { key: 'Enter', description: 'Select in overlays' },
+    ]},
   ]
 
   return (
@@ -29,11 +43,18 @@ export default function KeyboardShortcuts({ onClose }: KeyboardShortcutsProps) {
           </button>
         </div>
         
-        <div className="space-y-3">
-          {shortcuts.map((shortcut, index) => (
-            <div key={index} className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">{shortcut.description}</span>
-              <span className="kbd">{shortcut.key}</span>
+        <div className="space-y-4">
+          {shortcuts.map((section, sectionIndex) => (
+            <div key={sectionIndex}>
+              <h3 className="text-sm font-medium text-gray-900 mb-2">{section.category}</h3>
+              <div className="space-y-2">
+                {section.items.map((shortcut, index) => (
+                  <div key={index} className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">{shortcut.description}</span>
+                    <span className="kbd">{shortcut.key}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>

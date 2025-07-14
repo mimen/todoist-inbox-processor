@@ -2,7 +2,7 @@
 
 :root {
   --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
+  --background-start-rgb: 249, 250, 251;
   --background-end-rgb: 255, 255, 255;
 }
 
@@ -16,12 +16,8 @@
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  background: rgb(var(--background-start-rgb));
+  min-height: 100vh;
 }
 
 /* Custom scrollbar for webkit browsers */
@@ -73,4 +69,20 @@ body {
   background-color: #f3f4f6;
   color: #374151;
   border: 1px solid #d1d5db;
+}
+
+/* Toast animation */
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
 }

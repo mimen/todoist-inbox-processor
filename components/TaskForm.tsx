@@ -11,9 +11,12 @@ interface TaskFormProps {
   suggestions: MockAISuggestion[]
   onAutoSave: (updates: TaskUpdate) => void
   onNext: () => void
+  onPrevious: () => void
+  canGoNext: boolean
+  canGoPrevious: boolean
 }
 
-export default function TaskForm({ task, projects, labels, suggestions, onAutoSave, onNext }: TaskFormProps) {
+export default function TaskForm({ task, projects, labels, suggestions, onAutoSave, onNext, onPrevious, canGoNext, canGoPrevious }: TaskFormProps) {
   const [formData, setFormData] = useState<TaskUpdate>({
     content: task.content,
     description: task.description || '',
@@ -151,126 +154,32 @@ export default function TaskForm({ task, projects, labels, suggestions, onAutoSa
   // prioritySuggestions removed - priority is now handled by overlay
 
   return (
-    <div className="space-y-6">
-      {/* Task Modification Controls */}
-      <div className="space-y-4">
-        {/* Description */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Description
-          </label>
-          <textarea
-            value={formData.description}
-            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-todoist-blue focus:border-transparent resize-none"
-            rows={2}
-            placeholder="Add additional details..."
-          />
-        </div>
-
-        {/* Project Selection */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Project
-          </label>
-          <ProjectDropdown
-            projects={projects}
-            selectedProjectId={formData.projectId || ''}
-            onProjectChange={handleProjectChange}
-            placeholder="Select project..."
-            includeInbox={false}
-            className="mb-2"
-          />
-          {projectSuggestions.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {projectSuggestions.map((suggestion, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  onClick={() => applySuggestion(suggestion)}
-                  className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded border border-green-200 hover:bg-green-100 transition-colors"
-                >
-                  🤖 Suggest: {suggestion.suggestion} ({Math.round(suggestion.confidence * 100)}%)
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Priority is now handled via P key + 1-4 overlay */}
-
-        {/* Labels */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Labels
-          </label>
-          <div className="flex flex-wrap gap-2 mb-2">
-            {labels.map((label) => {
-              const labelColor = getTodoistColor(label.color)
-              const isSelected = selectedLabels.has(label.name)
-              return (
-                <button
-                  key={label.id}
-                  type="button"
-                  onClick={() => toggleLabel(label.name)}
-                  className={`px-3 py-1 rounded-full text-sm border transition-colors flex items-center space-x-2 ${
-                    isSelected
-                      ? 'text-white border-transparent'
-                      : 'bg-gray-50 hover:bg-gray-100 border-gray-200 text-gray-700'
-                  }`}
-                  style={isSelected ? { backgroundColor: labelColor } : {}}
-                >
-                  <div 
-                    className="w-3 h-3 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: labelColor }}
-                  ></div>
-                  <span>{label.name}</span>
-                </button>
-              )
-            })}
-          </div>
-          {labelSuggestions.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {labelSuggestions.map((suggestion, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  onClick={() => applySuggestion(suggestion)}
-                  className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-200 hover:bg-blue-100 transition-colors"
-                >
-                  🏷️ Suggest: {suggestion.suggestion} ({Math.round(suggestion.confidence * 100)}%)
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Due Date */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Due Date
-          </label>
-          <input
-            type="text"
-            value={formData.dueString}
-            onChange={(e) => setFormData(prev => ({ ...prev, dueString: e.target.value }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-todoist-blue focus:border-transparent"
-            placeholder="e.g., tomorrow, next friday, in 2 weeks..."
-          />
-          <p className="mt-1 text-xs text-gray-500">
-            Use natural language like &quot;tomorrow&quot;, &quot;next Friday&quot;, &quot;in 2 weeks&quot;
-          </p>
-        </div>
-      </div>
-
-      {/* Next Button */}
-      <div className="pt-4 border-t border-gray-200">
+    <div>
+      {/* Navigation Buttons Only */}
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={onPrevious}
+          disabled={!canGoPrevious}
+          className={`flex-1 py-3 px-4 rounded-md font-medium transition-colors focus:ring-2 focus:ring-offset-2 ${
+            canGoPrevious
+              ? 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-gray-500'
+              : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+          }`}
+        >
+          ← Previous
+        </button>
         <button
           type="button"
           onClick={onNext}
-          className="w-full bg-todoist-blue text-white py-3 px-4 rounded-md hover:bg-blue-600 transition-colors font-medium focus:ring-2 focus:ring-todoist-blue focus:ring-offset-2"
+          disabled={!canGoNext}
+          className={`flex-1 py-3 px-4 rounded-md font-medium transition-colors focus:ring-2 focus:ring-offset-2 ${
+            canGoNext
+              ? 'bg-todoist-blue text-white hover:bg-blue-600 focus:ring-todoist-blue'
+              : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+          }`}
         >
-          Next Task <span className="kbd ml-2">Enter</span>
+          Next Task →
         </button>
       </div>
     </div>

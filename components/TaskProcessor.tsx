@@ -3,12 +3,19 @@
 import { useState, useEffect, useCallback } from 'react'
 import { TodoistTask, TodoistProject, TodoistLabel, ProcessingState, TaskUpdate } from '@/lib/types'
 import { generateMockSuggestions } from '@/lib/mock-data'
+import { suggestionsCache } from '@/lib/suggestions-cache'
 import TaskCard from './TaskCard'
 import TaskForm from './TaskForm'
 import KeyboardShortcuts from './KeyboardShortcuts'
 import ProgressIndicator from './ProgressIndicator'
 import ProjectSwitcher from './ProjectSwitcher'
 import PriorityOverlay from './PriorityOverlay'
+import ProjectSelectionOverlay from './ProjectSelectionOverlay'
+import LabelSelectionOverlay from './LabelSelectionOverlay'
+import ScheduledDateSelector from './ScheduledDateSelector'
+import DeadlineSelector from './DeadlineSelector'
+import ProjectSuggestions from './ProjectSuggestions'
+import Toast from './Toast'
 
 export default function TaskProcessor() {
   const [state, setState] = useState<ProcessingState>({
@@ -20,6 +27,7 @@ export default function TaskProcessor() {
   
   const [projects, setProjects] = useState<TodoistProject[]>([])
   const [labels, setLabels] = useState<TodoistLabel[]>([])
+  const [projectHierarchy, setProjectHierarchy] = useState<any>(null)
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [loading, setLoading] = useState(true)
   const [loadingTasks, setLoadingTasks] = useState(false)
@@ -28,6 +36,14 @@ export default function TaskProcessor() {
   const [allTasks, setAllTasks] = useState<TodoistTask[]>([])
   const [taskKey, setTaskKey] = useState(0) // Force re-render of TaskForm
   const [showPriorityOverlay, setShowPriorityOverlay] = useState(false)
+  const [showProjectOverlay, setShowProjectOverlay] = useState(false)
+  const [showLabelOverlay, setShowLabelOverlay] = useState(false)
+  const [showScheduledOverlay, setShowScheduledOverlay] = useState(false)
+  const [showDeadlineOverlay, setShowDeadlineOverlay] = useState(false)
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false)
+  const [showCompleteConfirm, setShowCompleteConfirm] = useState(false)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
+  const [currentTaskSuggestions, setCurrentTaskSuggestions] = useState<any[]>([])
 
   // Load initial data (projects and labels)
   useEffect(() => {
@@ -36,23 +52,26 @@ export default function TaskProcessor() {
         setLoading(true)
         setError(null)
 
-        // Fetch projects and labels
-        const [projectsRes, labelsRes] = await Promise.all([
+        // Fetch projects, labels, and project hierarchy
+        const [projectsRes, labelsRes, hierarchyRes] = await Promise.all([
           fetch('/api/todoist/projects'),
           fetch('/api/todoist/labels'),
+          fetch('/api/projects/hierarchy?format=context'),
         ])
 
-        if (!projectsRes.ok || !labelsRes.ok) {
+        if (!projectsRes.ok || !labelsRes.ok || !hierarchyRes.ok) {
           throw new Error('Failed to fetch data from Todoist API')
         }
 
-        const [projectsData, labelsData] = await Promise.all([
+        const [projectsData, labelsData, hierarchyData] = await Promise.all([
           projectsRes.json(),
           labelsRes.json(),
+          hierarchyRes.json(),
         ])
 
         setProjects(projectsData)
         setLabels(labelsData)
+        setProjectHierarchy(hierarchyData)
         
         // Set default to actual inbox project if it exists
         const inboxProject = projectsData.find((p: any) => p.isInboxProject)
@@ -87,6 +106,15 @@ export default function TaskProcessor() {
       console.log('Loaded tasks:', tasksData)
       setAllTasks(tasksData)
 
+      // Prefetch suggestions for all tasks when they're loaded
+      if (tasksData.length > 0 && projectHierarchy) {
+        try {
+          await suggestionsCache.prefetchSuggestions(tasksData, projectHierarchy)
+        } catch (error) {
+          console.warn('Failed to prefetch suggestions:', error)
+        }
+      }
+
       // Set up task processing queue and force form re-render
       if (tasksData.length > 0) {
         setState({
@@ -118,6 +146,40 @@ export default function TaskProcessor() {
       loadProjectTasks(selectedProjectId)
     }
   }, [selectedProjectId, projects.length, loadProjectTasks])
+
+  // Load suggestions when current task changes
+  useEffect(() => {
+    async function loadSuggestions() {
+      if (!state.currentTask || !projectHierarchy) {
+        setCurrentTaskSuggestions([])
+        return
+      }
+
+      try {
+        const suggestions = await suggestionsCache.generateSuggestions(
+          state.currentTask.id,
+          state.currentTask.content,
+          state.currentTask.description || '',
+          projectHierarchy,
+          state.currentTask.projectId
+        )
+        
+        // Filter out inbox suggestions
+        const filteredSuggestions = suggestions.filter(s => {
+          const project = projects.find(p => p.id === s.projectId)
+          return project && !project.isInboxProject
+        })
+        
+        console.log(`TaskProcessor: Setting suggestions for task ${state.currentTask.id}:`, filteredSuggestions)
+        setCurrentTaskSuggestions(filteredSuggestions)
+      } catch (error) {
+        console.error('Error loading suggestions:', error)
+        setCurrentTaskSuggestions([])
+      }
+    }
+
+    loadSuggestions()
+  }, [state.currentTask?.id, state.currentTask?.content, state.currentTask?.description, projectHierarchy, projects])
   
   // Update task key when current task changes to force form re-render
   const moveToNext = useCallback(() => {
@@ -128,6 +190,14 @@ export default function TaskProcessor() {
       // Force form re-render when task changes
       if (nextTask) {
         setTaskKey(prevKey => prevKey + 1)
+        
+        // Prefetch suggestions for the next few tasks if we have project hierarchy
+        if (projectHierarchy && remainingQueue.length > 0) {
+          const tasksToPreload = remainingQueue.slice(0, 3) // Preload next 3 tasks
+          suggestionsCache.prefetchSuggestions(tasksToPreload, projectHierarchy).catch(error => {
+            console.warn('Failed to prefetch suggestions for upcoming tasks:', error)
+          })
+        }
       }
       
       return {
@@ -136,7 +206,7 @@ export default function TaskProcessor() {
         queuedTasks: remainingQueue,
       }
     })
-  }, [])
+  }, [projectHierarchy])
 
   const autoSaveTask = useCallback(async (taskId: string, updates: TaskUpdate) => {
     try {
@@ -163,12 +233,20 @@ export default function TaskProcessor() {
       console.log('API Response data:', responseData)
     } catch (err) {
       console.error('Error auto-saving task:', err)
-      setError(err instanceof Error ? err.message : 'Failed to auto-save task')
+      // Show toast instead of setting error state
+      setToast({ 
+        message: err instanceof Error ? err.message : 'Failed to save changes', 
+        type: 'error' 
+      })
+      // Re-throw to allow handlers to revert changes
+      throw err
     }
   }, [])
 
   const handleContentChange = useCallback(async (newContent: string) => {
     if (state.currentTask) {
+      // Invalidate suggestions cache since content changed
+      suggestionsCache.invalidateTask(state.currentTask.id)
       await autoSaveTask(state.currentTask.id, { content: newContent })
     }
   }, [state.currentTask, autoSaveTask])
@@ -184,19 +262,281 @@ export default function TaskProcessor() {
     moveToNext()
   }, [state.currentTask, moveToNext])
 
-  const handlePrioritySelect = useCallback((priority: 1 | 2 | 3 | 4) => {
+  const handlePrioritySelect = useCallback(async (priority: 1 | 2 | 3 | 4) => {
     if (state.currentTask) {
+      const originalPriority = state.currentTask.priority
+      
       // Update the task immediately in the UI
       setState(prev => ({
         ...prev,
         currentTask: prev.currentTask ? { ...prev.currentTask, priority } : null
       }))
       
-      // Queue the auto-save
-      autoSaveTask(state.currentTask.id, { priority })
+      try {
+        // Queue the auto-save
+        await autoSaveTask(state.currentTask.id, { priority })
+      } catch (err) {
+        // Revert on error
+        setState(prev => ({
+          ...prev,
+          currentTask: prev.currentTask ? { ...prev.currentTask, priority: originalPriority } : null
+        }))
+      }
     }
     setShowPriorityOverlay(false)
   }, [state.currentTask, autoSaveTask])
+
+  const handleProjectSelect = useCallback(async (projectId: string) => {
+    if (state.currentTask) {
+      const originalProjectId = state.currentTask.projectId
+      
+      // Update the task immediately in the UI
+      setState(prev => ({
+        ...prev,
+        currentTask: prev.currentTask ? { ...prev.currentTask, projectId } : null
+      }))
+      
+      try {
+        // Queue the auto-save
+        await autoSaveTask(state.currentTask.id, { projectId })
+      } catch (err) {
+        // Revert on error
+        setState(prev => ({
+          ...prev,
+          currentTask: prev.currentTask ? { ...prev.currentTask, projectId: originalProjectId } : null
+        }))
+      }
+    }
+    setShowProjectOverlay(false)
+  }, [state.currentTask, autoSaveTask])
+
+  const handleLabelsChange = useCallback(async (labels: string[]) => {
+    if (state.currentTask) {
+      const originalLabels = state.currentTask.labels
+      
+      // Update the task immediately in the UI
+      setState(prev => ({
+        ...prev,
+        currentTask: prev.currentTask ? { ...prev.currentTask, labels } : null
+      }))
+      
+      try {
+        // Queue the auto-save
+        await autoSaveTask(state.currentTask.id, { labels })
+      } catch (err) {
+        // Revert on error
+        setState(prev => ({
+          ...prev,
+          currentTask: prev.currentTask ? { ...prev.currentTask, labels: originalLabels } : null
+        }))
+      }
+    }
+  }, [state.currentTask, autoSaveTask])
+
+  const handleDescriptionChange = useCallback(async (newDescription: string) => {
+    if (state.currentTask) {
+      // Invalidate suggestions cache since description changed
+      suggestionsCache.invalidateTask(state.currentTask.id)
+      
+      // Update the task immediately in the UI
+      setState(prev => ({
+        ...prev,
+        currentTask: prev.currentTask ? { ...prev.currentTask, description: newDescription } : null
+      }))
+      
+      await autoSaveTask(state.currentTask.id, { description: newDescription })
+    }
+  }, [state.currentTask, autoSaveTask])
+
+  const handleLabelRemove = useCallback((labelName: string) => {
+    if (state.currentTask) {
+      const newLabels = state.currentTask.labels.filter(l => l !== labelName)
+      handleLabelsChange(newLabels)
+    }
+  }, [state.currentTask, handleLabelsChange])
+
+  const navigateToNextTask = useCallback(() => {
+    if (!state.currentTask) return
+    
+    setState(prev => ({
+      ...prev,
+      processedTasks: [...prev.processedTasks, prev.currentTask!.id],
+    }))
+    
+    moveToNext()
+  }, [state.currentTask, moveToNext])
+
+  const navigateToPrevTask = useCallback(() => {
+    if (state.processedTasks.length === 0) return
+    
+    // Move the last processed task back to current
+    setState(prev => {
+      const lastProcessedId = prev.processedTasks[prev.processedTasks.length - 1]
+      const lastProcessedTask = allTasks.find(task => task.id === lastProcessedId)
+      
+      if (!lastProcessedTask) return prev
+      
+      return {
+        ...prev,
+        currentTask: lastProcessedTask,
+        queuedTasks: prev.currentTask ? [prev.currentTask, ...prev.queuedTasks] : prev.queuedTasks,
+        processedTasks: prev.processedTasks.slice(0, -1)
+      }
+    })
+    
+    setTaskKey(prev => prev + 1) // Force re-render
+  }, [state.processedTasks, allTasks])
+
+  const handleScheduledDateChange = useCallback(async (dateString: string) => {
+    if (state.currentTask) {
+      try {
+        // Update UI state immediately
+        if (dateString) {
+          setState(prev => ({
+            ...prev,
+            currentTask: prev.currentTask ? { 
+              ...prev.currentTask, 
+              due: { 
+                date: dateString, 
+                string: dateString,
+                recurring: false 
+              }
+            } : null
+          }))
+        } else {
+          // Clear the due date
+          setState(prev => ({
+            ...prev,
+            currentTask: prev.currentTask ? { 
+              ...prev.currentTask, 
+              due: undefined 
+            } : null
+          }))
+        }
+        
+        // Then update the API
+        const updates = { dueString: dateString }
+        await autoSaveTask(state.currentTask.id, updates)
+      } catch (error) {
+        console.error('Error updating scheduled date:', error)
+        // Revert the UI state on error
+        setState(prev => ({
+          ...prev,
+          currentTask: prev.currentTask ? { 
+            ...prev.currentTask, 
+            due: state.currentTask!.due 
+          } : null
+        }))
+      }
+    }
+  }, [state.currentTask, autoSaveTask])
+
+  const handleDeadlineChange = useCallback(async (dateString: string) => {
+    if (state.currentTask) {
+      try {
+        // Update UI state immediately
+        if (dateString) {
+          setState(prev => ({
+            ...prev,
+            currentTask: prev.currentTask ? { 
+              ...prev.currentTask, 
+              deadline: { 
+                date: dateString, 
+                string: dateString 
+              }
+            } : null
+          }))
+        } else {
+          // Clear the deadline
+          setState(prev => ({
+            ...prev,
+            currentTask: prev.currentTask ? { 
+              ...prev.currentTask, 
+              deadline: undefined 
+            } : null
+          }))
+        }
+        
+        // Then update the API
+        const updates = { deadline: dateString }
+        await autoSaveTask(state.currentTask.id, updates)
+      } catch (error) {
+        console.error('Error updating deadline:', error)
+        // Revert the UI state on error
+        setState(prev => ({
+          ...prev,
+          currentTask: prev.currentTask ? { 
+            ...prev.currentTask, 
+            deadline: state.currentTask!.deadline 
+          } : null
+        }))
+      }
+    }
+  }, [state.currentTask, autoSaveTask])
+
+  const handleArchiveTask = useCallback(async () => {
+    if (!state.currentTask) return
+    
+    try {
+      // Use the DELETE endpoint to archive/close the task
+      const response = await fetch(`/api/todoist/tasks/${state.currentTask.id}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to archive task')
+      }
+
+      // Move to next task after successful archive
+      setState(prev => ({
+        ...prev,
+        processedTasks: [...prev.processedTasks, prev.currentTask!.id],
+      }))
+      
+      moveToNext()
+      setToast({ message: 'Task archived successfully', type: 'success' })
+    } catch (err) {
+      console.error('Error archiving task:', err)
+      setToast({ 
+        message: err instanceof Error ? err.message : 'Failed to archive task', 
+        type: 'error' 
+      })
+    }
+    
+    setShowArchiveConfirm(false)
+  }, [state.currentTask, moveToNext])
+
+  const handleCompleteTask = useCallback(async () => {
+    if (!state.currentTask) return
+    
+    try {
+      // Use the DELETE endpoint to complete/close the task
+      const response = await fetch(`/api/todoist/tasks/${state.currentTask.id}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to complete task')
+      }
+
+      // Move to next task after successful completion
+      setState(prev => ({
+        ...prev,
+        processedTasks: [...prev.processedTasks, prev.currentTask!.id],
+      }))
+      
+      moveToNext()
+      setToast({ message: 'Task completed successfully', type: 'success' })
+    } catch (err) {
+      console.error('Error completing task:', err)
+      setToast({ 
+        message: err instanceof Error ? err.message : 'Failed to complete task', 
+        type: 'error' 
+      })
+    }
+    
+    setShowCompleteConfirm(false)
+  }, [state.currentTask, moveToNext])
 
   const skipTask = useCallback(() => {
     if (!state.currentTask) return
@@ -212,8 +552,8 @@ export default function TaskProcessor() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't handle shortcuts when priority overlay is open - it handles its own keys
-      if (showPriorityOverlay) {
+      // Don't handle shortcuts when overlays are open - they handle their own keys
+      if (showPriorityOverlay || showProjectOverlay || showLabelOverlay || showScheduledOverlay || showDeadlineOverlay) {
         return
       }
 
@@ -231,9 +571,46 @@ export default function TaskProcessor() {
           e.preventDefault()
           setShowPriorityOverlay(true)
           break
-        case 'Enter':
+        case '#':
           e.preventDefault()
-          handleNext()
+          setShowProjectOverlay(true)
+          break
+        case '@':
+          e.preventDefault()
+          setShowLabelOverlay(true)
+          break
+        case 's':
+        case 'S':
+          e.preventDefault()
+          setShowScheduledOverlay(true)
+          break
+        case 'd':
+        case 'D':
+          e.preventDefault()
+          setShowDeadlineOverlay(true)
+          break
+        case 'j':
+        case 'J':
+        case 'Enter':
+        case 'ArrowRight':
+          e.preventDefault()
+          navigateToNextTask()
+          break
+        case 'k':
+        case 'K':
+        case 'ArrowLeft':
+          e.preventDefault()
+          navigateToPrevTask()
+          break
+        case 'e':
+        case 'E':
+          e.preventDefault()
+          setShowArchiveConfirm(true)
+          break
+        case 'c':
+        case 'C':
+          e.preventDefault()
+          setShowCompleteConfirm(true)
           break
         case '?':
           e.preventDefault()
@@ -242,13 +619,19 @@ export default function TaskProcessor() {
         case 'Escape':
           setShowShortcuts(false)
           setShowPriorityOverlay(false)
+          setShowProjectOverlay(false)
+          setShowLabelOverlay(false)
+          setShowScheduledOverlay(false)
+          setShowDeadlineOverlay(false)
+          setShowArchiveConfirm(false)
+          setShowCompleteConfirm(false)
           break
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleNext, showShortcuts, showPriorityOverlay])
+  }, [navigateToNextTask, navigateToPrevTask, showShortcuts, showPriorityOverlay, showProjectOverlay, showLabelOverlay, showScheduledOverlay, showDeadlineOverlay])
 
   const totalTasks = allTasks.length
   const completedTasks = state.processedTasks.length + state.skippedTasks.length
@@ -413,7 +796,24 @@ export default function TaskProcessor() {
               projects={projects} 
               labels={labels} 
               onContentChange={handleContentChange}
+              onDescriptionChange={handleDescriptionChange}
+              onProjectClick={() => setShowProjectOverlay(true)}
+              onPriorityClick={() => setShowPriorityOverlay(true)}
+              onLabelAdd={() => setShowLabelOverlay(true)}
+              onLabelRemove={handleLabelRemove}
+              onScheduledClick={() => setShowScheduledOverlay(true)}
+              onDeadlineClick={() => setShowDeadlineOverlay(true)}
             />
+
+            {/* Project Suggestions */}
+            {currentTaskSuggestions.length > 0 && (
+              <ProjectSuggestions
+                task={state.currentTask}
+                projects={projects}
+                suggestions={currentTaskSuggestions}
+                onProjectSelect={handleProjectSelect}
+              />
+            )}
 
             {/* Task Form Controls */}
             <TaskForm
@@ -423,7 +823,10 @@ export default function TaskProcessor() {
               labels={labels}
               suggestions={generateMockSuggestions(state.currentTask.content)}
               onAutoSave={(updates) => autoSaveTask(state.currentTask!.id, updates)}
-              onNext={handleNext}
+              onNext={navigateToNextTask}
+              onPrevious={navigateToPrevTask}
+              canGoNext={state.queuedTasks.length > 0}
+              canGoPrevious={state.processedTasks.length > 0}
             />
           </div>
         )}
@@ -462,6 +865,130 @@ export default function TaskProcessor() {
           onPrioritySelect={handlePrioritySelect}
           onClose={() => setShowPriorityOverlay(false)}
           isVisible={showPriorityOverlay}
+        />
+      )}
+
+      {/* Project Selection Overlay */}
+      {state.currentTask && (
+        <ProjectSelectionOverlay
+          key={`project-overlay-${state.currentTask.id}`}
+          projects={projects}
+          currentProjectId={state.currentTask.projectId}
+          currentTask={state.currentTask}
+          suggestions={currentTaskSuggestions}
+          onProjectSelect={handleProjectSelect}
+          onClose={() => setShowProjectOverlay(false)}
+          isVisible={showProjectOverlay}
+        />
+      )}
+
+      {/* Label Selection Overlay */}
+      {state.currentTask && (
+        <LabelSelectionOverlay
+          labels={labels}
+          currentTask={state.currentTask}
+          onLabelsChange={handleLabelsChange}
+          onClose={() => setShowLabelOverlay(false)}
+          isVisible={showLabelOverlay}
+        />
+      )}
+
+      {/* Scheduled Date Selector */}
+      {state.currentTask && (
+        <ScheduledDateSelector
+          currentTask={state.currentTask}
+          onScheduledDateChange={handleScheduledDateChange}
+          onClose={() => setShowScheduledOverlay(false)}
+          isVisible={showScheduledOverlay}
+        />
+      )}
+
+      {/* Deadline Selector */}
+      {state.currentTask && (
+        <DeadlineSelector
+          currentTask={state.currentTask}
+          onDeadlineChange={handleDeadlineChange}
+          onClose={() => setShowDeadlineOverlay(false)}
+          isVisible={showDeadlineOverlay}
+        />
+      )}
+
+      {/* Archive Confirmation Dialog */}
+      {showArchiveConfirm && state.currentTask && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
+          onClick={() => setShowArchiveConfirm(false)}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Archive Task?</h3>
+            <p className="text-gray-600 mb-4">
+              This will remove the task from your active list. You can still find it in your completed tasks.
+            </p>
+            <p className="text-sm font-medium text-gray-800 mb-6 p-3 bg-gray-50 rounded">
+              "{state.currentTask.content}"
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowArchiveConfirm(false)}
+                className="flex-1 py-2 px-4 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleArchiveTask}
+                className="flex-1 py-2 px-4 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 transition-colors"
+              >
+                Archive
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Complete Confirmation Dialog */}
+      {showCompleteConfirm && state.currentTask && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
+          onClick={() => setShowCompleteConfirm(false)}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Complete Task?</h3>
+            <p className="text-gray-600 mb-4">
+              Mark this task as completed. This action can be undone from your completed tasks.
+            </p>
+            <p className="text-sm font-medium text-gray-800 mb-6 p-3 bg-gray-50 rounded">
+              "{state.currentTask.content}"
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowCompleteConfirm(false)}
+                className="flex-1 py-2 px-4 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCompleteTask}
+                className="flex-1 py-2 px-4 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+              >
+                Complete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
         />
       )}
     </div>
