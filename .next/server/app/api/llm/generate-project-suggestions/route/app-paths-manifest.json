@@ -1,3 +1,0 @@
-{
-  "/api/llm/generate-project-suggestions/route": "app/api/llm/generate-project-suggestions/route.js"
-}
