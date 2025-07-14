@@ -151,165 +151,164 @@ export default function TaskCard({
     }
   }
 
+
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6 task-card-enter">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex-1">
-          <div className="flex items-center flex-wrap gap-2 mb-2">
-            <button
-              onClick={onPriorityClick}
-              className={`px-2 py-1 text-xs font-medium rounded-md border transition-colors hover:opacity-80 cursor-pointer ${getPriorityColor(task.priority)}`}
-              title="Click to change priority"
-            >
-              P{getUIPriority(task.priority)} • {getPriorityLabel(task.priority)}
-            </button>
-            <button
-              onClick={onProjectClick}
-              className="inline-flex items-center space-x-2 bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded text-xs transition-colors cursor-pointer"
-              title="Click to change project"
-            >
-              {(() => {
-                const project = projects.find(p => p.id === task.projectId)
-                const projectColor = project ? getTodoistColor(project.color) : '#299fe6'
-                return (
-                  <>
-                    <div 
-                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: projectColor }}
-                    ></div>
-                    <span className="text-gray-700">
-                      {project?.name || 'Unknown Project'}
-                    </span>
-                  </>
-                )
-              })()}
-            </button>
-            
-            {/* Scheduled Date */}
-            {task.due ? (
-              <button
-                onClick={onScheduledClick}
-                className="inline-flex items-center space-x-2 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded text-xs transition-colors cursor-pointer border border-blue-200"
-                title="Click to change scheduled date"
-              >
-                <svg className="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <span className="text-blue-700">
-                  {task.due.string || formatDate(task.due.date)}
-                </span>
-              </button>
-            ) : (
-              <button
-                onClick={onScheduledClick}
-                className="inline-flex items-center space-x-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 px-2 py-1 rounded text-xs transition-colors"
-                title="Add scheduled date"
-              >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <span>Schedule</span>
-              </button>
-            )}
-            
-            {/* Deadline */}
-            {task.deadline ? (
-              <button
-                onClick={onDeadlineClick}
-                className="inline-flex items-center space-x-2 bg-red-50 hover:bg-red-100 px-2 py-1 rounded text-xs transition-colors cursor-pointer border border-red-200"
-                title="Click to change deadline"
-              >
-                <svg className="w-3 h-3 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span className="text-red-700">
-                  {task.deadline.string || formatDate(task.deadline.date)}
-                </span>
-              </button>
-            ) : (
-              <button
-                onClick={onDeadlineClick}
-                className="inline-flex items-center space-x-2 text-gray-400 hover:text-red-600 hover:bg-red-50 px-2 py-1 rounded text-xs transition-colors"
-                title="Add deadline"
-              >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>Deadline</span>
-              </button>
-            )}
-          </div>
-          
-          {/* Always-Editable Task Content */}
+    <div className="bg-white rounded-lg shadow-sm border task-card-enter">
+      {/* Main Content Area */}
+      <div className="p-4 pb-2">
+        {/* Task Content */}
+        <div className="mb-1">
           <textarea
             ref={contentRef}
             value={content}
             onChange={handleContentChange}
-            className="w-full text-xl font-semibold text-gray-900 leading-tight bg-transparent hover:bg-gray-50 rounded-md px-2 py-1 focus:outline-none focus:bg-white focus:ring-2 focus:ring-todoist-blue resize-none transition-all overflow-hidden"
-            style={{ minHeight: '2rem' }}
+            className="w-full text-xl font-semibold text-gray-900 leading-tight bg-transparent hover:bg-gray-50 rounded px-2 py-1 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 resize-none transition-all overflow-hidden"
+            style={{ minHeight: '1.75rem' }}
             placeholder="Task name..."
+          />
+        </div>
+
+        {/* Description */}
+        <div>
+          <textarea
+            ref={descriptionRef}
+            value={description}
+            onChange={handleDescriptionChange}
+            className="w-full text-gray-600 bg-gray-50 hover:bg-gray-100 focus:bg-white rounded p-2.5 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none transition-all overflow-hidden"
+            placeholder="Add a description..."
+            style={{ minHeight: '2rem' }}
           />
         </div>
       </div>
 
-      {/* Always-Editable Description */}
-      <div className="mb-4">
-        <textarea
-          ref={descriptionRef}
-          value={description}
-          onChange={handleDescriptionChange}
-          className="w-full text-gray-600 bg-gray-50 hover:bg-gray-100 focus:bg-white rounded-md p-3 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-todoist-blue resize-none transition-all overflow-hidden"
-          placeholder="Add a description..."
-          style={{ minHeight: '3rem' }}
-        />
-      </div>
-
-      {/* Current Assignment */}
-      <div className="space-y-3 mb-6">
-        <div>
-          <span className="text-sm font-medium text-gray-700">Labels:</span>
-          <div className="flex flex-wrap gap-2 mt-2">
+      {/* Footer with all metadata */}
+      <div className="p-4 pt-2 border-t border-gray-50">
+        <div className="flex items-center flex-wrap gap-2 mb-3">
+          
+          <button
+            onClick={onProjectClick}
+            className="inline-flex items-center space-x-1.5 bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded text-xs transition-colors cursor-pointer"
+            title="Click to change project"
+          >
+            {(() => {
+              const project = projects.find(p => p.id === task.projectId)
+              const projectColor = project ? getTodoistColor(project.color) : '#299fe6'
+              return (
+                <>
+                  <div 
+                    className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: projectColor }}
+                  ></div>
+                  <span className="text-gray-700">
+                    {project?.name || 'Unknown Project'}
+                  </span>
+                </>
+              )
+            })()}
+          </button>
+          <button
+            onClick={onPriorityClick}
+            className={`px-2 py-1 text-xs font-medium rounded transition-colors hover:opacity-80 cursor-pointer ${getPriorityColor(task.priority)}`}
+            title="Click to change priority"
+          >
+            P{getUIPriority(task.priority)} • {getPriorityLabel(task.priority)}
+          </button>
+          
+          {/* Scheduled Date */}
+          {task.due ? (
+            <button
+              onClick={onScheduledClick}
+              className="inline-flex items-center space-x-1.5 bg-blue-100 hover:bg-blue-200 px-2 py-1 rounded text-xs transition-colors cursor-pointer"
+              title="Click to change scheduled date"
+            >
+              <svg className="w-3 h-3 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span className="text-blue-700">
+                {task.due.string || formatDate(task.due.date)}
+              </span>
+            </button>
+          ) : (
+            <button
+              onClick={onScheduledClick}
+              className="inline-flex items-center space-x-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-100 px-2 py-1 rounded text-xs transition-colors"
+              title="Add scheduled date"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span>Schedule</span>
+            </button>
+          )}
+          
+          {/* Deadline */}
+          {task.deadline ? (
+            <button
+              onClick={onDeadlineClick}
+              className="inline-flex items-center space-x-1.5 bg-red-100 hover:bg-red-200 px-2 py-1 rounded text-xs transition-colors cursor-pointer"
+              title="Click to change deadline"
+            >
+              <svg className="w-3 h-3 text-red-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-red-700">
+                {task.deadline.string || formatDate(task.deadline.date)}
+              </span>
+            </button>
+          ) : (
+            <button
+              onClick={onDeadlineClick}
+              className="inline-flex items-center space-x-1.5 text-gray-400 hover:text-red-600 hover:bg-red-100 px-2 py-1 rounded text-xs transition-colors"
+              title="Add deadline"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>Deadline</span>
+            </button>
+          )}
+        </div>
+        
+        {/* Labels inline with metadata */}
+        {(task.labels.length > 0 || onLabelAdd) && (
+          <div className="flex items-center flex-wrap gap-2 mb-3">
+            <span className="text-xs font-medium text-gray-500 mr-1">Labels:</span>
             {task.labels.map((labelName) => {
               const label = labels.find(l => l.name === labelName)
               const labelColor = label ? getTodoistColor(label.color) : '#299fe6'
               return (
-                <div
+                <span
                   key={labelName}
-                  className="text-xs px-2 py-1 rounded-full flex items-center group relative transition-all"
+                  className="text-xs px-2 py-1 rounded flex items-center space-x-1 group relative transition-all"
                   style={{ backgroundColor: `${labelColor}20`, color: labelColor }}
                 >
-                  <div className="flex items-center">
-                    <div 
-                      className="w-2 h-2 rounded-full flex-shrink-0 mr-1 group-hover:hidden"
-                      style={{ backgroundColor: labelColor }}
-                    ></div>
-                    <button
-                      onClick={() => onLabelRemove?.(labelName)}
-                      className="w-2 h-2 mr-1 rounded-full items-center justify-center hidden group-hover:flex hover:scale-125 transition-transform"
-                      title="Remove label"
-                    >
-                      <span className="text-xs font-bold leading-none">×</span>
-                    </button>
-                    <span>{labelName}</span>
-                  </div>
-                </div>
+                  <div 
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: labelColor }}
+                  ></div>
+                  <span>{labelName}</span>
+                  <button
+                    onClick={() => onLabelRemove?.(labelName)}
+                    className="ml-1 hover:scale-125 transition-transform"
+                    title="Remove label"
+                  >
+                    ×
+                  </button>
+                </span>
               )
             })}
             <button
               onClick={onLabelAdd}
-              className="text-xs px-2 py-1 rounded-full flex items-center transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200"
+              className="text-xs px-2 py-1 rounded flex items-center transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200"
               title="Add labels"
             >
               <span className="font-medium">+ Add Label</span>
             </button>
           </div>
-        </div>
-      </div>
+        )}
 
-      {/* Metadata */}
-      <div className="pt-4 border-t border-gray-100">
-        <div className="flex items-center justify-between text-xs text-gray-500">
+        {/* Compact metadata footer */}
+        <div className="flex items-center justify-between text-xs text-gray-400">
           <span>Created: {formatDate(task.createdAt)}</span>
           <span>ID: {task.id}</span>
         </div>

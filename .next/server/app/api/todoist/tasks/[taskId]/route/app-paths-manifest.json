@@ -1,0 +1,3 @@
+{
+  "/api/todoist/tasks/[taskId]/route": "app/api/todoist/tasks/[taskId]/route.js"
+}

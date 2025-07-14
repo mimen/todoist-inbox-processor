@@ -14,6 +14,7 @@ interface ProjectWithMetadata extends TodoistProject {
 interface EnhancedProjectCardProps {
   project: ProjectWithMetadata
   nestingDepth?: number
+  isCollapsed?: boolean
   onMetadataChange?: (projectId: string, metadata: {
     description?: string
     category?: 'area' | 'project' | null
@@ -26,6 +27,7 @@ interface EnhancedProjectCardProps {
 export default function EnhancedProjectCard({ 
   project, 
   nestingDepth = 0, 
+  isCollapsed = false,
   onMetadataChange 
 }: EnhancedProjectCardProps) {
   const [description, setDescription] = useState(project.description)
@@ -177,20 +179,32 @@ export default function EnhancedProjectCard({
     }
   }
 
+  const getPriorityDisplayName = (priority: number) => {
+    // Map internal priority values to display names
+    // Internal: 4=P1, 3=P2, 2=P3, 1=P4
+    switch (priority) {
+      case 4: return 'P1'
+      case 3: return 'P2'
+      case 2: return 'P3'
+      case 1: return 'P4'
+      default: return `P${priority}`
+    }
+  }
+
   const projectColor = getTodoistColor(project.color)
   const isNested = nestingDepth > 0
   const leftMargin = nestingDepth * 32 // 32px per level of nesting
 
   return (
     <div 
-      className={`bg-white rounded-lg shadow-sm border p-6 transition-all hover:shadow-md ${isNested ? 'border-l-4' : ''}`}
+      className={`bg-white rounded-lg shadow-sm border transition-all hover:shadow-md ${isNested ? 'border-l-4' : ''} ${isCollapsed ? 'p-4' : 'p-6'}`}
       style={{ 
         marginLeft: `${leftMargin}px`,
         ...(isNested ? { borderLeftColor: projectColor } : {})
       }}>
       
       {/* Project Header */}
-      <div className="flex items-center gap-3 mb-4">
+      <div className={`flex items-center gap-3 ${isCollapsed ? 'mb-0' : 'mb-4'}`}>
         {/* Nesting indicator */}
         {isNested && (
           <div className="flex items-center">
@@ -221,7 +235,7 @@ export default function EnhancedProjectCard({
           )}
           {priority && (
             <span className={`px-2 py-1 text-xs font-medium rounded-md border ${getPriorityColor(priority)}`}>
-              P{priority}
+              {getPriorityDisplayName(priority)}
             </span>
           )}
           {nestingDepth > 0 && (
@@ -237,7 +251,10 @@ export default function EnhancedProjectCard({
         </div>
       </div>
 
-      {/* Metadata Section */}
+      {/* Expanded Content - Only show when not collapsed */}
+      {!isCollapsed && (
+        <>
+          {/* Metadata Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         {/* Category Selection */}
         <div>
@@ -284,7 +301,7 @@ export default function EnhancedProjectCard({
                     : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
                 }`}
               >
-                P{p}
+                {getPriorityDisplayName(p)}
               </button>
             ))}
             {priority && (
@@ -299,33 +316,35 @@ export default function EnhancedProjectCard({
         </div>
       </div>
 
-      {/* Dates Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <div>
-          <label className="text-sm font-medium text-gray-700 mb-2 block">
-            Scheduled Date
-          </label>
-          <input
-            type="text"
-            value={dueString}
-            onChange={handleDueChange}
-            className="w-full px-3 py-2 text-sm text-gray-900 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="e.g., today, next week, Jan 15"
-          />
+      {/* Dates Section - Only show for Projects, not Areas */}
+      {category === 'project' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-2 block">
+              Scheduled Date
+            </label>
+            <input
+              type="text"
+              value={dueString}
+              onChange={handleDueChange}
+              className="w-full px-3 py-2 text-sm text-gray-900 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="e.g., today, next week, Jan 15"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-2 block">
+              Deadline
+            </label>
+            <input
+              type="text"
+              value={deadline}
+              onChange={handleDeadlineChange}
+              className="w-full px-3 py-2 text-sm text-gray-900 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="e.g., end of month, Dec 31"
+            />
+          </div>
         </div>
-        <div>
-          <label className="text-sm font-medium text-gray-700 mb-2 block">
-            Deadline
-          </label>
-          <input
-            type="text"
-            value={deadline}
-            onChange={handleDeadlineChange}
-            className="w-full px-3 py-2 text-sm text-gray-900 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="e.g., end of month, Dec 31"
-          />
-        </div>
-      </div>
+      )}
 
       {/* Project Description */}
       <div className="mb-4">
@@ -354,19 +373,17 @@ export default function EnhancedProjectCard({
         {suggestionError && (
           <p className="mt-2 text-xs text-red-600">{suggestionError}</p>
         )}
-        
-        <p className="mt-2 text-xs text-gray-500">
-          All metadata is stored as a special task within the project and auto-saves after 1 second.
-        </p>
       </div>
 
-      {/* Project Metadata */}
-      <div className="flex items-center justify-between text-xs text-gray-500 pt-3 border-t border-gray-100">
-        <span>
-          {project.isShared ? 'Shared Project' : 'Personal Project'}
-        </span>
-        <span>ID: {project.id}</span>
-      </div>
+          {/* Project Metadata */}
+          <div className="flex items-center justify-between text-xs text-gray-500 pt-3 border-t border-gray-100">
+            <span>
+              {project.isShared ? 'Shared Project' : 'Personal Project'}
+            </span>
+            <span>ID: {project.id}</span>
+          </div>
+        </>
+      )}
     </div>
   )
 }

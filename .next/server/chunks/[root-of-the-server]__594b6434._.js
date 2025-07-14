@@ -602,37 +602,73 @@ class TodoistApiClient {
                 throw new Error(`Project with ID ${projectId} not found`);
             }
             const existingMetadataTask = tasks.find((task)=>task.labels.includes('project-metadata'));
-            // Build labels array
-            const labels = [
-                'project-metadata'
-            ];
-            if (metadata.category === 'area') {
-                labels.push('area-of-responsibility');
-            } else if (metadata.category === 'project') {
-                labels.push('project-type');
-            }
-            const taskData = {
-                content: project.name,
-                description: metadata.description || '',
-                labels,
-                ...metadata.priority && {
-                    priority: metadata.priority
-                },
-                ...metadata.dueString && {
-                    dueString: metadata.dueString
-                },
-                ...metadata.deadline && {
-                    deadline: metadata.deadline
-                }
-            };
             if (existingMetadataTask) {
-                // Update existing metadata task
-                await this.updateTask(existingMetadataTask.id, taskData);
+                // Update existing metadata task - preserve existing values for fields not being updated
+                // Build labels array - preserve existing category if not being updated
+                const preservedLabels = [
+                    'project-metadata'
+                ];
+                if (metadata.category !== undefined) {
+                    // Category is being explicitly set
+                    if (metadata.category === 'area') {
+                        preservedLabels.push('area-of-responsibility');
+                    } else if (metadata.category === 'project') {
+                        preservedLabels.push('project-type');
+                    }
+                } else {
+                    // Preserve existing category labels
+                    if (existingMetadataTask.labels.includes('area-of-responsibility')) {
+                        preservedLabels.push('area-of-responsibility');
+                    } else if (existingMetadataTask.labels.includes('project-type')) {
+                        preservedLabels.push('project-type');
+                    }
+                }
+                // Build update object - only include fields that are being updated
+                const updateData = {
+                    labels: preservedLabels
+                };
+                // Only update description if provided
+                if (metadata.description !== undefined) {
+                    updateData.description = metadata.description;
+                }
+                // Only update priority if provided
+                if (metadata.priority !== undefined) {
+                    updateData.priority = metadata.priority;
+                }
+                // Only update due date if provided
+                if (metadata.dueString !== undefined) {
+                    updateData.dueString = metadata.dueString;
+                }
+                // Only update deadline if provided
+                if (metadata.deadline !== undefined) {
+                    updateData.deadline = metadata.deadline;
+                }
+                // Don't update content - preserve existing content (including * prefix)
+                await this.updateTask(existingMetadataTask.id, updateData);
             } else {
-                // Create new metadata task
-                await this.createTask(project.name, {
+                // Create new metadata task with * prefix
+                const newTaskContent = `* ${project.name}`;
+                const newTaskLabels = [
+                    'project-metadata'
+                ];
+                if (metadata.category === 'area') {
+                    newTaskLabels.push('area-of-responsibility');
+                } else if (metadata.category === 'project') {
+                    newTaskLabels.push('project-type');
+                }
+                await this.createTask(newTaskContent, {
                     projectId,
-                    ...taskData
+                    description: metadata.description || '',
+                    labels: newTaskLabels,
+                    ...metadata.priority && {
+                        priority: metadata.priority
+                    },
+                    ...metadata.dueString && {
+                        dueString: metadata.dueString
+                    },
+                    ...metadata.deadline && {
+                        deadline: metadata.deadline
+                    }
                 });
             }
             return true;

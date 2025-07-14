@@ -1,8 +1,12 @@
 # Migration Scripts
 
-## Project Metadata Migration
+## 1. Project Metadata Migration
 
 This script migrates old project description tasks to the new project-metadata format.
+
+## 2. Asterisk Prefix Addition
+
+This script adds "* " prefix to project-metadata tasks that don't have it.
 
 ### What it does:
 
@@ -67,3 +71,46 @@ The script provides detailed output including:
 - ✅ Preserves original priority settings
 - ✅ Provides detailed logging for audit purposes
 - ✅ Handles errors gracefully without stopping the entire migration
+
+---
+
+## Asterisk Prefix Addition Script
+
+### Purpose:
+Adds "* " prefix to project-metadata tasks that don't have it, ensuring they appear at the top of project task lists.
+
+### How to run:
+
+#### Option 1: Using TypeScript directly
+```bash
+npx tsx scripts/add-asterisk-prefix.ts
+```
+
+#### Option 2: Using the JavaScript runner
+```bash
+node scripts/run-asterisk-prefix.js
+```
+
+#### Option 3: Make executable and run
+```bash
+./scripts/add-asterisk-prefix.ts
+```
+
+### What it does:
+
+1. 🔍 **Finds**: All tasks with `project-metadata` label
+2. ✅ **Checks**: If content starts with "* "
+3. 🌟 **Updates**: Adds "* " prefix if missing
+4. ⏭️ **Skips**: Tasks that already have the prefix
+5. 📊 **Reports**: Detailed summary of updates
+
+### Example transformation:
+- **Before**: `"Website Redesign"` 
+- **After**: `"* Website Redesign"`
+
+### Safety features:
+- ✅ Only updates tasks that need it
+- ✅ Preserves all other task properties
+- ✅ Rate-limited to avoid API issues
+- ✅ Detailed logging for audit trail
+- ✅ Error handling for individual failures

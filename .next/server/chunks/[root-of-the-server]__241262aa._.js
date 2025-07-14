@@ -1,6 +1,6 @@
 module.exports = {
 
-"[project]/.next-internal/server/app/api/projects/[projectId]/metadata/route/actions.js [app-rsc] (server actions loader, ecmascript)": (function(__turbopack_context__) {
+"[project]/.next-internal/server/app/api/todoist/tasks/[taskId]/route/actions.js [app-rsc] (server actions loader, ecmascript)": (function(__turbopack_context__) {
 
 var { g: global, __dirname, m: module, e: exports } = __turbopack_context__;
 {
@@ -756,78 +756,49 @@ class TodoistApiClient {
     }
 }
 }}),
-"[project]/app/api/projects/[projectId]/metadata/route.ts [app-route] (ecmascript)": ((__turbopack_context__) => {
+"[project]/app/api/todoist/tasks/[taskId]/route.ts [app-route] (ecmascript)": ((__turbopack_context__) => {
 "use strict";
 
 var { g: global, __dirname } = __turbopack_context__;
 {
 __turbopack_context__.s({
-    "GET": (()=>GET),
+    "DELETE": (()=>DELETE),
     "PUT": (()=>PUT)
 });
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/server.js [app-route] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$todoist$2d$api$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/lib/todoist-api.ts [app-route] (ecmascript)");
 ;
 ;
-async function GET(request, { params }) {
+async function PUT(request, { params }) {
     try {
-        const metadata = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$todoist$2d$api$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["TodoistApiClient"].getProjectMetadata(params.projectId);
-        return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json(metadata || {
-            description: '',
-            category: null,
-            priority: null
+        const { taskId } = await params;
+        const updates = await request.json();
+        console.log('API Route: Updating task', taskId, 'with updates:', updates);
+        const result = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$todoist$2d$api$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["TodoistApiClient"].updateTask(taskId, updates);
+        console.log('API Route: Update result:', result);
+        return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
+            success: true
         });
     } catch (error) {
-        console.error('Error fetching project metadata:', error);
+        console.error('API Route Error:', error);
         return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
-            error: 'Failed to fetch project metadata'
+            error: 'Failed to update task'
         }, {
             status: 500
         });
     }
 }
-async function PUT(request, { params }) {
+async function DELETE(request, { params }) {
     try {
-        const body = await request.json();
-        const { description, category, priority, dueString, deadline } = body;
-        // Validate category if provided
-        if (category !== undefined && category !== null && ![
-            'area',
-            'project'
-        ].includes(category)) {
-            return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
-                error: 'Category must be "area", "project", or null'
-            }, {
-                status: 400
-            });
-        }
-        // Validate priority if provided
-        if (priority !== undefined && priority !== null && ![
-            1,
-            2,
-            3,
-            4
-        ].includes(priority)) {
-            return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
-                error: 'Priority must be 1, 2, 3, 4, or null'
-            }, {
-                status: 400
-            });
-        }
-        await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$todoist$2d$api$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["TodoistApiClient"].setProjectMetadata(params.projectId, {
-            description,
-            category,
-            priority,
-            dueString,
-            deadline
-        });
+        const { taskId } = await params;
+        await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$todoist$2d$api$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["TodoistApiClient"].closeTask(taskId);
         return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
             success: true
         });
     } catch (error) {
-        console.error('Error updating project metadata:', error);
+        console.error('API Error:', error);
         return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
-            error: 'Failed to update project metadata'
+            error: 'Failed to close task'
         }, {
             status: 500
         });
@@ -837,4 +808,4 @@ async function PUT(request, { params }) {
 
 };
 
-//# sourceMappingURL=%5Broot-of-the-server%5D__483616fd._.js.map
+//# sourceMappingURL=%5Broot-of-the-server%5D__241262aa._.js.map

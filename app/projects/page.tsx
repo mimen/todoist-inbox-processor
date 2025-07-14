@@ -13,10 +13,16 @@ interface ProjectWithMetadata extends TodoistProject {
   deadline?: { date: string; string: string }
 }
 
+type FilterType = 'all' | 'without-descriptions' | 'areas' | 'projects' | 'no-type' | 'need-priority' | 'need-dates'
+type SortType = 'name' | 'priority' | 'scheduled-date' | 'deadline'
+
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<ProjectWithMetadata[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [activeFilter, setActiveFilter] = useState<FilterType>('all')
+  const [sortBy, setSortBy] = useState<SortType>('name')
+  const [allCollapsed, setAllCollapsed] = useState(false)
 
   // Load projects with descriptions
   useEffect(() => {
@@ -31,7 +37,9 @@ export default function ProjectsPage() {
         }
 
         const projectsData = await response.json()
-        setProjects(projectsData)
+        // Filter out inbox projects
+        const filteredProjects = projectsData.filter((project: ProjectWithMetadata) => !project.isInboxProject)
+        setProjects(filteredProjects)
       } catch (err) {
         console.error('Error loading projects:', err)
         setError(err instanceof Error ? err.message : 'Failed to load projects')
@@ -132,7 +140,60 @@ export default function ProjectsPage() {
     return organizedProjects
   }
 
-  const organizedProjects = organizeProjects(projects)
+  // Filter projects based on active filter
+  const filteredProjects = projects.filter(project => {
+    switch (activeFilter) {
+      case 'without-descriptions':
+        return !project.description.trim()
+      case 'areas':
+        return project.category === 'area'
+      case 'projects':
+        return project.category === 'project'
+      case 'no-type':
+        return !project.category
+      case 'need-priority':
+        return !project.priority
+      case 'need-dates':
+        return project.category === 'project' && (!project.due || !project.deadline)
+      case 'all':
+      default:
+        return true
+    }
+  })
+
+  // Sort projects
+  const sortedProjects = [...filteredProjects].sort((a, b) => {
+    if (sortBy === 'priority') {
+      // Sort by priority (4=P1 highest, 1=P4 lowest, null last)
+      const aPriority = a.priority || 0
+      const bPriority = b.priority || 0
+      if (aPriority === bPriority) {
+        return a.name.localeCompare(b.name) // Secondary sort by name
+      }
+      return bPriority - aPriority // Higher number = higher priority
+    } else if (sortBy === 'scheduled-date') {
+      // Sort by scheduled date (earliest first, null last)
+      const aDate = a.due?.date ? new Date(a.due.date).getTime() : Infinity
+      const bDate = b.due?.date ? new Date(b.due.date).getTime() : Infinity
+      if (aDate === bDate) {
+        return a.name.localeCompare(b.name)
+      }
+      return aDate - bDate
+    } else if (sortBy === 'deadline') {
+      // Sort by deadline (earliest first, null last)
+      const aDeadline = a.deadline?.date ? new Date(a.deadline.date).getTime() : Infinity
+      const bDeadline = b.deadline?.date ? new Date(b.deadline.date).getTime() : Infinity
+      if (aDeadline === bDeadline) {
+        return a.name.localeCompare(b.name)
+      }
+      return aDeadline - bDeadline
+    } else {
+      // Sort by name (default)
+      return a.name.localeCompare(b.name)
+    }
+  })
+
+  const organizedProjects = organizeProjects(sortedProjects)
 
   if (loading) {
     return (
@@ -188,33 +249,158 @@ export default function ProjectsPage() {
           </p>
         </div>
 
-        {/* Project Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
-            <div className="text-2xl font-bold text-blue-600">{projects.length}</div>
-            <div className="text-sm text-gray-600">Total Projects</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
-            <div className="text-2xl font-bold text-green-600">
-              {projects.filter(p => p.description.trim()).length}
+        {/* Project Filters & Sort */}
+        <div className="mb-8">
+          <div className="flex flex-wrap items-center justify-between mb-6">
+            <h2 className="text-lg font-semibold text-gray-900">Filter & Sort</h2>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setAllCollapsed(!allCollapsed)}
+                className="px-3 py-1 text-sm text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+              >
+                {allCollapsed ? 'Expand All' : 'Collapse All'}
+              </button>
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700">Sort by:</label>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as SortType)}
+                  className="px-3 py-1 text-sm text-gray-900 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="name">Name</option>
+                  <option value="priority">Priority</option>
+                  <option value="scheduled-date">Scheduled Date</option>
+                  <option value="deadline">Deadline</option>
+                </select>
+              </div>
             </div>
-            <div className="text-sm text-gray-600">With Descriptions</div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
-            <div className="text-2xl font-bold text-purple-600">
-              {projects.filter(p => p.category === 'area').length}
+          
+          {/* Actionable Filters */}
+          <div className="mb-6">
+            <h3 className="text-sm font-medium text-gray-700 mb-3">Actionable Items</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <button
+                onClick={() => setActiveFilter('without-descriptions')}
+                className={`p-4 rounded-lg shadow-sm border transition-all ${
+                  activeFilter === 'without-descriptions' 
+                    ? 'bg-orange-50 border-orange-300 ring-2 ring-orange-200' 
+                    : 'bg-white border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                <div className="text-2xl font-bold text-orange-600">
+                  {projects.filter(p => !p.description.trim()).length}
+                </div>
+                <div className="text-sm text-gray-600">Without Descriptions</div>
+              </button>
+              
+              <button
+                onClick={() => setActiveFilter('need-priority')}
+                className={`p-4 rounded-lg shadow-sm border transition-all ${
+                  activeFilter === 'need-priority' 
+                    ? 'bg-red-50 border-red-300 ring-2 ring-red-200' 
+                    : 'bg-white border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                <div className="text-2xl font-bold text-red-600">
+                  {projects.filter(p => !p.priority).length}
+                </div>
+                <div className="text-sm text-gray-600">Need Priority</div>
+              </button>
+              
+              <button
+                onClick={() => setActiveFilter('need-dates')}
+                className={`p-4 rounded-lg shadow-sm border transition-all ${
+                  activeFilter === 'need-dates' 
+                    ? 'bg-yellow-50 border-yellow-300 ring-2 ring-yellow-200' 
+                    : 'bg-white border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                <div className="text-2xl font-bold text-yellow-600">
+                  {projects.filter(p => p.category === 'project' && (!p.due || !p.deadline)).length}
+                </div>
+                <div className="text-sm text-gray-600">Need Dates</div>
+              </button>
+              
+              <button
+                onClick={() => setActiveFilter('no-type')}
+                className={`p-4 rounded-lg shadow-sm border transition-all ${
+                  activeFilter === 'no-type' 
+                    ? 'bg-gray-50 border-gray-400 ring-2 ring-gray-300' 
+                    : 'bg-white border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                <div className="text-2xl font-bold text-gray-600">
+                  {projects.filter(p => !p.category).length}
+                </div>
+                <div className="text-sm text-gray-600">No Type</div>
+              </button>
             </div>
-            <div className="text-sm text-gray-600">Areas of Responsibility</div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
-            <div className="text-2xl font-bold text-indigo-600">
-              {projects.filter(p => p.category === 'project').length}
+
+          {/* Organizational Filters */}
+          <div>
+            <h3 className="text-sm font-medium text-gray-700 mb-3">Browse by Category</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <button
+                onClick={() => setActiveFilter('all')}
+                className={`p-4 rounded-lg shadow-sm border transition-all ${
+                  activeFilter === 'all' 
+                    ? 'bg-blue-50 border-blue-300 ring-2 ring-blue-200' 
+                    : 'bg-white border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                <div className="text-2xl font-bold text-blue-600">{projects.length}</div>
+                <div className="text-sm text-gray-600">Total Projects</div>
+              </button>
+              
+              <button
+                onClick={() => setActiveFilter('areas')}
+                className={`p-4 rounded-lg shadow-sm border transition-all ${
+                  activeFilter === 'areas' 
+                    ? 'bg-purple-50 border-purple-300 ring-2 ring-purple-200' 
+                    : 'bg-white border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                <div className="text-2xl font-bold text-purple-600">
+                  {projects.filter(p => p.category === 'area').length}
+                </div>
+                <div className="text-sm text-gray-600">Areas of Responsibility</div>
+              </button>
+              
+              <button
+                onClick={() => setActiveFilter('projects')}
+                className={`p-4 rounded-lg shadow-sm border transition-all ${
+                  activeFilter === 'projects' 
+                    ? 'bg-green-50 border-green-300 ring-2 ring-green-200' 
+                    : 'bg-white border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                <div className="text-2xl font-bold text-green-600">
+                  {projects.filter(p => p.category === 'project').length}
+                </div>
+                <div className="text-sm text-gray-600">Projects</div>
+              </button>
             </div>
-            <div className="text-sm text-gray-600">Projects</div>
           </div>
         </div>
 
         {/* Projects List */}
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">
+            {activeFilter === 'all' ? 'All Projects' :
+             activeFilter === 'without-descriptions' ? 'Projects Without Descriptions' :
+             activeFilter === 'areas' ? 'Areas of Responsibility' :
+             activeFilter === 'projects' ? 'Projects' :
+             activeFilter === 'no-type' ? 'Projects Without Type' :
+             activeFilter === 'need-priority' ? 'Projects Needing Priority' :
+             activeFilter === 'need-dates' ? 'Projects Needing Dates' : 'Projects'}
+            <span className="text-sm font-normal text-gray-500 ml-2">
+              ({organizedProjects.length} {organizedProjects.length === 1 ? 'project' : 'projects'})
+            </span>
+          </h2>
+        </div>
+
         {organizedProjects.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-gray-400 mb-4">
@@ -224,7 +410,15 @@ export default function ProjectsPage() {
               </svg>
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">No Projects Found</h3>
-            <p className="text-gray-600">No projects are available at the moment.</p>
+            <p className="text-gray-600">
+              {activeFilter === 'all' ? 'No projects are available at the moment.' :
+               activeFilter === 'without-descriptions' ? 'All projects have descriptions.' :
+               activeFilter === 'areas' ? 'No areas of responsibility found.' :
+               activeFilter === 'projects' ? 'No projects found.' :
+               activeFilter === 'no-type' ? 'All projects have been categorized.' :
+               activeFilter === 'need-priority' ? 'All projects have priorities assigned.' :
+               activeFilter === 'need-dates' ? 'All projects have dates set.' : 'No projects match the current filter.'}
+            </p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -234,6 +428,7 @@ export default function ProjectsPage() {
                 project={project}
                 nestingDepth={project.nestingDepth}
                 onMetadataChange={handleMetadataChange}
+                isCollapsed={allCollapsed}
               />
             ))}
           </div>
