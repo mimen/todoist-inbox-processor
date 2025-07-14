@@ -108,6 +108,7 @@ export default function LabelSelectionOverlay({
           }
           break
         case 'Escape':
+        case '`':
           e.preventDefault()
           onClose()
           break
@@ -165,7 +166,7 @@ export default function LabelSelectionOverlay({
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900"
             placeholder="Search labels..."
           />
           <div className="mt-2 text-sm text-gray-500">

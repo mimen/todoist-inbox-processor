@@ -1200,20 +1200,30 @@ function KeyboardShortcuts({ onClose }) {
             category: 'Navigation',
             items: [
                 {
-                    key: 'j / Enter / →',
-                    description: 'Next task'
+                    key: [
+                        'j',
+                        'Enter',
+                        '→'
+                    ],
+                    description: 'Go to next task'
                 },
                 {
-                    key: 'k / ←',
-                    description: 'Previous task'
+                    key: [
+                        'k',
+                        '←'
+                    ],
+                    description: 'Go to previous task'
                 },
                 {
                     key: '?',
-                    description: 'Toggle this help'
+                    description: 'Show/hide keyboard shortcuts'
                 },
                 {
-                    key: 'Esc',
-                    description: 'Close overlays/help'
+                    key: [
+                        'Esc',
+                        '`'
+                    ],
+                    description: 'Close any open dialog'
                 }
             ]
         },
@@ -1222,48 +1232,60 @@ function KeyboardShortcuts({ onClose }) {
             items: [
                 {
                     key: 'p',
-                    description: 'Set priority'
+                    description: 'Change task priority'
                 },
                 {
                     key: '#',
-                    description: 'Change project'
+                    description: 'Move to different project'
                 },
                 {
                     key: '@',
-                    description: 'Add/remove labels'
+                    description: 'Add or remove labels'
                 },
                 {
                     key: 's',
-                    description: 'Set scheduled date'
+                    description: 'Schedule when to work on task'
                 },
                 {
                     key: 'd',
-                    description: 'Set deadline'
+                    description: 'Set task deadline'
                 },
                 {
                     key: 'e',
-                    description: 'Archive task (with confirmation)'
+                    description: 'Archive task (removes from inbox)'
                 },
                 {
                     key: 'c',
-                    description: 'Complete task (with confirmation)'
+                    description: 'Mark task as complete'
                 }
             ]
         },
         {
-            category: 'Quick Actions',
+            category: 'Within Dialogs',
             items: [
                 {
-                    key: '1-4',
-                    description: 'Quick priority (when priority overlay open)'
+                    key: [
+                        '1',
+                        '2',
+                        '3',
+                        '4'
+                    ],
+                    description: 'Set priority directly (P1-P4)'
                 },
                 {
-                    key: '↑↓',
-                    description: 'Navigate in overlays'
+                    key: [
+                        '↑',
+                        '↓'
+                    ],
+                    description: 'Navigate through options'
                 },
                 {
                     key: 'Enter',
-                    description: 'Select in overlays'
+                    description: 'Select highlighted option'
+                },
+                {
+                    key: 'Type',
+                    description: 'Filter options or enter custom date'
                 }
             ]
         }
@@ -1281,7 +1303,7 @@ function KeyboardShortcuts({ onClose }) {
                             children: "Keyboard Shortcuts"
                         }, void 0, false, {
                             fileName: "[project]/components/KeyboardShortcuts.tsx",
-                            lineNumber: 35,
+                            lineNumber: 41,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1299,23 +1321,23 @@ function KeyboardShortcuts({ onClose }) {
                                     d: "M6 18L18 6M6 6l12 12"
                                 }, void 0, false, {
                                     fileName: "[project]/components/KeyboardShortcuts.tsx",
-                                    lineNumber: 41,
+                                    lineNumber: 47,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/components/KeyboardShortcuts.tsx",
-                                lineNumber: 40,
+                                lineNumber: 46,
                                 columnNumber: 13
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/components/KeyboardShortcuts.tsx",
-                            lineNumber: 36,
+                            lineNumber: 42,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/KeyboardShortcuts.tsx",
-                    lineNumber: 34,
+                    lineNumber: 40,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1327,7 +1349,7 @@ function KeyboardShortcuts({ onClose }) {
                                     children: section.category
                                 }, void 0, false, {
                                     fileName: "[project]/components/KeyboardShortcuts.tsx",
-                                    lineNumber: 49,
+                                    lineNumber: 55,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1340,37 +1362,68 @@ function KeyboardShortcuts({ onClose }) {
                                                     children: shortcut.description
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/KeyboardShortcuts.tsx",
-                                                    lineNumber: 53,
+                                                    lineNumber: 59,
                                                     columnNumber: 21
                                                 }, this),
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                                    className: "kbd",
-                                                    children: shortcut.key
+                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                    className: "flex items-center gap-1",
+                                                    children: Array.isArray(shortcut.key) ? shortcut.key.map((key, keyIndex)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                            className: "flex items-center",
+                                                            children: [
+                                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                                    className: "kbd",
+                                                                    children: key
+                                                                }, void 0, false, {
+                                                                    fileName: "[project]/components/KeyboardShortcuts.tsx",
+                                                                    lineNumber: 64,
+                                                                    columnNumber: 29
+                                                                }, this),
+                                                                keyIndex < shortcut.key.length - 1 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                                    className: "mx-1 text-gray-400",
+                                                                    children: "/"
+                                                                }, void 0, false, {
+                                                                    fileName: "[project]/components/KeyboardShortcuts.tsx",
+                                                                    lineNumber: 66,
+                                                                    columnNumber: 31
+                                                                }, this)
+                                                            ]
+                                                        }, keyIndex, true, {
+                                                            fileName: "[project]/components/KeyboardShortcuts.tsx",
+                                                            lineNumber: 63,
+                                                            columnNumber: 27
+                                                        }, this)) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                        className: "kbd",
+                                                        children: shortcut.key
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/components/KeyboardShortcuts.tsx",
+                                                        lineNumber: 71,
+                                                        columnNumber: 25
+                                                    }, this)
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/KeyboardShortcuts.tsx",
-                                                    lineNumber: 54,
+                                                    lineNumber: 60,
                                                     columnNumber: 21
                                                 }, this)
                                             ]
                                         }, index, true, {
                                             fileName: "[project]/components/KeyboardShortcuts.tsx",
-                                            lineNumber: 52,
+                                            lineNumber: 58,
                                             columnNumber: 19
                                         }, this))
                                 }, void 0, false, {
                                     fileName: "[project]/components/KeyboardShortcuts.tsx",
-                                    lineNumber: 50,
+                                    lineNumber: 56,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, sectionIndex, true, {
                             fileName: "[project]/components/KeyboardShortcuts.tsx",
-                            lineNumber: 48,
+                            lineNumber: 54,
                             columnNumber: 13
                         }, this))
                 }, void 0, false, {
                     fileName: "[project]/components/KeyboardShortcuts.tsx",
-                    lineNumber: 46,
+                    lineNumber: 52,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1384,30 +1437,30 @@ function KeyboardShortcuts({ onClose }) {
                                 children: "?"
                             }, void 0, false, {
                                 fileName: "[project]/components/KeyboardShortcuts.tsx",
-                                lineNumber: 64,
+                                lineNumber: 83,
                                 columnNumber: 19
                             }, this),
                             " anytime to toggle this help"
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/KeyboardShortcuts.tsx",
-                        lineNumber: 63,
+                        lineNumber: 82,
                         columnNumber: 11
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/components/KeyboardShortcuts.tsx",
-                    lineNumber: 62,
+                    lineNumber: 81,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/components/KeyboardShortcuts.tsx",
-            lineNumber: 33,
+            lineNumber: 39,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/components/KeyboardShortcuts.tsx",
-        lineNumber: 32,
+        lineNumber: 38,
         columnNumber: 5
     }, this);
 }
@@ -1963,24 +2016,18 @@ function PriorityOverlay({ currentPriority, onPrioritySelect, onClose, isVisible
                             ;
                             break;
                         case 'Escape':
+                        case '`':
+                        case 'p':
+                        case 'P':
                             onClose();
                             break;
                     }
                 }
             }["PriorityOverlay.useEffect.handleKeyDown"];
-            const handleKeyUp = {
-                "PriorityOverlay.useEffect.handleKeyUp": (e)=>{
-                    if (e.key === 'p' || e.key === 'P') {
-                        onClose();
-                    }
-                }
-            }["PriorityOverlay.useEffect.handleKeyUp"];
             window.addEventListener('keydown', handleKeyDown);
-            window.addEventListener('keyup', handleKeyUp);
             return ({
                 "PriorityOverlay.useEffect": ()=>{
                     window.removeEventListener('keydown', handleKeyDown);
-                    window.removeEventListener('keyup', handleKeyUp);
                 }
             })["PriorityOverlay.useEffect"];
         }
@@ -2002,7 +2049,7 @@ function PriorityOverlay({ currentPriority, onPrioritySelect, onClose, isVisible
                         children: "Set Priority"
                     }, void 0, false, {
                         fileName: "[project]/components/PriorityOverlay.tsx",
-                        lineNumber: 86,
+                        lineNumber: 81,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -2010,7 +2057,7 @@ function PriorityOverlay({ currentPriority, onPrioritySelect, onClose, isVisible
                         children: "Press 1, 2, 3, or 4 to select priority"
                     }, void 0, false, {
                         fileName: "[project]/components/PriorityOverlay.tsx",
-                        lineNumber: 87,
+                        lineNumber: 82,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2038,7 +2085,7 @@ function PriorityOverlay({ currentPriority, onPrioritySelect, onClose, isVisible
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/PriorityOverlay.tsx",
-                                        lineNumber: 106,
+                                        lineNumber: 101,
                                         columnNumber: 19
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2046,7 +2093,7 @@ function PriorityOverlay({ currentPriority, onPrioritySelect, onClose, isVisible
                                         children: getPriorityLabel(apiPriority)
                                     }, void 0, false, {
                                         fileName: "[project]/components/PriorityOverlay.tsx",
-                                        lineNumber: 107,
+                                        lineNumber: 102,
                                         columnNumber: 19
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2057,19 +2104,19 @@ function PriorityOverlay({ currentPriority, onPrioritySelect, onClose, isVisible
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/PriorityOverlay.tsx",
-                                        lineNumber: 108,
+                                        lineNumber: 103,
                                         columnNumber: 19
                                     }, this)
                                 ]
                             }, apiPriority, true, {
                                 fileName: "[project]/components/PriorityOverlay.tsx",
-                                lineNumber: 95,
+                                lineNumber: 90,
                                 columnNumber: 17
                             }, this);
                         })
                     }, void 0, false, {
                         fileName: "[project]/components/PriorityOverlay.tsx",
-                        lineNumber: 89,
+                        lineNumber: 84,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2081,30 +2128,30 @@ function PriorityOverlay({ currentPriority, onPrioritySelect, onClose, isVisible
                                 children: "P"
                             }, void 0, false, {
                                 fileName: "[project]/components/PriorityOverlay.tsx",
-                                lineNumber: 115,
+                                lineNumber: 110,
                                 columnNumber: 21
                             }, this),
                             " key to close"
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/PriorityOverlay.tsx",
-                        lineNumber: 114,
+                        lineNumber: 109,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/PriorityOverlay.tsx",
-                lineNumber: 85,
+                lineNumber: 80,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/components/PriorityOverlay.tsx",
-            lineNumber: 84,
+            lineNumber: 79,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/components/PriorityOverlay.tsx",
-        lineNumber: 83,
+        lineNumber: 78,
         columnNumber: 5
     }, this);
 }
@@ -2171,8 +2218,9 @@ function ProjectSelectionOverlay({ projects, currentProjectId, currentTask, sugg
         const result = [];
         // Track which projects are suggested for marking duplicates
         const suggestedIds = new Set(suggestions.map((s)=>s.projectId));
-        // Add suggested projects at the top (always show them, even when searching)
+        // Add suggested projects at the top (only if they match search or no search)
         if (suggestions.length > 0) {
+            let addedSuggestions = 0;
             suggestions.forEach((suggestion)=>{
                 const project = projects.find((p)=>p.id === suggestion.projectId);
                 if (project) {
@@ -2184,11 +2232,12 @@ function ProjectSelectionOverlay({ projects, currentProjectId, currentTask, sugg
                             isSuggested: true,
                             confidence: suggestion.confidence
                         });
+                        addedSuggestions++;
                     }
                 }
             });
-            // Add divider after suggestions if we have any visible suggestions
-            if (result.length > 0) {
+            // Only add divider if we actually added suggestions
+            if (addedSuggestions > 0) {
                 result.push({
                     divider: true
                 });
@@ -2255,6 +2304,31 @@ function ProjectSelectionOverlay({ projects, currentProjectId, currentTask, sugg
     }["ProjectSelectionOverlay.useEffect"], [
         isVisible
     ]);
+    // Set initial selection to first matching item only when starting to search
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
+        "ProjectSelectionOverlay.useEffect": ()=>{
+            if (searchTerm && filteredProjects.length > 0) {
+                // Only auto-select if we're at index 0 (haven't navigated yet)
+                if (selectedIndex === 0) {
+                    // Find the first non-divider item that actually matches the search
+                    const firstMatchIndex = filteredProjects.findIndex({
+                        "ProjectSelectionOverlay.useEffect.firstMatchIndex": (item)=>{
+                            if ('divider' in item) return false;
+                            // Check if this is a matching project (not just a parent shown for context)
+                            return item.name.toLowerCase().includes(searchTerm.toLowerCase());
+                        }
+                    }["ProjectSelectionOverlay.useEffect.firstMatchIndex"]);
+                    if (firstMatchIndex >= 0 && firstMatchIndex !== 0) {
+                        setSelectedIndex(firstMatchIndex);
+                    }
+                }
+            }
+        }
+    }["ProjectSelectionOverlay.useEffect"], [
+        searchTerm,
+        filteredProjects.length
+    ]) // Remove filteredProjects dependency to avoid re-running
+    ;
     // Update selected index when filtered projects change
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
         "ProjectSelectionOverlay.useEffect": ()=>{
@@ -2320,6 +2394,7 @@ function ProjectSelectionOverlay({ projects, currentProjectId, currentTask, sugg
                             }
                             break;
                         case 'Escape':
+                        case '`':
                             e.preventDefault();
                             onClose();
                             break;
@@ -2364,12 +2439,12 @@ function ProjectSelectionOverlay({ projects, currentProjectId, currentTask, sugg
                                         children: "#"
                                     }, void 0, false, {
                                         fileName: "[project]/components/ProjectSelectionOverlay.tsx",
-                                        lineNumber: 231,
+                                        lineNumber: 253,
                                         columnNumber: 15
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/components/ProjectSelectionOverlay.tsx",
-                                    lineNumber: 230,
+                                    lineNumber: 252,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2379,18 +2454,18 @@ function ProjectSelectionOverlay({ projects, currentProjectId, currentTask, sugg
                                         children: "Select Project"
                                     }, void 0, false, {
                                         fileName: "[project]/components/ProjectSelectionOverlay.tsx",
-                                        lineNumber: 234,
+                                        lineNumber: 256,
                                         columnNumber: 15
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/components/ProjectSelectionOverlay.tsx",
-                                    lineNumber: 233,
+                                    lineNumber: 255,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/ProjectSelectionOverlay.tsx",
-                            lineNumber: 229,
+                            lineNumber: 251,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
@@ -2398,13 +2473,13 @@ function ProjectSelectionOverlay({ projects, currentProjectId, currentTask, sugg
                             children: currentTask.content
                         }, void 0, false, {
                             fileName: "[project]/components/ProjectSelectionOverlay.tsx",
-                            lineNumber: 237,
+                            lineNumber: 259,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/ProjectSelectionOverlay.tsx",
-                    lineNumber: 228,
+                    lineNumber: 250,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2415,11 +2490,11 @@ function ProjectSelectionOverlay({ projects, currentProjectId, currentTask, sugg
                             type: "text",
                             value: searchTerm,
                             onChange: (e)=>setSearchTerm(e.target.value),
-                            className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent",
+                            className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900",
                             placeholder: "Search projects..."
                         }, void 0, false, {
                             fileName: "[project]/components/ProjectSelectionOverlay.tsx",
-                            lineNumber: 244,
+                            lineNumber: 266,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2427,13 +2502,13 @@ function ProjectSelectionOverlay({ projects, currentProjectId, currentTask, sugg
                             children: "↑↓ to navigate • Enter to select • Esc to cancel"
                         }, void 0, false, {
                             fileName: "[project]/components/ProjectSelectionOverlay.tsx",
-                            lineNumber: 252,
+                            lineNumber: 274,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/ProjectSelectionOverlay.tsx",
-                    lineNumber: 243,
+                    lineNumber: 265,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2443,7 +2518,7 @@ function ProjectSelectionOverlay({ projects, currentProjectId, currentTask, sugg
                         children: searchTerm ? `No projects found for "${searchTerm}"` : 'No projects available'
                     }, void 0, false, {
                         fileName: "[project]/components/ProjectSelectionOverlay.tsx",
-                        lineNumber: 260,
+                        lineNumber: 282,
                         columnNumber: 13
                     }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                         className: "space-y-1",
@@ -2454,7 +2529,7 @@ function ProjectSelectionOverlay({ projects, currentProjectId, currentTask, sugg
                                     className: "my-2 border-t border-gray-200"
                                 }, `divider-${index}`, false, {
                                     fileName: "[project]/components/ProjectSelectionOverlay.tsx",
-                                    lineNumber: 269,
+                                    lineNumber: 291,
                                     columnNumber: 21
                                 }, this);
                             }
@@ -2462,12 +2537,15 @@ function ProjectSelectionOverlay({ projects, currentProjectId, currentTask, sugg
                             const isSelected = index === selectedIndex;
                             const isCurrent = project.id === currentProjectId;
                             const projectColor = getTodoistColor(project.color);
+                            const isMatch = searchTerm && project.name.toLowerCase().includes(searchTerm.toLowerCase());
+                            const isContextOnly = searchTerm && !isMatch && !project.isSuggested;
                             return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                                 ref: isSelected ? selectedProjectRef : null,
                                 onClick: ()=>handleProjectSelect(project.id),
                                 className: `
                       w-full text-left p-3 rounded-md transition-all duration-150 flex items-center space-x-3 border
                       ${isSelected ? 'bg-blue-50 border-blue-300' : isCurrent ? 'bg-green-50 border-green-200' : project.isSuggested ? 'hover:bg-indigo-50 border-transparent' : 'hover:bg-gray-50 border-transparent'}
+                      ${isContextOnly ? 'opacity-60' : ''}
                     `,
                                 style: {
                                     paddingLeft: `${1 + project.level * 1.5}rem`
@@ -2478,7 +2556,7 @@ function ProjectSelectionOverlay({ projects, currentProjectId, currentTask, sugg
                                         children: '└'.padStart(project.level * 2, '  ')
                                     }, void 0, false, {
                                         fileName: "[project]/components/ProjectSelectionOverlay.tsx",
-                                        lineNumber: 297,
+                                        lineNumber: 322,
                                         columnNumber: 23
                                     }, this),
                                     project.isSuggested && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2488,12 +2566,12 @@ function ProjectSelectionOverlay({ projects, currentProjectId, currentTask, sugg
                                             children: "AI"
                                         }, void 0, false, {
                                             fileName: "[project]/components/ProjectSelectionOverlay.tsx",
-                                            lineNumber: 303,
+                                            lineNumber: 328,
                                             columnNumber: 25
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/components/ProjectSelectionOverlay.tsx",
-                                        lineNumber: 302,
+                                        lineNumber: 327,
                                         columnNumber: 23
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2503,7 +2581,7 @@ function ProjectSelectionOverlay({ projects, currentProjectId, currentTask, sugg
                                         }
                                     }, void 0, false, {
                                         fileName: "[project]/components/ProjectSelectionOverlay.tsx",
-                                        lineNumber: 306,
+                                        lineNumber: 331,
                                         columnNumber: 21
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2517,7 +2595,7 @@ function ProjectSelectionOverlay({ projects, currentProjectId, currentTask, sugg
                                                     children: "✓ Current"
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/ProjectSelectionOverlay.tsx",
-                                                    lineNumber: 315,
+                                                    lineNumber: 340,
                                                     columnNumber: 39
                                                 }, this),
                                                 project.isAlsoSuggested && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -2525,7 +2603,7 @@ function ProjectSelectionOverlay({ projects, currentProjectId, currentTask, sugg
                                                     children: "AI suggested"
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/ProjectSelectionOverlay.tsx",
-                                                    lineNumber: 317,
+                                                    lineNumber: 342,
                                                     columnNumber: 27
                                                 }, this),
                                                 project.isSuggested && project.confidence && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -2536,18 +2614,18 @@ function ProjectSelectionOverlay({ projects, currentProjectId, currentTask, sugg
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/components/ProjectSelectionOverlay.tsx",
-                                                    lineNumber: 320,
+                                                    lineNumber: 345,
                                                     columnNumber: 27
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/ProjectSelectionOverlay.tsx",
-                                            lineNumber: 311,
+                                            lineNumber: 336,
                                             columnNumber: 23
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/components/ProjectSelectionOverlay.tsx",
-                                        lineNumber: 310,
+                                        lineNumber: 335,
                                         columnNumber: 21
                                     }, this),
                                     isSelected && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2555,39 +2633,39 @@ function ProjectSelectionOverlay({ projects, currentProjectId, currentTask, sugg
                                         children: "↵"
                                     }, void 0, false, {
                                         fileName: "[project]/components/ProjectSelectionOverlay.tsx",
-                                        lineNumber: 331,
+                                        lineNumber: 356,
                                         columnNumber: 23
                                     }, this)
                                 ]
-                            }, project.id, true, {
+                            }, project.isSuggested ? `ai-${project.id}` : project.id, true, {
                                 fileName: "[project]/components/ProjectSelectionOverlay.tsx",
-                                lineNumber: 279,
+                                lineNumber: 303,
                                 columnNumber: 19
                             }, this);
                         })
                     }, void 0, false, {
                         fileName: "[project]/components/ProjectSelectionOverlay.tsx",
-                        lineNumber: 264,
+                        lineNumber: 286,
                         columnNumber: 13
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/components/ProjectSelectionOverlay.tsx",
-                    lineNumber: 258,
+                    lineNumber: 280,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/components/ProjectSelectionOverlay.tsx",
-            lineNumber: 223,
+            lineNumber: 245,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/components/ProjectSelectionOverlay.tsx",
-        lineNumber: 219,
+        lineNumber: 241,
         columnNumber: 5
     }, this);
 }
-_s(ProjectSelectionOverlay, "aDzWzGCu0vs4KWof5c50hjDzRT4=");
+_s(ProjectSelectionOverlay, "cMCajaDM1x57B67I1oTHHusBR5A=");
 _c = ProjectSelectionOverlay;
 var _c;
 __turbopack_context__.k.register(_c, "ProjectSelectionOverlay");
@@ -2714,6 +2792,7 @@ function LabelSelectionOverlay({ labels, currentTask, onLabelsChange, onClose, i
                             }
                             break;
                         case 'Escape':
+                        case '`':
                             e.preventDefault();
                             onClose();
                             break;
@@ -2767,12 +2846,12 @@ function LabelSelectionOverlay({ labels, currentTask, onLabelsChange, onClose, i
                                         children: "@"
                                     }, void 0, false, {
                                         fileName: "[project]/components/LabelSelectionOverlay.tsx",
-                                        lineNumber: 147,
+                                        lineNumber: 148,
                                         columnNumber: 15
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/components/LabelSelectionOverlay.tsx",
-                                    lineNumber: 146,
+                                    lineNumber: 147,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2783,7 +2862,7 @@ function LabelSelectionOverlay({ labels, currentTask, onLabelsChange, onClose, i
                                             children: "Select Labels"
                                         }, void 0, false, {
                                             fileName: "[project]/components/LabelSelectionOverlay.tsx",
-                                            lineNumber: 150,
+                                            lineNumber: 151,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2796,19 +2875,19 @@ function LabelSelectionOverlay({ labels, currentTask, onLabelsChange, onClose, i
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/LabelSelectionOverlay.tsx",
-                                            lineNumber: 151,
+                                            lineNumber: 152,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/LabelSelectionOverlay.tsx",
-                                    lineNumber: 149,
+                                    lineNumber: 150,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/LabelSelectionOverlay.tsx",
-                            lineNumber: 145,
+                            lineNumber: 146,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
@@ -2816,13 +2895,13 @@ function LabelSelectionOverlay({ labels, currentTask, onLabelsChange, onClose, i
                             children: currentTask.content
                         }, void 0, false, {
                             fileName: "[project]/components/LabelSelectionOverlay.tsx",
-                            lineNumber: 156,
+                            lineNumber: 157,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/LabelSelectionOverlay.tsx",
-                    lineNumber: 144,
+                    lineNumber: 145,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2833,11 +2912,11 @@ function LabelSelectionOverlay({ labels, currentTask, onLabelsChange, onClose, i
                             type: "text",
                             value: searchTerm,
                             onChange: (e)=>setSearchTerm(e.target.value),
-                            className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent",
+                            className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900",
                             placeholder: "Search labels..."
                         }, void 0, false, {
                             fileName: "[project]/components/LabelSelectionOverlay.tsx",
-                            lineNumber: 163,
+                            lineNumber: 164,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2845,13 +2924,13 @@ function LabelSelectionOverlay({ labels, currentTask, onLabelsChange, onClose, i
                             children: "↑↓ to navigate • Enter/Space to toggle • Esc to cancel"
                         }, void 0, false, {
                             fileName: "[project]/components/LabelSelectionOverlay.tsx",
-                            lineNumber: 171,
+                            lineNumber: 172,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/LabelSelectionOverlay.tsx",
-                    lineNumber: 162,
+                    lineNumber: 163,
                     columnNumber: 9
                 }, this),
                 selectedLabels.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2875,14 +2954,14 @@ function LabelSelectionOverlay({ labels, currentTask, onLabelsChange, onClose, i
                                         }
                                     }, void 0, false, {
                                         fileName: "[project]/components/LabelSelectionOverlay.tsx",
-                                        lineNumber: 189,
+                                        lineNumber: 190,
                                         columnNumber: 21
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                         children: labelName
                                     }, void 0, false, {
                                         fileName: "[project]/components/LabelSelectionOverlay.tsx",
-                                        lineNumber: 193,
+                                        lineNumber: 194,
                                         columnNumber: 21
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -2891,24 +2970,24 @@ function LabelSelectionOverlay({ labels, currentTask, onLabelsChange, onClose, i
                                         children: "×"
                                     }, void 0, false, {
                                         fileName: "[project]/components/LabelSelectionOverlay.tsx",
-                                        lineNumber: 194,
+                                        lineNumber: 195,
                                         columnNumber: 21
                                     }, this)
                                 ]
                             }, labelName, true, {
                                 fileName: "[project]/components/LabelSelectionOverlay.tsx",
-                                lineNumber: 184,
+                                lineNumber: 185,
                                 columnNumber: 19
                             }, this);
                         })
                     }, void 0, false, {
                         fileName: "[project]/components/LabelSelectionOverlay.tsx",
-                        lineNumber: 179,
+                        lineNumber: 180,
                         columnNumber: 13
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/components/LabelSelectionOverlay.tsx",
-                    lineNumber: 178,
+                    lineNumber: 179,
                     columnNumber: 11
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2918,7 +2997,7 @@ function LabelSelectionOverlay({ labels, currentTask, onLabelsChange, onClose, i
                         children: searchTerm ? `No labels found for "${searchTerm}"` : 'No labels available'
                     }, void 0, false, {
                         fileName: "[project]/components/LabelSelectionOverlay.tsx",
-                        lineNumber: 210,
+                        lineNumber: 211,
                         columnNumber: 13
                     }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                         className: "space-y-1",
@@ -2946,12 +3025,12 @@ function LabelSelectionOverlay({ labels, currentTask, onLabelsChange, onClose, i
                                             }
                                         }, void 0, false, {
                                             fileName: "[project]/components/LabelSelectionOverlay.tsx",
-                                            lineNumber: 236,
+                                            lineNumber: 237,
                                             columnNumber: 23
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/components/LabelSelectionOverlay.tsx",
-                                        lineNumber: 235,
+                                        lineNumber: 236,
                                         columnNumber: 21
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2961,7 +3040,7 @@ function LabelSelectionOverlay({ labels, currentTask, onLabelsChange, onClose, i
                                         }
                                     }, void 0, false, {
                                         fileName: "[project]/components/LabelSelectionOverlay.tsx",
-                                        lineNumber: 244,
+                                        lineNumber: 245,
                                         columnNumber: 21
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2971,12 +3050,12 @@ function LabelSelectionOverlay({ labels, currentTask, onLabelsChange, onClose, i
                                             children: label.name
                                         }, void 0, false, {
                                             fileName: "[project]/components/LabelSelectionOverlay.tsx",
-                                            lineNumber: 249,
+                                            lineNumber: 250,
                                             columnNumber: 23
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/components/LabelSelectionOverlay.tsx",
-                                        lineNumber: 248,
+                                        lineNumber: 249,
                                         columnNumber: 21
                                     }, this),
                                     isSelected && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2984,35 +3063,35 @@ function LabelSelectionOverlay({ labels, currentTask, onLabelsChange, onClose, i
                                         children: "↵"
                                     }, void 0, false, {
                                         fileName: "[project]/components/LabelSelectionOverlay.tsx",
-                                        lineNumber: 254,
+                                        lineNumber: 255,
                                         columnNumber: 23
                                     }, this)
                                 ]
                             }, label.id, true, {
                                 fileName: "[project]/components/LabelSelectionOverlay.tsx",
-                                lineNumber: 221,
+                                lineNumber: 222,
                                 columnNumber: 19
                             }, this);
                         })
                     }, void 0, false, {
                         fileName: "[project]/components/LabelSelectionOverlay.tsx",
-                        lineNumber: 214,
+                        lineNumber: 215,
                         columnNumber: 13
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/components/LabelSelectionOverlay.tsx",
-                    lineNumber: 208,
+                    lineNumber: 209,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/components/LabelSelectionOverlay.tsx",
-            lineNumber: 139,
+            lineNumber: 140,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/components/LabelSelectionOverlay.tsx",
-        lineNumber: 135,
+        lineNumber: 136,
         columnNumber: 5
     }, this);
 }
@@ -3590,6 +3669,7 @@ function ScheduledDateSelector({ currentTask, onScheduledDateChange, onClose, is
                             }
                             return;
                         case 'Escape':
+                        case '`':
                             e.preventDefault();
                             onClose();
                             return;
@@ -3670,17 +3750,17 @@ function ScheduledDateSelector({ currentTask, onScheduledDateChange, onClose, is
                                             d: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
                                         }, void 0, false, {
                                             fileName: "[project]/components/ScheduledDateSelector.tsx",
-                                            lineNumber: 336,
+                                            lineNumber: 337,
                                             columnNumber: 17
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/components/ScheduledDateSelector.tsx",
-                                        lineNumber: 335,
+                                        lineNumber: 336,
                                         columnNumber: 15
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/components/ScheduledDateSelector.tsx",
-                                    lineNumber: 334,
+                                    lineNumber: 335,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3691,7 +3771,7 @@ function ScheduledDateSelector({ currentTask, onScheduledDateChange, onClose, is
                                             children: "Schedule Task"
                                         }, void 0, false, {
                                             fileName: "[project]/components/ScheduledDateSelector.tsx",
-                                            lineNumber: 340,
+                                            lineNumber: 341,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3704,24 +3784,24 @@ function ScheduledDateSelector({ currentTask, onScheduledDateChange, onClose, is
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/components/ScheduledDateSelector.tsx",
-                                                lineNumber: 342,
+                                                lineNumber: 343,
                                                 columnNumber: 17
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/components/ScheduledDateSelector.tsx",
-                                            lineNumber: 341,
+                                            lineNumber: 342,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/ScheduledDateSelector.tsx",
-                                    lineNumber: 339,
+                                    lineNumber: 340,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/ScheduledDateSelector.tsx",
-                            lineNumber: 333,
+                            lineNumber: 334,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
@@ -3729,13 +3809,13 @@ function ScheduledDateSelector({ currentTask, onScheduledDateChange, onClose, is
                             children: currentTask.content
                         }, void 0, false, {
                             fileName: "[project]/components/ScheduledDateSelector.tsx",
-                            lineNumber: 348,
+                            lineNumber: 349,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/ScheduledDateSelector.tsx",
-                    lineNumber: 332,
+                    lineNumber: 333,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3748,7 +3828,7 @@ function ScheduledDateSelector({ currentTask, onScheduledDateChange, onClose, is
                             placeholder: "When will you work on this? (e.g., tomorrow, next week)"
                         }, void 0, false, {
                             fileName: "[project]/components/ScheduledDateSelector.tsx",
-                            lineNumber: 355,
+                            lineNumber: 356,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3756,13 +3836,13 @@ function ScheduledDateSelector({ currentTask, onScheduledDateChange, onClose, is
                             children: "Type or select from suggestions below • ↑↓ to navigate • Enter to apply"
                         }, void 0, false, {
                             fileName: "[project]/components/ScheduledDateSelector.tsx",
-                            lineNumber: 361,
+                            lineNumber: 362,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/ScheduledDateSelector.tsx",
-                    lineNumber: 354,
+                    lineNumber: 355,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3781,7 +3861,7 @@ function ScheduledDateSelector({ currentTask, onScheduledDateChange, onClose, is
                                                 children: "Currently scheduled: "
                                             }, void 0, false, {
                                                 fileName: "[project]/components/ScheduledDateSelector.tsx",
-                                                lineNumber: 372,
+                                                lineNumber: 373,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -3789,13 +3869,13 @@ function ScheduledDateSelector({ currentTask, onScheduledDateChange, onClose, is
                                                 children: currentTask.due.string
                                             }, void 0, false, {
                                                 fileName: "[project]/components/ScheduledDateSelector.tsx",
-                                                lineNumber: 373,
+                                                lineNumber: 374,
                                                 columnNumber: 19
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/ScheduledDateSelector.tsx",
-                                        lineNumber: 371,
+                                        lineNumber: 372,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -3804,18 +3884,18 @@ function ScheduledDateSelector({ currentTask, onScheduledDateChange, onClose, is
                                         children: "Clear"
                                     }, void 0, false, {
                                         fileName: "[project]/components/ScheduledDateSelector.tsx",
-                                        lineNumber: 375,
+                                        lineNumber: 376,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/ScheduledDateSelector.tsx",
-                                lineNumber: 370,
+                                lineNumber: 371,
                                 columnNumber: 15
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/components/ScheduledDateSelector.tsx",
-                            lineNumber: 369,
+                            lineNumber: 370,
                             columnNumber: 13
                         }, this),
                         filteredSuggestions.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3823,7 +3903,7 @@ function ScheduledDateSelector({ currentTask, onScheduledDateChange, onClose, is
                             children: searchTerm ? `No suggestions for "${searchTerm}"` : 'No suggestions available'
                         }, void 0, false, {
                             fileName: "[project]/components/ScheduledDateSelector.tsx",
-                            lineNumber: 386,
+                            lineNumber: 387,
                             columnNumber: 13
                         }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                             className: "space-y-1",
@@ -3842,7 +3922,7 @@ function ScheduledDateSelector({ currentTask, onScheduledDateChange, onClose, is
                                             children: suggestion.icon
                                         }, void 0, false, {
                                             fileName: "[project]/components/ScheduledDateSelector.tsx",
-                                            lineNumber: 409,
+                                            lineNumber: 410,
                                             columnNumber: 21
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3853,7 +3933,7 @@ function ScheduledDateSelector({ currentTask, onScheduledDateChange, onClose, is
                                                     children: suggestion.label
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/ScheduledDateSelector.tsx",
-                                                    lineNumber: 413,
+                                                    lineNumber: 414,
                                                     columnNumber: 23
                                                 }, this),
                                                 suggestion.sublabel && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3861,13 +3941,13 @@ function ScheduledDateSelector({ currentTask, onScheduledDateChange, onClose, is
                                                     children: suggestion.sublabel
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/ScheduledDateSelector.tsx",
-                                                    lineNumber: 419,
+                                                    lineNumber: 420,
                                                     columnNumber: 25
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/ScheduledDateSelector.tsx",
-                                            lineNumber: 412,
+                                            lineNumber: 413,
                                             columnNumber: 21
                                         }, this),
                                         isSelected && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -3875,36 +3955,36 @@ function ScheduledDateSelector({ currentTask, onScheduledDateChange, onClose, is
                                             children: "↵"
                                         }, void 0, false, {
                                             fileName: "[project]/components/ScheduledDateSelector.tsx",
-                                            lineNumber: 425,
+                                            lineNumber: 426,
                                             columnNumber: 23
                                         }, this)
                                     ]
                                 }, suggestion.id, true, {
                                     fileName: "[project]/components/ScheduledDateSelector.tsx",
-                                    lineNumber: 395,
+                                    lineNumber: 396,
                                     columnNumber: 19
                                 }, this);
                             })
                         }, void 0, false, {
                             fileName: "[project]/components/ScheduledDateSelector.tsx",
-                            lineNumber: 390,
+                            lineNumber: 391,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/ScheduledDateSelector.tsx",
-                    lineNumber: 367,
+                    lineNumber: 368,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/components/ScheduledDateSelector.tsx",
-            lineNumber: 327,
+            lineNumber: 328,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/components/ScheduledDateSelector.tsx",
-        lineNumber: 323,
+        lineNumber: 324,
         columnNumber: 5
     }, this);
 }
@@ -4238,6 +4318,7 @@ function DeadlineSelector({ currentTask, onDeadlineChange, onClose, isVisible })
                             }
                             return;
                         case 'Escape':
+                        case '`':
                             e.preventDefault();
                             onClose();
                             return;
@@ -4318,17 +4399,17 @@ function DeadlineSelector({ currentTask, onDeadlineChange, onClose, isVisible })
                                             d: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                                         }, void 0, false, {
                                             fileName: "[project]/components/DeadlineSelector.tsx",
-                                            lineNumber: 320,
+                                            lineNumber: 321,
                                             columnNumber: 17
                                         }, this)
                                     }, void 0, false, {
                                         fileName: "[project]/components/DeadlineSelector.tsx",
-                                        lineNumber: 319,
+                                        lineNumber: 320,
                                         columnNumber: 15
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/components/DeadlineSelector.tsx",
-                                    lineNumber: 318,
+                                    lineNumber: 319,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4339,7 +4420,7 @@ function DeadlineSelector({ currentTask, onDeadlineChange, onClose, isVisible })
                                             children: "Set Deadline"
                                         }, void 0, false, {
                                             fileName: "[project]/components/DeadlineSelector.tsx",
-                                            lineNumber: 324,
+                                            lineNumber: 325,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4352,24 +4433,24 @@ function DeadlineSelector({ currentTask, onDeadlineChange, onClose, isVisible })
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/components/DeadlineSelector.tsx",
-                                                lineNumber: 326,
+                                                lineNumber: 327,
                                                 columnNumber: 17
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/components/DeadlineSelector.tsx",
-                                            lineNumber: 325,
+                                            lineNumber: 326,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/DeadlineSelector.tsx",
-                                    lineNumber: 323,
+                                    lineNumber: 324,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/DeadlineSelector.tsx",
-                            lineNumber: 317,
+                            lineNumber: 318,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
@@ -4377,13 +4458,13 @@ function DeadlineSelector({ currentTask, onDeadlineChange, onClose, isVisible })
                             children: currentTask.content
                         }, void 0, false, {
                             fileName: "[project]/components/DeadlineSelector.tsx",
-                            lineNumber: 332,
+                            lineNumber: 333,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/DeadlineSelector.tsx",
-                    lineNumber: 316,
+                    lineNumber: 317,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4396,7 +4477,7 @@ function DeadlineSelector({ currentTask, onDeadlineChange, onClose, isVisible })
                             placeholder: "When must this be done? (e.g., Friday, end of week)"
                         }, void 0, false, {
                             fileName: "[project]/components/DeadlineSelector.tsx",
-                            lineNumber: 339,
+                            lineNumber: 340,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4404,13 +4485,13 @@ function DeadlineSelector({ currentTask, onDeadlineChange, onClose, isVisible })
                             children: "Type or select from suggestions below • ↑↓ to navigate • Enter to apply"
                         }, void 0, false, {
                             fileName: "[project]/components/DeadlineSelector.tsx",
-                            lineNumber: 345,
+                            lineNumber: 346,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/DeadlineSelector.tsx",
-                    lineNumber: 338,
+                    lineNumber: 339,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4429,7 +4510,7 @@ function DeadlineSelector({ currentTask, onDeadlineChange, onClose, isVisible })
                                                 children: "Current deadline: "
                                             }, void 0, false, {
                                                 fileName: "[project]/components/DeadlineSelector.tsx",
-                                                lineNumber: 356,
+                                                lineNumber: 357,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -4437,13 +4518,13 @@ function DeadlineSelector({ currentTask, onDeadlineChange, onClose, isVisible })
                                                 children: currentTask.deadline.string
                                             }, void 0, false, {
                                                 fileName: "[project]/components/DeadlineSelector.tsx",
-                                                lineNumber: 357,
+                                                lineNumber: 358,
                                                 columnNumber: 19
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/DeadlineSelector.tsx",
-                                        lineNumber: 355,
+                                        lineNumber: 356,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -4452,18 +4533,18 @@ function DeadlineSelector({ currentTask, onDeadlineChange, onClose, isVisible })
                                         children: "Clear"
                                     }, void 0, false, {
                                         fileName: "[project]/components/DeadlineSelector.tsx",
-                                        lineNumber: 359,
+                                        lineNumber: 360,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/DeadlineSelector.tsx",
-                                lineNumber: 354,
+                                lineNumber: 355,
                                 columnNumber: 15
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/components/DeadlineSelector.tsx",
-                            lineNumber: 353,
+                            lineNumber: 354,
                             columnNumber: 13
                         }, this),
                         filteredSuggestions.length === 0 ? /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4471,7 +4552,7 @@ function DeadlineSelector({ currentTask, onDeadlineChange, onClose, isVisible })
                             children: searchTerm ? `No suggestions for "${searchTerm}"` : 'No suggestions available'
                         }, void 0, false, {
                             fileName: "[project]/components/DeadlineSelector.tsx",
-                            lineNumber: 370,
+                            lineNumber: 371,
                             columnNumber: 13
                         }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                             className: "space-y-1",
@@ -4490,7 +4571,7 @@ function DeadlineSelector({ currentTask, onDeadlineChange, onClose, isVisible })
                                             children: suggestion.icon
                                         }, void 0, false, {
                                             fileName: "[project]/components/DeadlineSelector.tsx",
-                                            lineNumber: 393,
+                                            lineNumber: 394,
                                             columnNumber: 21
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4501,7 +4582,7 @@ function DeadlineSelector({ currentTask, onDeadlineChange, onClose, isVisible })
                                                     children: suggestion.label
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/DeadlineSelector.tsx",
-                                                    lineNumber: 397,
+                                                    lineNumber: 398,
                                                     columnNumber: 23
                                                 }, this),
                                                 suggestion.sublabel && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4509,13 +4590,13 @@ function DeadlineSelector({ currentTask, onDeadlineChange, onClose, isVisible })
                                                     children: suggestion.sublabel
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/DeadlineSelector.tsx",
-                                                    lineNumber: 403,
+                                                    lineNumber: 404,
                                                     columnNumber: 25
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/DeadlineSelector.tsx",
-                                            lineNumber: 396,
+                                            lineNumber: 397,
                                             columnNumber: 21
                                         }, this),
                                         isSelected && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -4523,36 +4604,36 @@ function DeadlineSelector({ currentTask, onDeadlineChange, onClose, isVisible })
                                             children: "↵"
                                         }, void 0, false, {
                                             fileName: "[project]/components/DeadlineSelector.tsx",
-                                            lineNumber: 409,
+                                            lineNumber: 410,
                                             columnNumber: 23
                                         }, this)
                                     ]
                                 }, suggestion.id, true, {
                                     fileName: "[project]/components/DeadlineSelector.tsx",
-                                    lineNumber: 379,
+                                    lineNumber: 380,
                                     columnNumber: 19
                                 }, this);
                             })
                         }, void 0, false, {
                             fileName: "[project]/components/DeadlineSelector.tsx",
-                            lineNumber: 374,
+                            lineNumber: 375,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/DeadlineSelector.tsx",
-                    lineNumber: 351,
+                    lineNumber: 352,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/components/DeadlineSelector.tsx",
-            lineNumber: 311,
+            lineNumber: 312,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/components/DeadlineSelector.tsx",
-        lineNumber: 307,
+        lineNumber: 308,
         columnNumber: 5
     }, this);
 }
@@ -5146,6 +5227,8 @@ function TaskProcessor() {
     ]);
     const handlePrioritySelect = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
         "TaskProcessor.useCallback[handlePrioritySelect]": async (priority)=>{
+            setShowPriorityOverlay(false) // Close immediately
+            ;
             if (state.currentTask) {
                 const originalPriority = state.currentTask.priority;
                 // Update the task immediately in the UI
@@ -5176,7 +5259,6 @@ function TaskProcessor() {
                     }["TaskProcessor.useCallback[handlePrioritySelect]"]);
                 }
             }
-            setShowPriorityOverlay(false);
         }
     }["TaskProcessor.useCallback[handlePrioritySelect]"], [
         state.currentTask,
@@ -5184,6 +5266,8 @@ function TaskProcessor() {
     ]);
     const handleProjectSelect = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
         "TaskProcessor.useCallback[handleProjectSelect]": async (projectId)=>{
+            setShowProjectOverlay(false) // Close immediately
+            ;
             if (state.currentTask) {
                 const originalProjectId = state.currentTask.projectId;
                 // Update the task immediately in the UI
@@ -5214,7 +5298,6 @@ function TaskProcessor() {
                     }["TaskProcessor.useCallback[handleProjectSelect]"]);
                 }
             }
-            setShowProjectOverlay(false);
         }
     }["TaskProcessor.useCallback[handleProjectSelect]"], [
         state.currentTask,
@@ -5613,6 +5696,7 @@ function TaskProcessor() {
                             setShowShortcuts(!showShortcuts);
                             break;
                         case 'Escape':
+                        case '`':
                             setShowShortcuts(false);
                             setShowPriorityOverlay(false);
                             setShowProjectOverlay(false);
@@ -5653,7 +5737,7 @@ function TaskProcessor() {
                         className: "animate-spin rounded-full h-32 w-32 border-b-2 border-todoist-blue mx-auto"
                     }, void 0, false, {
                         fileName: "[project]/components/TaskProcessor.tsx",
-                        lineNumber: 644,
+                        lineNumber: 647,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
@@ -5661,7 +5745,7 @@ function TaskProcessor() {
                         children: "Loading Todoist Data..."
                     }, void 0, false, {
                         fileName: "[project]/components/TaskProcessor.tsx",
-                        lineNumber: 645,
+                        lineNumber: 648,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -5669,18 +5753,18 @@ function TaskProcessor() {
                         children: "Fetching your inbox tasks, projects, and labels"
                     }, void 0, false, {
                         fileName: "[project]/components/TaskProcessor.tsx",
-                        lineNumber: 646,
+                        lineNumber: 649,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/TaskProcessor.tsx",
-                lineNumber: 643,
+                lineNumber: 646,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/components/TaskProcessor.tsx",
-            lineNumber: 642,
+            lineNumber: 645,
             columnNumber: 7
         }, this);
     }
@@ -5695,7 +5779,7 @@ function TaskProcessor() {
                         children: "❌"
                     }, void 0, false, {
                         fileName: "[project]/components/TaskProcessor.tsx",
-                        lineNumber: 656,
+                        lineNumber: 659,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
@@ -5703,7 +5787,7 @@ function TaskProcessor() {
                         children: "Error Loading Data"
                     }, void 0, false, {
                         fileName: "[project]/components/TaskProcessor.tsx",
-                        lineNumber: 657,
+                        lineNumber: 660,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -5711,7 +5795,7 @@ function TaskProcessor() {
                         children: error
                     }, void 0, false, {
                         fileName: "[project]/components/TaskProcessor.tsx",
-                        lineNumber: 658,
+                        lineNumber: 661,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -5720,18 +5804,18 @@ function TaskProcessor() {
                         children: "Retry"
                     }, void 0, false, {
                         fileName: "[project]/components/TaskProcessor.tsx",
-                        lineNumber: 659,
+                        lineNumber: 662,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/TaskProcessor.tsx",
-                lineNumber: 655,
+                lineNumber: 658,
                 columnNumber: 9
             }, this)
         }, void 0, false, {
             fileName: "[project]/components/TaskProcessor.tsx",
-            lineNumber: 654,
+            lineNumber: 657,
             columnNumber: 7
         }, this);
     }
@@ -5754,7 +5838,7 @@ function TaskProcessor() {
                                             children: "Task Processor"
                                         }, void 0, false, {
                                             fileName: "[project]/components/TaskProcessor.tsx",
-                                            lineNumber: 680,
+                                            lineNumber: 683,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -5767,19 +5851,19 @@ function TaskProcessor() {
                                                     children: "?"
                                                 }, void 0, false, {
                                                     fileName: "[project]/components/TaskProcessor.tsx",
-                                                    lineNumber: 685,
+                                                    lineNumber: 688,
                                                     columnNumber: 27
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/components/TaskProcessor.tsx",
-                                            lineNumber: 681,
+                                            lineNumber: 684,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/TaskProcessor.tsx",
-                                    lineNumber: 679,
+                                    lineNumber: 682,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$ProjectSwitcher$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
@@ -5789,7 +5873,7 @@ function TaskProcessor() {
                                     taskCount: totalTasks
                                 }, void 0, false, {
                                     fileName: "[project]/components/TaskProcessor.tsx",
-                                    lineNumber: 690,
+                                    lineNumber: 693,
                                     columnNumber: 13
                                 }, this),
                                 loadingTasks && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5801,7 +5885,7 @@ function TaskProcessor() {
                                                 className: "animate-spin rounded-full h-5 w-5 border-b-2 border-todoist-blue"
                                             }, void 0, false, {
                                                 fileName: "[project]/components/TaskProcessor.tsx",
-                                                lineNumber: 701,
+                                                lineNumber: 704,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -5809,24 +5893,24 @@ function TaskProcessor() {
                                                 children: "Loading tasks..."
                                             }, void 0, false, {
                                                 fileName: "[project]/components/TaskProcessor.tsx",
-                                                lineNumber: 702,
+                                                lineNumber: 705,
                                                 columnNumber: 19
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/TaskProcessor.tsx",
-                                        lineNumber: 700,
+                                        lineNumber: 703,
                                         columnNumber: 17
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/components/TaskProcessor.tsx",
-                                    lineNumber: 699,
+                                    lineNumber: 702,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/TaskProcessor.tsx",
-                            lineNumber: 678,
+                            lineNumber: 681,
                             columnNumber: 11
                         }, this),
                         !loadingTasks && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5842,7 +5926,7 @@ function TaskProcessor() {
                                         children: totalTasks === 0 ? '📭' : '🎉'
                                     }, void 0, false, {
                                         fileName: "[project]/components/TaskProcessor.tsx",
-                                        lineNumber: 712,
+                                        lineNumber: 715,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
@@ -5850,7 +5934,7 @@ function TaskProcessor() {
                                         children: totalTasks === 0 ? `${projectName} is Empty` : `${projectName} Complete!`
                                     }, void 0, false, {
                                         fileName: "[project]/components/TaskProcessor.tsx",
-                                        lineNumber: 715,
+                                        lineNumber: 718,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -5858,7 +5942,7 @@ function TaskProcessor() {
                                         children: totalTasks === 0 ? `No tasks found in ${projectName}. Try selecting a different project.` : 'All tasks have been processed.'
                                     }, void 0, false, {
                                         fileName: "[project]/components/TaskProcessor.tsx",
-                                        lineNumber: 718,
+                                        lineNumber: 721,
                                         columnNumber: 17
                                     }, this),
                                     totalTasks > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5871,7 +5955,7 @@ function TaskProcessor() {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/TaskProcessor.tsx",
-                                        lineNumber: 725,
+                                        lineNumber: 728,
                                         columnNumber: 19
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -5880,37 +5964,37 @@ function TaskProcessor() {
                                         children: "Refresh Tasks"
                                     }, void 0, false, {
                                         fileName: "[project]/components/TaskProcessor.tsx",
-                                        lineNumber: 729,
+                                        lineNumber: 732,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/TaskProcessor.tsx",
-                                lineNumber: 711,
+                                lineNumber: 714,
                                 columnNumber: 15
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/components/TaskProcessor.tsx",
-                            lineNumber: 710,
+                            lineNumber: 713,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/TaskProcessor.tsx",
-                    lineNumber: 676,
+                    lineNumber: 679,
                     columnNumber: 9
                 }, this),
                 showShortcuts && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$KeyboardShortcuts$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
                     onClose: ()=>setShowShortcuts(false)
                 }, void 0, false, {
                     fileName: "[project]/components/TaskProcessor.tsx",
-                    lineNumber: 742,
+                    lineNumber: 745,
                     columnNumber: 11
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/components/TaskProcessor.tsx",
-            lineNumber: 675,
+            lineNumber: 678,
             columnNumber: 7
         }, this);
     }
@@ -5931,7 +6015,7 @@ function TaskProcessor() {
                                         children: "Task Processor"
                                     }, void 0, false, {
                                         fileName: "[project]/components/TaskProcessor.tsx",
-                                        lineNumber: 754,
+                                        lineNumber: 757,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -5944,19 +6028,19 @@ function TaskProcessor() {
                                                 children: "?"
                                             }, void 0, false, {
                                                 fileName: "[project]/components/TaskProcessor.tsx",
-                                                lineNumber: 759,
+                                                lineNumber: 762,
                                                 columnNumber: 25
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/TaskProcessor.tsx",
-                                        lineNumber: 755,
+                                        lineNumber: 758,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/TaskProcessor.tsx",
-                                lineNumber: 753,
+                                lineNumber: 756,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$ProjectSwitcher$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
@@ -5966,7 +6050,7 @@ function TaskProcessor() {
                                 taskCount: totalTasks
                             }, void 0, false, {
                                 fileName: "[project]/components/TaskProcessor.tsx",
-                                lineNumber: 764,
+                                lineNumber: 767,
                                 columnNumber: 11
                             }, this),
                             loadingTasks && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -5978,7 +6062,7 @@ function TaskProcessor() {
                                             className: "animate-spin rounded-full h-5 w-5 border-b-2 border-todoist-blue"
                                         }, void 0, false, {
                                             fileName: "[project]/components/TaskProcessor.tsx",
-                                            lineNumber: 775,
+                                            lineNumber: 778,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -5986,18 +6070,18 @@ function TaskProcessor() {
                                             children: "Loading tasks..."
                                         }, void 0, false, {
                                             fileName: "[project]/components/TaskProcessor.tsx",
-                                            lineNumber: 776,
+                                            lineNumber: 779,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/components/TaskProcessor.tsx",
-                                    lineNumber: 774,
+                                    lineNumber: 777,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/components/TaskProcessor.tsx",
-                                lineNumber: 773,
+                                lineNumber: 776,
                                 columnNumber: 13
                             }, this),
                             totalTasks > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$ProgressIndicator$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
@@ -6006,13 +6090,13 @@ function TaskProcessor() {
                                 progress: progress
                             }, void 0, false, {
                                 fileName: "[project]/components/TaskProcessor.tsx",
-                                lineNumber: 782,
+                                lineNumber: 785,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/TaskProcessor.tsx",
-                        lineNumber: 752,
+                        lineNumber: 755,
                         columnNumber: 9
                     }, this),
                     state.currentTask && !loadingTasks && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6032,7 +6116,7 @@ function TaskProcessor() {
                                 onDeadlineClick: ()=>setShowDeadlineOverlay(true)
                             }, void 0, false, {
                                 fileName: "[project]/components/TaskProcessor.tsx",
-                                lineNumber: 794,
+                                lineNumber: 797,
                                 columnNumber: 13
                             }, this),
                             currentTaskSuggestions.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$ProjectSuggestions$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
@@ -6042,7 +6126,7 @@ function TaskProcessor() {
                                 onProjectSelect: handleProjectSelect
                             }, void 0, false, {
                                 fileName: "[project]/components/TaskProcessor.tsx",
-                                lineNumber: 810,
+                                lineNumber: 813,
                                 columnNumber: 15
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$TaskForm$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
@@ -6057,13 +6141,13 @@ function TaskProcessor() {
                                 canGoPrevious: state.processedTasks.length > 0
                             }, taskKey, false, {
                                 fileName: "[project]/components/TaskProcessor.tsx",
-                                lineNumber: 819,
+                                lineNumber: 822,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/TaskProcessor.tsx",
-                        lineNumber: 792,
+                        lineNumber: 795,
                         columnNumber: 11
                     }, this),
                     state.queuedTasks.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6078,7 +6162,7 @@ function TaskProcessor() {
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/TaskProcessor.tsx",
-                                lineNumber: 837,
+                                lineNumber: 840,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6093,7 +6177,7 @@ function TaskProcessor() {
                                             ]
                                         }, task.id, true, {
                                             fileName: "[project]/components/TaskProcessor.tsx",
-                                            lineNumber: 842,
+                                            lineNumber: 845,
                                             columnNumber: 17
                                         }, this)),
                                     state.queuedTasks.length > 3 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6105,32 +6189,32 @@ function TaskProcessor() {
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/components/TaskProcessor.tsx",
-                                        lineNumber: 847,
+                                        lineNumber: 850,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/components/TaskProcessor.tsx",
-                                lineNumber: 840,
+                                lineNumber: 843,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/components/TaskProcessor.tsx",
-                        lineNumber: 836,
+                        lineNumber: 839,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/components/TaskProcessor.tsx",
-                lineNumber: 750,
+                lineNumber: 753,
                 columnNumber: 7
             }, this),
             showShortcuts && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$KeyboardShortcuts$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
                 onClose: ()=>setShowShortcuts(false)
             }, void 0, false, {
                 fileName: "[project]/components/TaskProcessor.tsx",
-                lineNumber: 858,
+                lineNumber: 861,
                 columnNumber: 9
             }, this),
             state.currentTask && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$PriorityOverlay$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
@@ -6140,7 +6224,7 @@ function TaskProcessor() {
                 isVisible: showPriorityOverlay
             }, void 0, false, {
                 fileName: "[project]/components/TaskProcessor.tsx",
-                lineNumber: 863,
+                lineNumber: 866,
                 columnNumber: 9
             }, this),
             state.currentTask && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$ProjectSelectionOverlay$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
@@ -6153,7 +6237,7 @@ function TaskProcessor() {
                 isVisible: showProjectOverlay
             }, `project-overlay-${state.currentTask.id}`, false, {
                 fileName: "[project]/components/TaskProcessor.tsx",
-                lineNumber: 873,
+                lineNumber: 876,
                 columnNumber: 9
             }, this),
             state.currentTask && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$LabelSelectionOverlay$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
@@ -6164,7 +6248,7 @@ function TaskProcessor() {
                 isVisible: showLabelOverlay
             }, void 0, false, {
                 fileName: "[project]/components/TaskProcessor.tsx",
-                lineNumber: 887,
+                lineNumber: 890,
                 columnNumber: 9
             }, this),
             state.currentTask && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$ScheduledDateSelector$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
@@ -6174,7 +6258,7 @@ function TaskProcessor() {
                 isVisible: showScheduledOverlay
             }, void 0, false, {
                 fileName: "[project]/components/TaskProcessor.tsx",
-                lineNumber: 898,
+                lineNumber: 901,
                 columnNumber: 9
             }, this),
             state.currentTask && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$DeadlineSelector$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
@@ -6184,7 +6268,7 @@ function TaskProcessor() {
                 isVisible: showDeadlineOverlay
             }, void 0, false, {
                 fileName: "[project]/components/TaskProcessor.tsx",
-                lineNumber: 908,
+                lineNumber: 911,
                 columnNumber: 9
             }, this),
             showArchiveConfirm && state.currentTask && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6199,7 +6283,7 @@ function TaskProcessor() {
                             children: "Archive Task?"
                         }, void 0, false, {
                             fileName: "[project]/components/TaskProcessor.tsx",
-                            lineNumber: 926,
+                            lineNumber: 929,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6207,7 +6291,7 @@ function TaskProcessor() {
                             children: "This will remove the task from your active list. You can still find it in your completed tasks."
                         }, void 0, false, {
                             fileName: "[project]/components/TaskProcessor.tsx",
-                            lineNumber: 927,
+                            lineNumber: 930,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6219,7 +6303,7 @@ function TaskProcessor() {
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/TaskProcessor.tsx",
-                            lineNumber: 930,
+                            lineNumber: 933,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6231,7 +6315,7 @@ function TaskProcessor() {
                                     children: "Cancel"
                                 }, void 0, false, {
                                     fileName: "[project]/components/TaskProcessor.tsx",
-                                    lineNumber: 934,
+                                    lineNumber: 937,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -6240,24 +6324,24 @@ function TaskProcessor() {
                                     children: "Archive"
                                 }, void 0, false, {
                                     fileName: "[project]/components/TaskProcessor.tsx",
-                                    lineNumber: 940,
+                                    lineNumber: 943,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/TaskProcessor.tsx",
-                            lineNumber: 933,
+                            lineNumber: 936,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/TaskProcessor.tsx",
-                    lineNumber: 922,
+                    lineNumber: 925,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/components/TaskProcessor.tsx",
-                lineNumber: 918,
+                lineNumber: 921,
                 columnNumber: 9
             }, this),
             showCompleteConfirm && state.currentTask && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6272,7 +6356,7 @@ function TaskProcessor() {
                             children: "Complete Task?"
                         }, void 0, false, {
                             fileName: "[project]/components/TaskProcessor.tsx",
-                            lineNumber: 961,
+                            lineNumber: 964,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6280,7 +6364,7 @@ function TaskProcessor() {
                             children: "Mark this task as completed. This action can be undone from your completed tasks."
                         }, void 0, false, {
                             fileName: "[project]/components/TaskProcessor.tsx",
-                            lineNumber: 962,
+                            lineNumber: 965,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -6292,7 +6376,7 @@ function TaskProcessor() {
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/TaskProcessor.tsx",
-                            lineNumber: 965,
+                            lineNumber: 968,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -6304,7 +6388,7 @@ function TaskProcessor() {
                                     children: "Cancel"
                                 }, void 0, false, {
                                     fileName: "[project]/components/TaskProcessor.tsx",
-                                    lineNumber: 969,
+                                    lineNumber: 972,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -6313,24 +6397,24 @@ function TaskProcessor() {
                                     children: "Complete"
                                 }, void 0, false, {
                                     fileName: "[project]/components/TaskProcessor.tsx",
-                                    lineNumber: 975,
+                                    lineNumber: 978,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/components/TaskProcessor.tsx",
-                            lineNumber: 968,
+                            lineNumber: 971,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/components/TaskProcessor.tsx",
-                    lineNumber: 957,
+                    lineNumber: 960,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/components/TaskProcessor.tsx",
-                lineNumber: 953,
+                lineNumber: 956,
                 columnNumber: 9
             }, this),
             toast && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$Toast$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
@@ -6339,13 +6423,13 @@ function TaskProcessor() {
                 onClose: ()=>setToast(null)
             }, void 0, false, {
                 fileName: "[project]/components/TaskProcessor.tsx",
-                lineNumber: 988,
+                lineNumber: 991,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/components/TaskProcessor.tsx",
-        lineNumber: 749,
+        lineNumber: 752,
         columnNumber: 5
     }, this);
 }

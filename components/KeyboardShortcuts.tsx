@@ -4,27 +4,33 @@ interface KeyboardShortcutsProps {
   onClose: () => void
 }
 
+interface ShortcutItem {
+  key: string | string[]
+  description: string
+}
+
 export default function KeyboardShortcuts({ onClose }: KeyboardShortcutsProps) {
   const shortcuts = [
     { category: 'Navigation', items: [
-      { key: 'j / Enter / →', description: 'Next task' },
-      { key: 'k / ←', description: 'Previous task' },
-      { key: '?', description: 'Toggle this help' },
-      { key: 'Esc', description: 'Close overlays/help' },
+      { key: ['j', 'Enter', '→'], description: 'Go to next task' },
+      { key: ['k', '←'], description: 'Go to previous task' },
+      { key: '?', description: 'Show/hide keyboard shortcuts' },
+      { key: ['Esc', '`'], description: 'Close any open dialog' },
     ]},
     { category: 'Task Management', items: [
-      { key: 'p', description: 'Set priority' },
-      { key: '#', description: 'Change project' },
-      { key: '@', description: 'Add/remove labels' },
-      { key: 's', description: 'Set scheduled date' },
-      { key: 'd', description: 'Set deadline' },
-      { key: 'e', description: 'Archive task (with confirmation)' },
-      { key: 'c', description: 'Complete task (with confirmation)' },
+      { key: 'p', description: 'Change task priority' },
+      { key: '#', description: 'Move to different project' },
+      { key: '@', description: 'Add or remove labels' },
+      { key: 's', description: 'Schedule when to work on task' },
+      { key: 'd', description: 'Set task deadline' },
+      { key: 'e', description: 'Archive task (removes from inbox)' },
+      { key: 'c', description: 'Mark task as complete' },
     ]},
-    { category: 'Quick Actions', items: [
-      { key: '1-4', description: 'Quick priority (when priority overlay open)' },
-      { key: '↑↓', description: 'Navigate in overlays' },
-      { key: 'Enter', description: 'Select in overlays' },
+    { category: 'Within Dialogs', items: [
+      { key: ['1', '2', '3', '4'], description: 'Set priority directly (P1-P4)' },
+      { key: ['↑', '↓'], description: 'Navigate through options' },
+      { key: 'Enter', description: 'Select highlighted option' },
+      { key: 'Type', description: 'Filter options or enter custom date' },
     ]},
   ]
 
@@ -51,7 +57,20 @@ export default function KeyboardShortcuts({ onClose }: KeyboardShortcutsProps) {
                 {section.items.map((shortcut, index) => (
                   <div key={index} className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">{shortcut.description}</span>
-                    <span className="kbd">{shortcut.key}</span>
+                    <div className="flex items-center gap-1">
+                      {Array.isArray(shortcut.key) ? (
+                        shortcut.key.map((key, keyIndex) => (
+                          <div key={keyIndex} className="flex items-center">
+                            <span className="kbd">{key}</span>
+                            {keyIndex < shortcut.key.length - 1 && (
+                              <span className="mx-1 text-gray-400">/</span>
+                            )}
+                          </div>
+                        ))
+                      ) : (
+                        <span className="kbd">{shortcut.key}</span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

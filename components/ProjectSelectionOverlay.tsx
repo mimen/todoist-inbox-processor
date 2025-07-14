@@ -63,8 +63,9 @@ export default function ProjectSelectionOverlay({
     // Track which projects are suggested for marking duplicates
     const suggestedIds = new Set(suggestions.map(s => s.projectId))
     
-    // Add suggested projects at the top (always show them, even when searching)
+    // Add suggested projects at the top (only if they match search or no search)
     if (suggestions.length > 0) {
+      let addedSuggestions = 0
       suggestions.forEach(suggestion => {
         const project = projects.find(p => p.id === suggestion.projectId)
         if (project) {
@@ -76,12 +77,13 @@ export default function ProjectSelectionOverlay({
               isSuggested: true, 
               confidence: suggestion.confidence 
             })
+            addedSuggestions++
           }
         }
       })
       
-      // Add divider after suggestions if we have any visible suggestions
-      if (result.length > 0) {
+      // Only add divider if we actually added suggestions
+      if (addedSuggestions > 0) {
         result.push({ divider: true } as any)
       }
     }
@@ -146,6 +148,25 @@ export default function ProjectSelectionOverlay({
     }
   }, [isVisible])
 
+  // Set initial selection to first matching item only when starting to search
+  useEffect(() => {
+    if (searchTerm && filteredProjects.length > 0) {
+      // Only auto-select if we're at index 0 (haven't navigated yet)
+      if (selectedIndex === 0) {
+        // Find the first non-divider item that actually matches the search
+        const firstMatchIndex = filteredProjects.findIndex(item => {
+          if ('divider' in item) return false
+          // Check if this is a matching project (not just a parent shown for context)
+          return item.name.toLowerCase().includes(searchTerm.toLowerCase())
+        })
+        
+        if (firstMatchIndex >= 0 && firstMatchIndex !== 0) {
+          setSelectedIndex(firstMatchIndex)
+        }
+      }
+    }
+  }, [searchTerm, filteredProjects.length]) // Remove filteredProjects dependency to avoid re-running
+
   // Update selected index when filtered projects change
   useEffect(() => {
     if (selectedIndex >= filteredProjects.length) {
@@ -199,6 +220,7 @@ export default function ProjectSelectionOverlay({
           }
           break
         case 'Escape':
+        case '`':
           e.preventDefault()
           onClose()
           break
@@ -246,7 +268,7 @@ export default function ProjectSelectionOverlay({
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
             placeholder="Search projects..."
           />
           <div className="mt-2 text-sm text-gray-500">
@@ -274,10 +296,12 @@ export default function ProjectSelectionOverlay({
                 const isSelected = index === selectedIndex
                 const isCurrent = project.id === currentProjectId
                 const projectColor = getTodoistColor(project.color)
+                const isMatch = searchTerm && project.name.toLowerCase().includes(searchTerm.toLowerCase())
+                const isContextOnly = searchTerm && !isMatch && !project.isSuggested
                 
                 return (
                   <button
-                    key={project.id}
+                    key={project.isSuggested ? `ai-${project.id}` : project.id}
                     ref={isSelected ? selectedProjectRef : null}
                     onClick={() => handleProjectSelect(project.id)}
                     className={`
@@ -290,6 +314,7 @@ export default function ProjectSelectionOverlay({
                         ? 'hover:bg-indigo-50 border-transparent'
                         : 'hover:bg-gray-50 border-transparent'
                       }
+                      ${isContextOnly ? 'opacity-60' : ''}
                     `}
                     style={{ paddingLeft: `${1 + project.level * 1.5}rem` }}
                   >

@@ -257,6 +257,7 @@ export default function DeadlineSelector({
           }
           return
         case 'Escape':
+        case '`':
           e.preventDefault()
           onClose()
           return

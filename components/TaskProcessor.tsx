@@ -263,6 +263,8 @@ export default function TaskProcessor() {
   }, [state.currentTask, moveToNext])
 
   const handlePrioritySelect = useCallback(async (priority: 1 | 2 | 3 | 4) => {
+    setShowPriorityOverlay(false) // Close immediately
+    
     if (state.currentTask) {
       const originalPriority = state.currentTask.priority
       
@@ -283,10 +285,11 @@ export default function TaskProcessor() {
         }))
       }
     }
-    setShowPriorityOverlay(false)
   }, [state.currentTask, autoSaveTask])
 
   const handleProjectSelect = useCallback(async (projectId: string) => {
+    setShowProjectOverlay(false) // Close immediately
+    
     if (state.currentTask) {
       const originalProjectId = state.currentTask.projectId
       
@@ -307,7 +310,6 @@ export default function TaskProcessor() {
         }))
       }
     }
-    setShowProjectOverlay(false)
   }, [state.currentTask, autoSaveTask])
 
   const handleLabelsChange = useCallback(async (labels: string[]) => {
@@ -617,6 +619,7 @@ export default function TaskProcessor() {
           setShowShortcuts(!showShortcuts)
           break
         case 'Escape':
+        case '`':
           setShowShortcuts(false)
           setShowPriorityOverlay(false)
           setShowProjectOverlay(false)

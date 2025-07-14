@@ -273,6 +273,7 @@ export default function ScheduledDateSelector({
           }
           return
         case 'Escape':
+        case '`':
           e.preventDefault()
           onClose()
           return

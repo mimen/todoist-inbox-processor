@@ -57,23 +57,18 @@ export default function PriorityOverlay({ currentPriority, onPrioritySelect, onC
           onPrioritySelect(1) // P4 = API priority 1
           break
         case 'Escape':
+        case '`':
+        case 'p':
+        case 'P':
           onClose()
           break
       }
     }
 
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.key === 'p' || e.key === 'P') {
-        onClose()
-      }
-    }
-
     window.addEventListener('keydown', handleKeyDown)
-    window.addEventListener('keyup', handleKeyUp)
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
-      window.removeEventListener('keyup', handleKeyUp)
     }
   }, [isVisible, onPrioritySelect, onClose])
 
