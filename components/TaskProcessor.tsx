@@ -35,6 +35,7 @@ export default function TaskProcessor() {
   const [error, setError] = useState<string | null>(null)
   const [selectedProjectId, setSelectedProjectId] = useState<string>('')
   const [allTasks, setAllTasks] = useState<TodoistTask[]>([])
+  const [allTasksGlobal, setAllTasksGlobal] = useState<TodoistTask[]>([]) // All tasks across all projects
   const [taskKey, setTaskKey] = useState(0) // Force re-render of TaskForm
   const [showPriorityOverlay, setShowPriorityOverlay] = useState(false)
   const [showProjectOverlay, setShowProjectOverlay] = useState(false)
@@ -53,30 +54,73 @@ export default function TaskProcessor() {
         setLoading(true)
         setError(null)
 
-        // Fetch projects, labels, and project hierarchy
-        const [projectsRes, labelsRes, hierarchyRes] = await Promise.all([
-          fetch('/api/todoist/projects'),
+        // Fetch critical data first (projects and labels only)
+        // Use sync API for projects to ensure consistent IDs with tasks
+        const [projectsRes, labelsRes] = await Promise.all([
+          fetch('/api/todoist/projects-sync'),
           fetch('/api/todoist/labels'),
-          fetch('/api/projects/hierarchy?format=context'),
         ])
 
-        if (!projectsRes.ok || !labelsRes.ok || !hierarchyRes.ok) {
+        if (!projectsRes.ok || !labelsRes.ok) {
           throw new Error('Failed to fetch data from Todoist API')
         }
 
-        const [projectsData, labelsData, hierarchyData] = await Promise.all([
+        const [projectsResponse, labelsData] = await Promise.all([
           projectsRes.json(),
           labelsRes.json(),
-          hierarchyRes.json(),
         ])
+        
+        // Extract projects from response
+        const projectsData = projectsResponse.projects || projectsResponse
 
         setProjects(projectsData)
         setLabels(labelsData)
-        setProjectHierarchy(hierarchyData)
+        
+        console.log(`Loaded ${projectsData.length} projects`)
         
         // Set default to actual inbox project if it exists
         const inboxProject = projectsData.find((p: any) => p.isInboxProject)
-        setSelectedProjectId(inboxProject?.id || 'inbox')
+        const inboxId = inboxProject?.id || 'inbox'
+        setSelectedProjectId(inboxId)
+        
+        // Load inbox tasks IMMEDIATELY
+        if (inboxProject) {
+          const inboxTasksRes = await fetch(`/api/todoist/tasks?projectId=${inboxProject.id}`)
+          if (inboxTasksRes.ok) {
+            const inboxTasks = await inboxTasksRes.json()
+            const filteredInboxTasks = inboxTasks.filter((task: any) => !task.content.startsWith('* '))
+            
+            // Display inbox tasks right away
+            setAllTasks(filteredInboxTasks)
+            
+            if (filteredInboxTasks.length > 0) {
+              setState({
+                currentTask: filteredInboxTasks[0],
+                queuedTasks: filteredInboxTasks.slice(1),
+                processedTasks: [],
+                skippedTasks: [],
+              })
+              setTaskKey(prev => prev + 1)
+            }
+            
+            console.log(`Loaded and displayed ${filteredInboxTasks.length} inbox tasks FIRST`)
+          }
+        }
+        
+        // Load hierarchy in the background (non-blocking)
+        fetch('/api/projects/hierarchy?format=context')
+          .then(res => res.json())
+          .then(hierarchyData => setProjectHierarchy(hierarchyData))
+          .catch(err => console.error('Failed to load project hierarchy:', err))
+          
+        // THEN load ALL tasks in the background without disrupting the inbox view
+        fetch('/api/todoist/all-tasks')
+          .then(res => res.json())
+          .then(data => {
+            console.log(`Background loaded ${data.total} total tasks via ${data.message}`)
+            setAllTasksGlobal(data.tasks)
+          })
+          .catch(err => console.error('Failed to load all tasks:', err))
       } catch (err) {
         console.error('Error loading initial data:', err)
         setError(err instanceof Error ? err.message : 'Failed to load data')
@@ -88,41 +132,25 @@ export default function TaskProcessor() {
     loadInitialData()
   }, [])
 
-  // Load tasks for selected project
-  const loadProjectTasks = useCallback(async (projectId: string) => {
-    if (!projectId) return
+  // Load tasks for selected project (ONLY from global data, no API calls)
+  const loadProjectTasks = useCallback((projectId: string) => {
+    if (!projectId || allTasksGlobal.length === 0) return
     
-    try {
-      setLoadingTasks(true)
-      setError(null)
-      console.log('Loading tasks for project:', projectId)
-      
-      const tasksRes = await fetch(`/api/todoist/tasks?projectId=${projectId}`)
-      
-      if (!tasksRes.ok) {
-        throw new Error('Failed to fetch tasks')
-      }
-
-      const tasksData = await tasksRes.json()
-      console.log('Loaded tasks:', tasksData)
-      // Filter out description tasks (those starting with "* ")
-      const filteredTasks = tasksData.filter((task: any) => !task.content.startsWith('* '))
-      setAllTasks(filteredTasks)
-
-      // Prefetch suggestions for all tasks when they're loaded
-      if (filteredTasks.length > 0 && projectHierarchy) {
-        try {
-          await suggestionsCache.prefetchSuggestions(filteredTasks, projectHierarchy)
-        } catch (error) {
-          console.warn('Failed to prefetch suggestions:', error)
-        }
-      }
+    setLoadingTasks(true)
+    
+    // Filter tasks from the global list - NO API CALLS
+    const projectTasks = allTasksGlobal.filter((task: any) => 
+      String(task.projectId) === String(projectId) && !task.content.startsWith('* ')
+    )
+    
+    console.log(`Project ${projectId}: Found ${projectTasks.length} tasks from ${allTasksGlobal.length} total tasks`)
+    setAllTasks(projectTasks)
 
       // Set up task processing queue and force form re-render
-      if (filteredTasks.length > 0) {
+      if (projectTasks.length > 0) {
         setState({
-          currentTask: filteredTasks[0],
-          queuedTasks: filteredTasks.slice(1),
+          currentTask: projectTasks[0],
+          queuedTasks: projectTasks.slice(1),
           processedTasks: [],
           skippedTasks: [],
         })
@@ -135,20 +163,35 @@ export default function TaskProcessor() {
           skippedTasks: [],
         })
       }
-    } catch (err) {
-      console.error('Error loading project tasks:', err)
-      setError(err instanceof Error ? err.message : 'Failed to load tasks')
-    } finally {
-      setLoadingTasks(false)
+      
+    
+    // Prefetch suggestions in the background (non-blocking)
+    if (projectTasks.length > 0 && projectHierarchy) {
+      // Only prefetch for first 3 tasks to avoid too many API calls
+      const tasksToPreload = projectTasks.slice(0, 3)
+      suggestionsCache.prefetchSuggestions(tasksToPreload, projectHierarchy)
+        .catch(error => console.warn('Failed to prefetch suggestions:', error))
     }
-  }, [])
+    
+    setLoadingTasks(false)
+  }, [allTasksGlobal, projectHierarchy])
+
 
   // Load tasks when project changes
   useEffect(() => {
-    if (projects.length > 0 && selectedProjectId) {
-      loadProjectTasks(selectedProjectId)
+    // Skip if we're still on inbox and already have tasks displayed
+    const isInbox = projects.find(p => p.isInboxProject)?.id === selectedProjectId
+    const hasDisplayedTasks = allTasks.length > 0
+    
+    if (selectedProjectId && allTasksGlobal.length > 0) {
+      // Only reload if:
+      // 1. We're switching to a different project, OR
+      // 2. We're on inbox but have no tasks displayed yet
+      if (!isInbox || !hasDisplayedTasks) {
+        loadProjectTasks(selectedProjectId)
+      }
     }
-  }, [selectedProjectId, projects.length, loadProjectTasks])
+  }, [selectedProjectId, allTasksGlobal.length, projects, allTasks.length, loadProjectTasks])
 
   // Load suggestions when current task changes
   useEffect(() => {
@@ -735,6 +778,7 @@ export default function TaskProcessor() {
               selectedProjectId={selectedProjectId}
               onProjectChange={setSelectedProjectId}
               taskCount={totalTasks}
+              allTasks={allTasksGlobal}
             />
             
             {/* Loading State for Task Switching */}
@@ -817,6 +861,7 @@ export default function TaskProcessor() {
             selectedProjectId={selectedProjectId}
             onProjectChange={setSelectedProjectId}
             taskCount={totalTasks}
+            allTasks={allTasksGlobal}
           />
           
           {/* Loading State for Task Switching */}

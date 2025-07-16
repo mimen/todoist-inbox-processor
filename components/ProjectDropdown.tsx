@@ -10,6 +10,7 @@ interface ProjectDropdownProps {
   placeholder?: string
   includeInbox?: boolean
   className?: string
+  allTasks?: any[] // Optional: all tasks for client-side counting
 }
 
 export default function ProjectDropdown({ 
@@ -18,12 +19,13 @@ export default function ProjectDropdown({
   onProjectChange,
   placeholder = "Select project...",
   includeInbox = true,
-  className = ""
+  className = "",
+  allTasks = []
 }: ProjectDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [taskCounts, setTaskCounts] = useState<{ [key: string]: number }>({})
-  const [loadingCounts, setLoadingCounts] = useState(false)
+  const loadingCounts = allTasks.length === 0 // Show loading state until we have data
   const dropdownRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
@@ -47,66 +49,45 @@ export default function ProjectDropdown({
     }
   }, [isOpen])
 
-  // Load task counts when projects change (on page load)
+  // Calculate task counts when projects or allTasks change
   useEffect(() => {
-    if (projects.length > 0 && Object.keys(taskCounts).length === 0) {
-      loadTaskCounts()
+    if (projects.length > 0 && allTasks.length > 0) {
+      calculateTaskCounts()
     }
-  }, [projects.length])
+  }, [projects.length, allTasks.length])
 
-  const loadTaskCounts = async () => {
-    setLoadingCounts(true)
-    try {
-      const counts: { [key: string]: number } = {}
-      
-      // Load task counts for all projects in parallel
-      const countPromises = projects.map(async (project) => {
-        try {
-          const response = await fetch(`/api/todoist/tasks?projectId=${project.id}`)
-          if (response.ok) {
-            const tasks = await response.json()
-            // Filter out description tasks (starting with "* ")
-            const filteredTasks = tasks.filter((task: any) => !task.content.startsWith('* '))
-            counts[project.id] = filteredTasks.length
-          } else {
-            counts[project.id] = 0
-          }
-        } catch (error) {
-          console.error(`Error loading tasks for project ${project.id}:`, error)
-          counts[project.id] = 0
-        }
-      })
-      
-      // Add inbox count if included
-      if (includeInbox) {
-        const inboxProject = projects.find(p => p.isInboxProject)
-        if (inboxProject) {
-          countPromises.push(
-            fetch(`/api/todoist/tasks?projectId=${inboxProject.id}`)
-              .then(response => response.ok ? response.json() : [])
-              .then(tasks => {
-                const filteredTasks = tasks.filter((task: any) => !task.content.startsWith('* '))
-                counts[inboxProject.id] = filteredTasks.length
-                counts['inbox'] = filteredTasks.length // Also set for 'inbox' key
-              })
-              .catch(() => {
-                counts[inboxProject.id] = 0
-                counts['inbox'] = 0
-              })
-          )
-        } else {
-          counts['inbox'] = 0
-        }
+  const calculateTaskCounts = () => {
+    const counts: { [key: string]: number } = {}
+    
+    console.log('Calculating task counts:', {
+      totalTasks: allTasks.length,
+      totalProjects: projects.length,
+      sampleTask: allTasks[0],
+      sampleProject: projects[0]
+    })
+    
+    // Calculate counts for each project
+    projects.forEach(project => {
+      const projectTasks = allTasks.filter((task: any) => 
+        String(task.projectId) === String(project.id) && !task.content.startsWith('* ')
+      )
+      counts[project.id] = projectTasks.length
+      if (projectTasks.length > 0) {
+        console.log(`Project ${project.name} (${project.id}): ${projectTasks.length} tasks`)
       }
-      
-      await Promise.all(countPromises)
-      setTaskCounts(counts)
-    } catch (error) {
-      console.error('Error loading task counts:', error)
-    } finally {
-      setLoadingCounts(false)
+    })
+    
+    // Handle inbox
+    if (includeInbox) {
+      const inboxProject = projects.find(p => p.isInboxProject)
+      if (inboxProject) {
+        counts['inbox'] = counts[inboxProject.id] || 0
+      }
     }
+    
+    setTaskCounts(counts)
   }
+
 
   const getTodoistColor = (colorName: string) => {
     const colorMap: { [key: string]: string } = {

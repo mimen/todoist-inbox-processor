@@ -8,13 +8,15 @@ interface ProjectSwitcherProps {
   selectedProjectId: string
   onProjectChange: (projectId: string) => void
   taskCount?: number
+  allTasks?: any[]
 }
 
 export default function ProjectSwitcher({ 
   projects, 
   selectedProjectId, 
   onProjectChange,
-  taskCount = 0
+  taskCount = 0,
+  allTasks = []
 }: ProjectSwitcherProps) {
   return (
     <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
@@ -31,6 +33,7 @@ export default function ProjectSwitcher({
         onProjectChange={onProjectChange}
         placeholder="Select project to process..."
         includeInbox={true}
+        allTasks={allTasks}
       />
 
       <div className="mt-3 text-xs text-gray-500">
