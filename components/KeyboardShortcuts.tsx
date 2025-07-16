@@ -12,7 +12,7 @@ interface ShortcutItem {
 export default function KeyboardShortcuts({ onClose }: KeyboardShortcutsProps) {
   const shortcuts = [
     { category: 'Navigation', items: [
-      { key: ['j', 'Enter', '→'], description: 'Go to next task' },
+      { key: ['j', '→'], description: 'Go to next task' },
       { key: ['k', '←'], description: 'Go to previous task' },
       { key: '?', description: 'Show/hide keyboard shortcuts' },
       { key: ['Esc', '`'], description: 'Close any open dialog' },
@@ -26,11 +26,15 @@ export default function KeyboardShortcuts({ onClose }: KeyboardShortcutsProps) {
       { key: 'e', description: 'Archive task (removes from inbox)' },
       { key: 'c', description: 'Mark task as complete' },
     ]},
-    { category: 'Within Dialogs', items: [
+    { category: 'Selection Dialogs', items: [
       { key: ['1', '2', '3', '4'], description: 'Set priority directly (P1-P4)' },
       { key: ['↑', '↓'], description: 'Navigate through options' },
       { key: 'Enter', description: 'Select highlighted option' },
       { key: 'Type', description: 'Filter options or enter custom date' },
+    ]},
+    { category: 'Confirmation Dialogs', items: [
+      { key: 'Enter', description: 'Confirm action (complete/archive)' },
+      { key: 'Esc', description: 'Cancel action' },
     ]},
   ]
 

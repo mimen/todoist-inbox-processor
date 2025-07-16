@@ -482,24 +482,31 @@ export default function TaskProcessor() {
   const handleArchiveTask = useCallback(async () => {
     if (!state.currentTask) return
     
+    // Close the overlay immediately to prevent UI issues
+    setShowArchiveConfirm(false)
+    
+    // Store the current task ID before moving to next
+    const taskId = state.currentTask.id
+    
+    // Move to next task immediately for better UX
+    setState(prev => ({
+      ...prev,
+      processedTasks: [...prev.processedTasks, prev.currentTask!.id],
+    }))
+    moveToNext()
+    
+    // Show optimistic success message
+    setToast({ message: 'Task archived', type: 'success' })
+    
+    // Handle the API request in the background
     try {
-      // Use the DELETE endpoint to archive/close the task
-      const response = await fetch(`/api/todoist/tasks/${state.currentTask.id}`, {
+      const response = await fetch(`/api/todoist/tasks/${taskId}`, {
         method: 'DELETE',
       })
 
       if (!response.ok) {
         throw new Error('Failed to archive task')
       }
-
-      // Move to next task after successful archive
-      setState(prev => ({
-        ...prev,
-        processedTasks: [...prev.processedTasks, prev.currentTask!.id],
-      }))
-      
-      moveToNext()
-      setToast({ message: 'Task archived successfully', type: 'success' })
     } catch (err) {
       console.error('Error archiving task:', err)
       setToast({ 
@@ -507,31 +514,36 @@ export default function TaskProcessor() {
         type: 'error' 
       })
     }
-    
-    setShowArchiveConfirm(false)
   }, [state.currentTask, moveToNext])
 
   const handleCompleteTask = useCallback(async () => {
     if (!state.currentTask) return
     
+    // Close the overlay immediately to prevent UI issues
+    setShowCompleteConfirm(false)
+    
+    // Store the current task ID before moving to next
+    const taskId = state.currentTask.id
+    
+    // Move to next task immediately for better UX
+    setState(prev => ({
+      ...prev,
+      processedTasks: [...prev.processedTasks, prev.currentTask!.id],
+    }))
+    moveToNext()
+    
+    // Show optimistic success message
+    setToast({ message: 'Task completed', type: 'success' })
+    
+    // Handle the API request in the background
     try {
-      // Use the DELETE endpoint to complete/close the task
-      const response = await fetch(`/api/todoist/tasks/${state.currentTask.id}`, {
+      const response = await fetch(`/api/todoist/tasks/${taskId}`, {
         method: 'DELETE',
       })
 
       if (!response.ok) {
         throw new Error('Failed to complete task')
       }
-
-      // Move to next task after successful completion
-      setState(prev => ({
-        ...prev,
-        processedTasks: [...prev.processedTasks, prev.currentTask!.id],
-      }))
-      
-      moveToNext()
-      setToast({ message: 'Task completed successfully', type: 'success' })
     } catch (err) {
       console.error('Error completing task:', err)
       setToast({ 
@@ -539,8 +551,6 @@ export default function TaskProcessor() {
         type: 'error' 
       })
     }
-    
-    setShowCompleteConfirm(false)
   }, [state.currentTask, moveToNext])
 
   const skipTask = useCallback(() => {
@@ -596,7 +606,6 @@ export default function TaskProcessor() {
           break
         case 'j':
         case 'J':
-        case 'Enter':
         case 'ArrowRight':
           e.preventDefault()
           navigateToNextTask()
@@ -638,6 +647,26 @@ export default function TaskProcessor() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [navigateToNextTask, navigateToPrevTask, showShortcuts, showPriorityOverlay, showProjectOverlay, showLabelOverlay, showScheduledOverlay, showDeadlineOverlay])
+
+  // Handle Enter key for confirmation dialogs
+  useEffect(() => {
+    const handleConfirmationKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        if (showArchiveConfirm) {
+          e.preventDefault()
+          handleArchiveTask()
+        } else if (showCompleteConfirm) {
+          e.preventDefault()
+          handleCompleteTask()
+        }
+      }
+    }
+
+    if (showArchiveConfirm || showCompleteConfirm) {
+      window.addEventListener('keydown', handleConfirmationKeyDown)
+      return () => window.removeEventListener('keydown', handleConfirmationKeyDown)
+    }
+  }, [showArchiveConfirm, showCompleteConfirm, handleArchiveTask, handleCompleteTask])
 
   const totalTasks = allTasks.length
   const completedTasks = state.processedTasks.length + state.skippedTasks.length
