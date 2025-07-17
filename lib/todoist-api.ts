@@ -1,4 +1,5 @@
 import { TodoistApi } from '@doist/todoist-api-typescript'
+import crypto from 'crypto'
 
 // Initialize Todoist API client
 const api = new TodoistApi(process.env.TODOIST_API_KEY!)
@@ -134,60 +135,18 @@ export class TodoistApiClient {
     // Fetch active tasks (inbox tasks or all tasks)
     static async getTasks(filter?: string): Promise<TodoistTaskApi[]> {
         try {
-            // Fetch all tasks without any filter to ensure we get everything
-            const response = filter ? await api.getTasks({ filter } as any) : await api.getTasks()
-            console.log('Raw tasks API response:', response)
-            console.log('Response type:', typeof response)
-            console.log('Is array?', Array.isArray(response))
-            if (!Array.isArray(response)) {
-                console.log('Response keys:', Object.keys(response || {}))
+            // Use Sync API to get all tasks, then filter client-side
+            const allTasks = await TodoistApiClient.getAllTasksSync()
+            
+            if (filter) {
+                // For now, we'll just support inbox filter
+                // In the future, could add more complex filtering
+                console.log('Filtering tasks with:', filter)
+                return allTasks
             }
-
-            // Handle different response formats
-            let tasks: any[]
-            if (Array.isArray(response)) {
-                tasks = response
-            } else if (response && typeof response === 'object') {
-                // Try common pagination field names
-                tasks =
-                    (response as any).data ||
-                    (response as any).items ||
-                    (response as any).tasks ||
-                    (response as any).results ||
-                    []
-            } else {
-                tasks = []
-            }
-
-            console.log('Extracted tasks:', tasks)
-
-            // Filter out null/undefined items
-            const validTasks = tasks.filter((task) => task && task.id)
-
-            return validTasks.map((task: any) => ({
-                id: task.id,
-                content: task.content,
-                description: task.description || '',
-                projectId: String(task.projectId),
-                priority: task.priority as 1 | 2 | 3 | 4,
-                labels: task.labels || [],
-                due: task.due
-                    ? {
-                          date: task.due.date,
-                          string: task.due.string,
-                          datetime: task.due.datetime || undefined,
-                      }
-                    : undefined,
-                deadline: task.deadline
-                    ? {
-                          date: task.deadline.date,
-                          string: task.deadline.string,
-                      }
-                    : undefined,
-                createdAt: task.createdAt,
-                responsibleUid: task.responsibleUid || null,
-                isCompleted: task.isCompleted || false,
-            }))
+            
+            // Return all tasks if no filter
+            return allTasks
         } catch (error) {
             console.error('Error fetching tasks:', error)
             throw new Error('Failed to fetch tasks')
@@ -196,7 +155,23 @@ export class TodoistApiClient {
 
     // Get inbox tasks specifically
     static async getInboxTasks(): Promise<TodoistTaskApi[]> {
-        return TodoistApiClient.getTasks()
+        try {
+            // First get all projects to find the inbox
+            const projects = await TodoistApiClient.getProjectsSync()
+            const inboxProject = projects.find(p => p.isInboxProject)
+            
+            if (!inboxProject) {
+                console.error('Inbox project not found')
+                return []
+            }
+            
+            // Get all tasks and filter for inbox
+            const allTasks = await TodoistApiClient.getAllTasksSync()
+            return allTasks.filter(task => task.projectId === String(inboxProject.id))
+        } catch (error) {
+            console.error('Error fetching inbox tasks:', error)
+            throw new Error('Failed to fetch inbox tasks')
+        }
     }
 
     // Get ALL projects using Sync API (to ensure consistent IDs with tasks)
@@ -281,7 +256,7 @@ export class TodoistApiClient {
 
             const result = await response.json()
             console.log('Sync API response received, items count:', result.items?.length || 0)
-            console.log('Sample sync item:', result.items?.[0])
+            console.log('Sample sync item:', JSON.stringify(result.items?.[0], null, 2))
 
             // Convert sync API items to our task format
             const items = result.items || []
@@ -301,6 +276,12 @@ export class TodoistApiClient {
                               date: item.due.date,
                               string: item.due.string,
                               datetime: item.due.datetime || undefined,
+                          }
+                        : undefined,
+                    deadline: item.deadline
+                        ? {
+                              date: item.deadline.date,
+                              string: item.deadline.string,
                           }
                         : undefined,
                     responsibleUid: item.responsible_uid || null,
@@ -436,8 +417,9 @@ export class TodoistApiClient {
             // Handle project move separately using Sync API
             if (updates.projectId && updates.projectId !== '') {
                 try {
-                    const projects = await TodoistApiClient.getProjects()
-                    const targetProject = projects.find((p) => p.id === updates.projectId)
+                    // Use getProjectsSync to ensure consistent IDs with Sync API
+                    const projects = await TodoistApiClient.getProjectsSync()
+                    const targetProject = projects.find((p) => String(p.id) === String(updates.projectId))
                     if (!targetProject) {
                         console.error('Target project not found:', updates.projectId)
                         console.log(
@@ -451,8 +433,8 @@ export class TodoistApiClient {
                         name: targetProject.name,
                     })
 
-                    // Use Sync API for project move
-                    await TodoistApiClient.moveTaskToProject(taskId, updates.projectId)
+                    // Use Sync API for project move - ensure we pass the numeric ID as string
+                    await TodoistApiClient.moveTaskToProject(taskId, String(targetProject.id))
                 } catch (moveError) {
                     console.error('❌ Project move failed:', moveError)
                     throw new Error(`Failed to move task to project: ${moveError}`)
@@ -541,19 +523,97 @@ export class TodoistApiClient {
             }
 
             // Build updates object for other fields (excluding projectId and deadline)
-            const cleanUpdates: any = {}
+            const syncArgs: any = { id: taskId }
+            let hasUpdates = false
 
-            if (updates.content !== undefined) cleanUpdates.content = updates.content
-            if (updates.description !== undefined) cleanUpdates.description = updates.description
-            if (updates.priority !== undefined) cleanUpdates.priority = updates.priority
-            if (updates.labels !== undefined) cleanUpdates.labels = updates.labels
-            if (updates.dueString !== undefined) cleanUpdates.dueString = updates.dueString
+            if (updates.content !== undefined) {
+                syncArgs.content = updates.content
+                hasUpdates = true
+            }
+            if (updates.description !== undefined) {
+                syncArgs.description = updates.description
+                hasUpdates = true
+            }
+            if (updates.priority !== undefined) {
+                // Sync API uses 1-4 where 1 is natural (p4), 4 is urgent (p1)
+                // We need to reverse the priority for Sync API
+                syncArgs.priority = 5 - updates.priority
+                hasUpdates = true
+            }
+            if (updates.labels !== undefined) {
+                syncArgs.labels = updates.labels
+                hasUpdates = true
+            }
+            if (updates.dueString !== undefined) {
+                // Parse due date string
+                if (updates.dueString) {
+                    try {
+                        // First try to parse natural language using Todoist's due date parser
+                        const parseResponse = await api.addTask({
+                            content: 'temp',
+                            dueString: updates.dueString,
+                        })
+                        if (parseResponse.due) {
+                            syncArgs.due = {
+                                date: parseResponse.due.date,
+                                string: updates.dueString,
+                                datetime: parseResponse.due.datetime,
+                            }
+                        }
+                        // Delete the temporary task
+                        await api.deleteTask(parseResponse.id)
+                        hasUpdates = true
+                    } catch (parseError) {
+                        console.error('Failed to parse due date:', parseError)
+                        throw new Error('Invalid due date format')
+                    }
+                } else {
+                    // Remove due date
+                    syncArgs.due = null
+                    hasUpdates = true
+                }
+            }
 
             // Only update other fields if there are any
-            if (Object.keys(cleanUpdates).length > 0) {
-                console.log('📝 Updating task fields:', cleanUpdates)
-                const result = await api.updateTask(taskId, cleanUpdates)
-                console.log('✅ Update task result:', result)
+            if (hasUpdates) {
+                console.log('📝 Updating task fields via Sync API:', syncArgs)
+                
+                // Generate a unique UUID for the command
+                const uuid = crypto.randomUUID()
+
+                const response = await fetch('https://api.todoist.com/sync/v9/sync', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${process.env.TODOIST_API_KEY}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        commands: [
+                            {
+                                type: 'item_update',
+                                args: syncArgs,
+                                uuid: uuid,
+                            },
+                        ],
+                    }),
+                })
+
+                if (!response.ok) {
+                    const errorText = await response.text()
+                    console.error('Sync API update failed:', response.status, errorText)
+                    throw new Error(`Sync API update failed: ${response.status} ${errorText}`)
+                }
+
+                const result = await response.json()
+                console.log('✅ Sync API update result:', result)
+
+                // Check if the command was successful
+                if (result.sync_status && result.sync_status[uuid] === 'ok') {
+                    console.log('✅ Task update confirmed successful')
+                } else {
+                    console.error('❌ Task update failed:', result.sync_status)
+                    throw new Error(`Task update failed: ${JSON.stringify(result.sync_status)}`)
+                }
             } else {
                 console.log('ℹ️  No additional fields to update')
             }
@@ -566,18 +626,59 @@ export class TodoistApiClient {
         }
     }
 
-    // Close (complete) a task
+    // Close (complete) a task using Sync API
     static async closeTask(taskId: string): Promise<boolean> {
         try {
-            await api.closeTask(taskId)
-            return true
-        } catch (error) {
+            const apiKey = process.env.TODOIST_API_KEY
+            if (!apiKey) {
+                throw new Error('TODOIST_API_KEY is not configured')
+            }
+
+            // Generate a unique UUID for the command
+            const uuid = crypto.randomUUID()
+
+            const response = await fetch('https://api.todoist.com/sync/v9/sync', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${apiKey}`,
+                },
+                body: JSON.stringify({
+                    commands: [
+                        {
+                            type: 'item_close',
+                            args: {
+                                id: taskId,
+                            },
+                            uuid: uuid,
+                        },
+                    ],
+                }),
+            })
+
+            if (!response.ok) {
+                const errorText = await response.text()
+                console.error('Sync API error:', errorText)
+                throw new Error(`Sync API request failed: ${response.status}`)
+            }
+
+            const result = await response.json()
+            console.log('Close task response:', result)
+
+            // Check if the command was successful
+            if (result.sync_status && result.sync_status[uuid] === 'ok') {
+                return true
+            } else {
+                console.error('Close task command failed:', result.sync_status)
+                throw new Error('Failed to close task')
+            }
+        } catch (error: any) {
             console.error('Error closing task:', error)
-            throw new Error('Failed to close task')
+            throw new Error(`Failed to close task: ${error.message || 'Unknown error'}`)
         }
     }
 
-    // Create a new task
+    // Create a new task using Sync API
     static async createTask(
         content: string,
         options?: {
@@ -589,38 +690,106 @@ export class TodoistApiClient {
         },
     ): Promise<TodoistTaskApi> {
         try {
-            const taskData: any = {
-                content,
-                ...(options?.description && { description: options.description }),
-                ...(options?.projectId && { projectId: options.projectId }),
-                ...(options?.priority && { priority: options.priority }),
-                ...(options?.labels && { labels: options.labels }),
-                ...(options?.dueString && { dueString: options.dueString }),
+            const apiKey = process.env.TODOIST_API_KEY
+            if (!apiKey) {
+                throw new Error('TODOIST_API_KEY is not configured')
             }
 
-            const response = await api.addTask(taskData)
-            return {
-                id: response.id,
-                content: response.content,
-                description: response.description || '',
-                projectId: response.projectId,
-                priority: response.priority as 1 | 2 | 3 | 4,
-                labels: response.labels || [],
-                due: response.due
-                    ? {
-                          date: response.due.date,
-                          string: response.due.string,
-                          datetime: response.due.datetime || undefined,
-                      }
-                    : undefined,
-                deadline: (response as any).deadline
-                    ? {
-                          date: (response as any).deadline.date,
-                          string: (response as any).deadline.string,
-                      }
-                    : undefined,
-                createdAt: (response as any).createdAt || new Date().toISOString(),
-                isCompleted: !!response.completedAt,
+            // Generate a unique UUID for the command
+            const uuid = crypto.randomUUID()
+            const tempId = crypto.randomUUID()
+
+            // Build the item_add args
+            const args: any = {
+                id: tempId,
+                content,
+            }
+
+            if (options?.description) {
+                args.description = options.description
+            }
+            if (options?.projectId) {
+                args.project_id = options.projectId
+            }
+            if (options?.priority) {
+                // Convert priority: REST API uses 1-4 (1=natural, 4=urgent)
+                // Sync API uses 1-4 (1=natural/p4, 4=urgent/p1)
+                args.priority = 5 - options.priority
+            }
+            if (options?.labels) {
+                args.labels = options.labels
+            }
+            if (options?.dueString) {
+                // Parse due date - for now, use a simple date format
+                // In production, you'd want more sophisticated parsing
+                args.due = { string: options.dueString }
+            }
+
+            const response = await fetch('https://api.todoist.com/sync/v9/sync', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${apiKey}`,
+                },
+                body: JSON.stringify({
+                    commands: [
+                        {
+                            type: 'item_add',
+                            temp_id: tempId,
+                            args: args,
+                            uuid: uuid,
+                        },
+                    ],
+                }),
+            })
+
+            if (!response.ok) {
+                const errorText = await response.text()
+                console.error('Sync API error:', errorText)
+                throw new Error(`Sync API request failed: ${response.status}`)
+            }
+
+            const result = await response.json()
+            console.log('Create task response:', result)
+
+            // Check if the command was successful
+            if (result.sync_status && result.sync_status[uuid] === 'ok') {
+                // Get the created item from temp_id_mapping
+                const createdId = result.temp_id_mapping[tempId]
+                
+                // Find the created item in the response
+                const createdItem = result.items?.find((item: any) => item.id === createdId)
+                
+                if (!createdItem) {
+                    throw new Error('Created task not found in response')
+                }
+
+                return {
+                    id: createdItem.id,
+                    content: createdItem.content,
+                    description: createdItem.description || '',
+                    projectId: String(createdItem.project_id),
+                    priority: createdItem.priority as 1 | 2 | 3 | 4,
+                    labels: createdItem.labels || [],
+                    due: createdItem.due
+                        ? {
+                              date: createdItem.due.date,
+                              string: createdItem.due.string,
+                              datetime: createdItem.due.datetime || undefined,
+                          }
+                        : undefined,
+                    deadline: createdItem.deadline
+                        ? {
+                              date: createdItem.deadline.date,
+                              string: createdItem.deadline.string,
+                          }
+                        : undefined,
+                    createdAt: new Date().toISOString(),
+                    isCompleted: false,
+                }
+            } else {
+                console.error('Create task command failed:', result.sync_status)
+                throw new Error('Failed to create task')
             }
         } catch (error) {
             console.error('Error creating task:', error)
