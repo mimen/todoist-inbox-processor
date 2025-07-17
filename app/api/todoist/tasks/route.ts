@@ -17,10 +17,21 @@ export async function GET(request: NextRequest) {
     
     console.log('API: Returning tasks:', tasks.length)
     return NextResponse.json(tasks)
-  } catch (error) {
-    console.error('API Error:', error)
+  } catch (error: any) {
+    console.error('API Error Details:', {
+      message: error.message,
+      stack: error.stack,
+      response: error.response,
+      data: error.data,
+      fullError: error
+    })
+    
     return NextResponse.json(
-      { error: 'Failed to fetch tasks' },
+      { 
+        error: 'Failed to fetch tasks',
+        details: error.message || 'Unknown error',
+        projectId: searchParams.get('projectId')
+      },
       { status: 500 }
     )
   }

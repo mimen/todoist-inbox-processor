@@ -168,7 +168,7 @@ export class TodoistApiClient {
                 id: task.id,
                 content: task.content,
                 description: task.description || '',
-                projectId: task.projectId,
+                projectId: String(task.projectId),
                 priority: task.priority as 1 | 2 | 3 | 4,
                 labels: task.labels || [],
                 due: task.due
@@ -320,7 +320,10 @@ export class TodoistApiClient {
     // Get tasks for a specific project
     static async getProjectTasks(projectId: string): Promise<TodoistTaskApi[]> {
         try {
-            const response = await api.getTasks({ projectId } as any)
+            console.log(`getProjectTasks called with projectId: ${projectId} (type: ${typeof projectId})`)
+            
+            // The REST API expects a string project ID, not numeric
+            const response = await api.getTasks({ projectId: projectId } as any)
             console.log(`Tasks response for project ${projectId}:`, response)
 
             // Handle different response formats
@@ -348,7 +351,7 @@ export class TodoistApiClient {
                 id: task.id,
                 content: task.content,
                 description: task.description || '',
-                projectId: task.projectId,
+                projectId: String(task.projectId),
                 priority: task.priority as 1 | 2 | 3 | 4,
                 labels: task.labels || [],
                 due: task.due

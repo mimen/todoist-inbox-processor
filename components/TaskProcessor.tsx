@@ -83,27 +83,32 @@ export default function TaskProcessor() {
         const inboxId = inboxProject?.id || 'inbox'
         setSelectedProjectId(inboxId)
         
-        // Load inbox tasks IMMEDIATELY
-        if (inboxProject) {
-          const inboxTasksRes = await fetch(`/api/todoist/tasks?projectId=${inboxProject.id}`)
-          if (inboxTasksRes.ok) {
-            const inboxTasks = await inboxTasksRes.json()
-            const filteredInboxTasks = inboxTasks.filter((task: any) => !task.content.startsWith('* '))
+        // Load ALL tasks immediately using sync API
+        const allTasksRes = await fetch('/api/todoist/all-tasks')
+        if (allTasksRes.ok) {
+          const data = await allTasksRes.json()
+          console.log(`Loaded ${data.total} total tasks via ${data.message}`)
+          setAllTasksGlobal(data.tasks)
+          
+          // Filter and display inbox tasks immediately
+          if (inboxProject) {
+            const inboxTasks = data.tasks.filter((task: any) => 
+              String(task.projectId) === String(inboxProject.id) && !task.content.startsWith('* ')
+            )
             
-            // Display inbox tasks right away
-            setAllTasks(filteredInboxTasks)
+            setAllTasks(inboxTasks)
             
-            if (filteredInboxTasks.length > 0) {
+            if (inboxTasks.length > 0) {
               setState({
-                currentTask: filteredInboxTasks[0],
-                queuedTasks: filteredInboxTasks.slice(1),
+                currentTask: inboxTasks[0],
+                queuedTasks: inboxTasks.slice(1),
                 processedTasks: [],
                 skippedTasks: [],
               })
               setTaskKey(prev => prev + 1)
             }
             
-            console.log(`Loaded and displayed ${filteredInboxTasks.length} inbox tasks FIRST`)
+            console.log(`Displayed ${inboxTasks.length} inbox tasks from sync data`)
           }
         }
         
@@ -112,15 +117,6 @@ export default function TaskProcessor() {
           .then(res => res.json())
           .then(hierarchyData => setProjectHierarchy(hierarchyData))
           .catch(err => console.error('Failed to load project hierarchy:', err))
-          
-        // THEN load ALL tasks in the background without disrupting the inbox view
-        fetch('/api/todoist/all-tasks')
-          .then(res => res.json())
-          .then(data => {
-            console.log(`Background loaded ${data.total} total tasks via ${data.message}`)
-            setAllTasksGlobal(data.tasks)
-          })
-          .catch(err => console.error('Failed to load all tasks:', err))
       } catch (err) {
         console.error('Error loading initial data:', err)
         setError(err instanceof Error ? err.message : 'Failed to load data')
