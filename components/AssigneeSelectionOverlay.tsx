@@ -117,8 +117,8 @@ export default function AssigneeSelectionOverlay({
                 onClick={() => onAssigneeSelect(option.id)}
                 className={`w-full text-left px-4 py-3 rounded-md flex items-center space-x-3 transition-colors ${
                   index === selectedIndex
-                    ? 'bg-todoist-blue text-white'
-                    : 'hover:bg-gray-100'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-900 hover:bg-gray-100'
                 }`}
               >
                 <span className={`text-sm font-medium mr-2 ${
@@ -129,27 +129,27 @@ export default function AssigneeSelectionOverlay({
                 
                 {option.id !== null ? (
                   <>
-                    {option.avatarSmall ? (
+                    {option.avatarSmall && (
                       <img 
                         src={option.avatarSmall} 
                         alt={option.name}
-                        className="w-8 h-8 rounded-full"
+                        className="w-8 h-8 rounded-full object-cover"
                         onError={(e) => {
-                          console.error('Avatar failed to load:', option.avatarSmall)
+                          // Instead of hiding, show fallback icon
                           e.currentTarget.style.display = 'none'
+                          e.currentTarget.parentElement?.querySelector('.avatar-fallback')?.classList.remove('hidden')
                         }}
                       />
-                    ) : (
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                        index === selectedIndex ? 'bg-white/20' : 'bg-gray-200'
-                      }`}>
-                        <svg className={`w-5 h-5 ${
-                          index === selectedIndex ? 'text-white' : 'text-gray-500'
-                        }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                      </div>
                     )}
+                    <div className={`avatar-fallback w-8 h-8 rounded-full flex items-center justify-center ${
+                      index === selectedIndex ? 'bg-blue-700' : 'bg-gray-200'
+                    } ${option.avatarSmall ? 'hidden' : ''}`}>
+                      <svg className={`w-5 h-5 ${
+                        index === selectedIndex ? 'text-white' : 'text-gray-500'
+                      }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
                     <div className="flex-1">
                       <p className={`font-medium ${
                         index === selectedIndex ? 'text-white' : 'text-gray-900'
@@ -168,7 +168,7 @@ export default function AssigneeSelectionOverlay({
                 ) : (
                   <>
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      index === selectedIndex ? 'bg-white/20' : 'bg-gray-200'
+                      index === selectedIndex ? 'bg-blue-700' : 'bg-gray-200'
                     }`}>
                       <svg className={`w-5 h-5 ${
                         index === selectedIndex ? 'text-white' : 'text-gray-500'
@@ -187,7 +187,7 @@ export default function AssigneeSelectionOverlay({
                 {option.id === currentAssigneeId && (
                   <span className={`text-xs px-2 py-1 rounded ml-auto ${
                     index === selectedIndex 
-                      ? 'bg-white/20 text-white' 
+                      ? 'bg-blue-700 text-blue-100' 
                       : 'bg-purple-100 text-purple-700'
                   }`}>
                     Current

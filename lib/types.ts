@@ -92,4 +92,15 @@ export interface TodoistUser {
   avatarBig?: string
   avatarMedium?: string
   avatarSmall?: string
+  isCurrentUser?: boolean
+}
+
+export interface CollaboratorsData {
+  currentUser: {
+    id: string
+    name: string
+    email: string
+  } | null
+  allUsers: TodoistUser[]
+  projectCollaborators: Record<string, string[]> // projectId -> userId[]
 }

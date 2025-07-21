@@ -8,6 +8,7 @@ interface TaskCardProps {
   projects: TodoistProject[]
   labels: TodoistLabel[]
   assignee?: TodoistUser
+  hasCollaborators?: boolean
   onContentChange?: (newContent: string) => void
   onDescriptionChange?: (newDescription: string) => void
   onProjectClick?: () => void
@@ -24,6 +25,7 @@ export default function TaskCard({
   projects, 
   labels, 
   assignee,
+  hasCollaborators = false,
   onContentChange, 
   onDescriptionChange,
   onProjectClick,
@@ -191,7 +193,7 @@ export default function TaskCard({
           
           <button
             onClick={onProjectClick}
-            className="inline-flex items-center space-x-1.5 bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded text-xs transition-colors cursor-pointer"
+            className="inline-flex items-center space-x-1.5 bg-gray-100 hover:bg-gray-200 px-2.5 py-1.5 rounded text-sm transition-colors cursor-pointer"
             title="Click to change project"
           >
             {(() => {
@@ -200,7 +202,7 @@ export default function TaskCard({
               return (
                 <>
                   <div 
-                    className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                    className="w-3 h-3 rounded-full flex-shrink-0"
                     style={{ backgroundColor: projectColor }}
                   ></div>
                   <span className="text-gray-700">
@@ -212,7 +214,7 @@ export default function TaskCard({
           </button>
           <button
             onClick={onPriorityClick}
-            className={`px-2 py-1 text-xs font-medium rounded transition-colors hover:opacity-80 cursor-pointer ${getPriorityColor(task.priority)}`}
+            className={`px-2.5 py-1.5 text-sm font-medium rounded transition-colors hover:opacity-80 cursor-pointer ${getPriorityColor(task.priority)}`}
             title="Click to change priority"
           >
             P{getUIPriority(task.priority)} • {getPriorityLabel(task.priority)}
@@ -222,10 +224,10 @@ export default function TaskCard({
           {task.due ? (
             <button
               onClick={onScheduledClick}
-              className="inline-flex items-center space-x-1.5 bg-blue-100 hover:bg-blue-200 px-2 py-1 rounded text-xs transition-colors cursor-pointer"
+              className="inline-flex items-center space-x-1.5 bg-blue-100 hover:bg-blue-200 px-2.5 py-1.5 rounded text-sm transition-colors cursor-pointer"
               title="Click to change scheduled date"
             >
-              <svg className="w-3 h-3 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
               <span className="text-blue-700">
@@ -235,10 +237,10 @@ export default function TaskCard({
           ) : (
             <button
               onClick={onScheduledClick}
-              className="inline-flex items-center space-x-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-100 px-2 py-1 rounded text-xs transition-colors"
+              className="inline-flex items-center space-x-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-100 px-2.5 py-1.5 rounded text-sm transition-colors"
               title="Add scheduled date"
             >
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
               <span>Schedule</span>
@@ -249,10 +251,10 @@ export default function TaskCard({
           {task.deadline ? (
             <button
               onClick={onDeadlineClick}
-              className="inline-flex items-center space-x-1.5 bg-red-100 hover:bg-red-200 px-2 py-1 rounded text-xs transition-colors cursor-pointer"
+              className="inline-flex items-center space-x-1.5 bg-red-100 hover:bg-red-200 px-2.5 py-1.5 rounded text-sm transition-colors cursor-pointer"
               title="Click to change deadline"
             >
-              <svg className="w-3 h-3 text-red-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-red-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <span className="text-red-700">
@@ -262,49 +264,53 @@ export default function TaskCard({
           ) : (
             <button
               onClick={onDeadlineClick}
-              className="inline-flex items-center space-x-1.5 text-gray-400 hover:text-red-600 hover:bg-red-100 px-2 py-1 rounded text-xs transition-colors"
+              className="inline-flex items-center space-x-1.5 text-gray-400 hover:text-red-600 hover:bg-red-100 px-2.5 py-1.5 rounded text-sm transition-colors"
               title="Add deadline"
             >
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <span>Deadline</span>
             </button>
           )}
           
-          {/* Assignee */}
-          {task.assigneeId ? (
-            <button
-              onClick={onAssigneeClick}
-              className="inline-flex items-center space-x-1.5 bg-purple-100 hover:bg-purple-200 px-2 py-1 rounded text-xs transition-colors cursor-pointer"
-              title={assignee ? `Assigned to ${assignee.name}` : "Click to change assignee"}
-            >
-              {assignee?.avatarSmall ? (
-                <img 
-                  src={assignee.avatarSmall} 
-                  alt={assignee.name}
-                  className="w-3 h-3 rounded-full"
-                />
-              ) : (
-                <svg className="w-3 h-3 text-purple-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              )}
-              <span className="text-purple-700">
-                {assignee ? assignee.name : 'Unknown'}
-              </span>
-            </button>
-          ) : (
-            <button
-              onClick={onAssigneeClick}
-              className="inline-flex items-center space-x-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-100 px-2 py-1 rounded text-xs transition-colors"
-              title="Assign to someone"
-            >
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-              <span>Assign</span>
-            </button>
+          {/* Assignee - only show if there are collaborators or task is already assigned */}
+          {(task.assigneeId || hasCollaborators) && (
+            <>
+              {task.assigneeId ? (
+                <button
+                  onClick={onAssigneeClick}
+                  className="inline-flex items-center space-x-1.5 bg-purple-100 hover:bg-purple-200 px-2.5 py-1.5 rounded text-sm transition-colors cursor-pointer"
+                  title={assignee ? `Assigned to ${assignee.name}` : "Click to change assignee"}
+                >
+                  {assignee?.avatarSmall ? (
+                    <img 
+                      src={assignee.avatarSmall} 
+                      alt={assignee.name}
+                      className="w-4 h-4 rounded-full"
+                    />
+                  ) : (
+                    <svg className="w-4 h-4 text-purple-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  )}
+                  <span className="text-purple-700">
+                    {assignee ? assignee.name : 'Unknown'}
+                  </span>
+                </button>
+              ) : hasCollaborators ? (
+                <button
+                  onClick={onAssigneeClick}
+                  className="inline-flex items-center space-x-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-100 px-2.5 py-1.5 rounded text-sm transition-colors"
+                  title="Assign to someone"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  <span>Assign</span>
+                </button>
+              ) : null}
+            </>
           )}
           
           {/* Labels */}
@@ -314,11 +320,11 @@ export default function TaskCard({
             return (
               <span
                 key={labelName}
-                className="text-xs px-2 py-1 rounded inline-flex items-center space-x-1 group relative transition-all"
+                className="text-sm px-2.5 py-1.5 rounded inline-flex items-center space-x-1 group relative transition-all"
                 style={{ backgroundColor: `${labelColor}20`, color: labelColor }}
               >
                 <div 
-                  className="w-2 h-2 rounded-full flex-shrink-0"
+                  className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                   style={{ backgroundColor: labelColor }}
                 ></div>
                 <span>{labelName}</span>
@@ -335,7 +341,7 @@ export default function TaskCard({
           {onLabelAdd && (
             <button
               onClick={onLabelAdd}
-              className="inline-flex items-center space-x-1 text-xs px-2 py-1 rounded transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200"
+              className="inline-flex items-center space-x-1 text-sm px-2.5 py-1.5 rounded transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200"
               title="Add labels"
             >
               <span className="font-medium">+ Add Label</span>

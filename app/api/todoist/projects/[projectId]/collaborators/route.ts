@@ -17,15 +17,40 @@ export async function GET(
             )
         }
 
-        // Current user info - hardcoded for now since getUser doesn't exist
-        // This should match the user ID from the MCP config
-        const currentUser = {
+        // Try to get current user from sync API first
+        const syncResponse = await fetch('https://api.todoist.com/sync/v9/sync', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${process.env.TODOIST_API_KEY}`,
+            },
+            body: JSON.stringify({
+                sync_token: '*',
+                resource_types: ['user'],
+            }),
+        })
+        
+        let currentUser = {
             id: '13801296',
             name: 'You',
             email: '',
             avatarBig: undefined,
             avatarMedium: undefined,
             avatarSmall: undefined,
+        }
+        
+        if (syncResponse.ok) {
+            const syncData = await syncResponse.json()
+            if (syncData.user) {
+                currentUser = {
+                    id: String(syncData.user.id),
+                    name: syncData.user.full_name || syncData.user.email || 'You',
+                    email: syncData.user.email || '',
+                    avatarBig: syncData.user.avatar_big,
+                    avatarMedium: syncData.user.avatar_medium,
+                    avatarSmall: syncData.user.avatar_s640 || syncData.user.avatar_medium,
+                }
+            }
         }
         console.log('Using current user:', currentUser)
 

@@ -21,7 +21,7 @@ export default function KeyboardShortcuts({ onClose }: KeyboardShortcutsProps) {
       { key: 'p', description: 'Change task priority' },
       { key: '#', description: 'Move to different project' },
       { key: '@', description: 'Add or remove labels' },
-      { key: '+', description: 'Assign task to someone' },
+      { key: '+', description: 'Assign task to someone (if collaborators exist)' },
       { key: 's', description: 'Schedule when to work on task' },
       { key: 'd', description: 'Set task deadline' },
       { key: 'e', description: 'Archive task (removes from inbox)' },

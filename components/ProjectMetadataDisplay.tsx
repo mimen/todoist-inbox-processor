@@ -1,12 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { TodoistProject } from '@/lib/types'
+import { TodoistProject, TodoistUser } from '@/lib/types'
 
 interface ProjectMetadataDisplayProps {
   project: TodoistProject | undefined
   metadata: any
   allProjects?: TodoistProject[]
+  collaborators?: TodoistUser[]
   className?: string
 }
 
@@ -41,6 +42,7 @@ export default function ProjectMetadataDisplay({
   project, 
   metadata,
   allProjects = [],
+  collaborators = [],
   className = ''
 }: ProjectMetadataDisplayProps) {
   const [isExpanded, setIsExpanded] = useState(false)
@@ -55,6 +57,7 @@ export default function ProjectMetadataDisplay({
 
   const hasMetadata = metadata && Object.keys(metadata).length > 0
   const hasDescription = metadata?.description && metadata.description.trim().length > 0
+  const hasCollaborators = collaborators && collaborators.length > 0
 
   // Convert API priority (1-4) to UI priority (P4-P1) - same as TaskCard
   const getUIPriority = (apiPriority: number) => {
@@ -102,7 +105,7 @@ export default function ProjectMetadataDisplay({
           {/* Project name with color */}
           <div className="flex items-center space-x-2">
             <div 
-              className="w-4 h-4 rounded-full flex-shrink-0"
+              className="w-3 h-3 rounded-full flex-shrink-0"
               style={{ backgroundColor: getTodoistColor(project.color) }}
             />
             <h3 className="font-medium text-gray-900">{project.name}</h3>
@@ -141,15 +144,25 @@ export default function ProjectMetadataDisplay({
                   ↳ {allProjects.find(p => p.id === project.parentId)?.name || 'Unknown'}
                 </span>
               )}
+              
+              {/* Collaborators Badge */}
+              {hasCollaborators && (
+                <span className="inline-flex items-center space-x-1 px-2 py-1 text-xs font-medium rounded bg-purple-50 text-purple-700">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  <span>{collaborators.length} collaborator{collaborators.length !== 1 ? 's' : ''}</span>
+                </span>
+              )}
             </>
           )}
 
-          {/* Expand/Collapse button if there's a description */}
-          {hasDescription && (
+          {/* Expand/Collapse button if there's a description or collaborators */}
+          {(hasDescription || hasCollaborators) && (
             <button
               onClick={() => setIsExpanded(!isExpanded)}
               className="ml-auto text-gray-400 hover:text-gray-600 transition-colors"
-              title={isExpanded ? "Collapse description" : "Expand description"}
+              title={isExpanded ? "Collapse details" : "Expand details"}
             >
               <svg 
                 className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} 
@@ -163,12 +176,55 @@ export default function ProjectMetadataDisplay({
           )}
         </div>
 
-        {/* Expandable Description */}
-        {hasDescription && isExpanded && (
-          <div className="mt-2 pt-2 border-t border-gray-100">
-            <p className="text-sm text-gray-600 italic">
-              "{metadata.description}"
-            </p>
+        {/* Expandable Content */}
+        {isExpanded && (hasDescription || hasCollaborators) && (
+          <div className="mt-2 pt-2 border-t border-gray-100 space-y-3">
+            {/* Description */}
+            {hasDescription && (
+              <div>
+                <p className="text-sm text-gray-600 italic">
+                  "{metadata.description}"
+                </p>
+              </div>
+            )}
+            
+            {/* Collaborators */}
+            {hasCollaborators && (
+              <div>
+                <h4 className="text-xs font-medium text-gray-700 mb-2">Collaborators ({collaborators.length})</h4>
+                <div className="flex flex-wrap gap-2">
+                  {collaborators.map((collaborator) => (
+                    <div
+                      key={collaborator.id}
+                      className="flex items-center space-x-2 bg-gray-50 rounded-full px-3 py-1"
+                      title={collaborator.email || collaborator.name}
+                    >
+                      {collaborator.avatarSmall ? (
+                        <img
+                          src={collaborator.avatarSmall}
+                          alt={collaborator.name}
+                          className="w-5 h-5 rounded-full object-cover"
+                          onError={(e) => {
+                            // Instead of hiding, show fallback icon
+                            e.currentTarget.style.display = 'none'
+                            e.currentTarget.nextElementSibling?.classList.remove('hidden')
+                          }}
+                        />
+                      ) : null}
+                      <div className={`w-5 h-5 rounded-full bg-gray-300 flex items-center justify-center ${collaborator.avatarSmall ? 'hidden' : ''}`}>
+                        <svg className="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                      </div>
+                      <span className="text-xs text-gray-700">
+                        {collaborator.name}
+                        {collaborator.isCurrentUser && ' (You)'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

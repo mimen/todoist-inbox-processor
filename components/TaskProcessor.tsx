@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { TodoistTask, TodoistProject, TodoistLabel, ProcessingState, TaskUpdate, TodoistUser } from '@/lib/types'
+import { TodoistTask, TodoistProject, TodoistLabel, ProcessingState, TaskUpdate, TodoistUser, CollaboratorsData } from '@/lib/types'
 import { generateMockSuggestions } from '@/lib/mock-data'
 import { suggestionsCache } from '@/lib/suggestions-cache'
 import { ProcessingMode } from '@/types/processing-mode'
@@ -91,10 +91,32 @@ export default function TaskProcessor() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
   const [currentTaskSuggestions, setCurrentTaskSuggestions] = useState<any[]>([])
   const [showAssigneeOverlay, setShowAssigneeOverlay] = useState(false)
-  const [projectCollaborators, setProjectCollaborators] = useState<Record<string, TodoistUser[]>>({})
+  const [collaboratorsData, setCollaboratorsData] = useState<CollaboratorsData | null>(null)
   const [currentTaskAssignee, setCurrentTaskAssignee] = useState<TodoistUser | undefined>(undefined)
   const [assigneeFilter, setAssigneeFilter] = useState<AssigneeFilterType>('not-assigned-to-others')
-  const currentUserId = '13801296' // This should match the user ID from the MCP config
+  const [projectCollaborators, setProjectCollaborators] = useState<Record<string, TodoistUser[]>>({})
+  const currentUserId = collaboratorsData?.currentUser?.id || '13801296' // Use dynamic user ID
+  
+  // Helper function to check if current project has collaborators
+  const hasCollaboratorsForCurrentProject = useCallback(() => {
+    if (!state.currentTask) return false
+    const projectId = state.currentTask.projectId
+    
+    // Check if we have collaborator data for this project
+    const projectCollabs = projectCollaborators[projectId]
+    if (projectCollabs && projectCollabs.length > 0) {
+      return true
+    }
+    
+    // Check sync data
+    if (collaboratorsData?.projectCollaborators[projectId]) {
+      const collabIds = collaboratorsData.projectCollaborators[projectId]
+      // More than just the current user means there are other collaborators
+      return collabIds.length > 1 || (collabIds.length === 1 && collabIds[0] !== currentUserId)
+    }
+    
+    return false
+  }, [state.currentTask, projectCollaborators, collaboratorsData, currentUserId])
 
   // Load initial data (projects and labels)
   useEffect(() => {
@@ -103,22 +125,24 @@ export default function TaskProcessor() {
         setLoading(true)
         setError(null)
 
-        // Fetch critical data first (projects, labels, and filters)
+        // Fetch critical data first (projects, labels, filters, and collaborators)
         // Use sync API for projects to ensure consistent IDs with tasks
-        const [projectsRes, labelsRes, filtersRes] = await Promise.all([
+        const [projectsRes, labelsRes, filtersRes, collaboratorsRes] = await Promise.all([
           fetch('/api/todoist/projects-sync'),
           fetch('/api/todoist/labels'),
           fetch('/api/todoist/filters'),
+          fetch('/api/todoist/collaborators-sync'),
         ])
 
         if (!projectsRes.ok || !labelsRes.ok) {
           throw new Error('Failed to fetch data from Todoist API')
         }
 
-        const [projectsResponse, labelsData, filtersData] = await Promise.all([
+        const [projectsResponse, labelsData, filtersData, collaboratorsData] = await Promise.all([
           projectsRes.json(),
           labelsRes.json(),
           filtersRes.ok ? filtersRes.json() : [],
+          collaboratorsRes.ok ? collaboratorsRes.json() : null,
         ])
         
         // Extract projects from response
@@ -127,6 +151,42 @@ export default function TaskProcessor() {
         setProjects(projectsData)
         setLabels(labelsData)
         setFilters(filtersData)
+        
+        // Set collaborators data and pre-populate project collaborators
+        if (collaboratorsData) {
+          setCollaboratorsData(collaboratorsData)
+          console.log(`Loaded collaborators data:`, {
+            currentUser: collaboratorsData.currentUser,
+            totalUsers: collaboratorsData.allUsers?.length || 0,
+            projectsWithCollaborators: Object.keys(collaboratorsData.projectCollaborators || {}).length
+          })
+          
+          // Pre-populate projectCollaborators using the actual mapping from collaborator_states
+          const initialProjectCollaborators: Record<string, TodoistUser[]> = {}
+          
+          // For each project, find the active collaborators
+          Object.entries(collaboratorsData.projectCollaborators || {}).forEach(([projectId, userIds]) => {
+            // Map user IDs to actual user objects
+            const projectUsers = (userIds as string[])
+              .map(userId => collaboratorsData.allUsers.find(user => user.id === userId))
+              .filter(Boolean) as TodoistUser[]
+            
+            initialProjectCollaborators[projectId] = projectUsers
+            console.log(`Project ${projectId} has ${projectUsers.length} collaborators:`, 
+              projectUsers.map(u => ({ id: u.id, name: u.name }))
+            )
+          })
+          
+          // For projects with no collaborators, set empty array
+          projectsData.forEach((project: any) => {
+            if (!(project.id in initialProjectCollaborators)) {
+              initialProjectCollaborators[project.id] = []
+            }
+          })
+          
+          setProjectCollaborators(initialProjectCollaborators)
+          console.log(`Pre-populated collaborators for ${Object.keys(initialProjectCollaborators).length} projects`)
+        }
         
         console.log(`Loaded ${projectsData.length} projects`)
         
@@ -362,7 +422,7 @@ export default function TaskProcessor() {
     loadSuggestions()
   }, [state.currentTask?.id, state.currentTask?.content, state.currentTask?.description, state.currentTask?.projectId, projectHierarchy, projects])
   
-  // Load collaborators and assignee when current task changes
+  // Load assignee when current task changes
   useEffect(() => {
     async function loadAssigneeData() {
       if (!state.currentTask) {
@@ -370,61 +430,14 @@ export default function TaskProcessor() {
         return
       }
 
-      // Load collaborators for the project if not already cached
-      const projectId = state.currentTask.projectId
-      console.log('Loading assignee data for task:', {
-        taskId: state.currentTask.id,
-        projectId,
-        assigneeId: state.currentTask.assigneeId
-      })
-      
-      if (projectId && !projectCollaborators[projectId]) {
-        try {
-          // Include current assignee in the request if they exist
-          const url = state.currentTask.assigneeId 
-            ? `/api/todoist/projects/${projectId}/collaborators?includeAssignee=${state.currentTask.assigneeId}`
-            : `/api/todoist/projects/${projectId}/collaborators`
-            
-          const response = await fetch(url)
-          if (response.ok) {
-            const data = await response.json()
-            const collaborators = data.users || data // Handle both old and new response formats
-            console.log(`Fetched ${collaborators.length} collaborators for project ${projectId}:`, collaborators)
-            console.log('Project metadata:', {
-              isPersonalProject: data.isPersonalProject,
-              hasCollaborators: data.hasCollaborators
-            })
-            setProjectCollaborators(prev => ({
-              ...prev,
-              [projectId]: collaborators
-            }))
-          } else {
-            console.error('Failed to fetch collaborators, status:', response.status)
-          }
-        } catch (error) {
-          console.error('Error fetching project collaborators:', error)
-        }
-      }
-
-      // Find the assignee from collaborators
-      if (state.currentTask.assigneeId && projectCollaborators[projectId]) {
-        console.log('Looking for assignee:', {
-          assigneeId: state.currentTask.assigneeId,
-          assigneeIdType: typeof state.currentTask.assigneeId,
-          collaborators: projectCollaborators[projectId].map(c => ({
-            id: c.id,
-            idType: typeof c.id,
-            name: c.name
-          }))
-        })
-        
-        // Try to find assignee with string comparison
-        const assignee = projectCollaborators[projectId].find(
-          collab => String(collab.id) === String(state.currentTask?.assigneeId)
+      // Find the assignee from all available users
+      if (state.currentTask.assigneeId && collaboratorsData?.allUsers) {
+        const assignee = collaboratorsData.allUsers.find(
+          user => String(user.id) === String(state.currentTask?.assigneeId)
         )
         
         if (assignee) {
-          console.log('Found assignee:', assignee)
+          console.log('Found assignee from sync data:', assignee)
           setCurrentTaskAssignee(assignee)
         } else {
           // If we can't find the assignee in collaborators, create a placeholder
@@ -444,7 +457,7 @@ export default function TaskProcessor() {
     }
 
     loadAssigneeData()
-  }, [state.currentTask?.id, state.currentTask?.assigneeId, state.currentTask?.projectId, projectCollaborators])
+  }, [state.currentTask?.id, state.currentTask?.assigneeId, collaboratorsData])
   
   // Update task key when current task changes to force form re-render
   const moveToNext = useCallback(() => {
@@ -758,9 +771,9 @@ export default function TaskProcessor() {
       }))
       
       // Update the current assignee display
-      if (userId && projectCollaborators[state.currentTask.projectId]) {
-        const newAssignee = projectCollaborators[state.currentTask.projectId].find(
-          collab => String(collab.id) === String(userId)
+      if (userId && collaboratorsData?.allUsers) {
+        const newAssignee = collaboratorsData.allUsers.find(
+          user => String(user.id) === String(userId)
         )
         setCurrentTaskAssignee(newAssignee)
       } else {
@@ -778,9 +791,9 @@ export default function TaskProcessor() {
         }))
         
         // Revert assignee display
-        if (originalAssigneeId && projectCollaborators[state.currentTask.projectId]) {
-          const originalAssignee = projectCollaborators[state.currentTask.projectId].find(
-            collab => String(collab.id) === String(originalAssigneeId)
+        if (originalAssigneeId && collaboratorsData?.allUsers) {
+          const originalAssignee = collaboratorsData.allUsers.find(
+            user => String(user.id) === String(originalAssigneeId)
           )
           setCurrentTaskAssignee(originalAssignee)
         } else {
@@ -907,7 +920,9 @@ export default function TaskProcessor() {
           break
         case '+':
           e.preventDefault()
-          setShowAssigneeOverlay(true)
+          if (hasCollaboratorsForCurrentProject()) {
+            setShowAssigneeOverlay(true)
+          }
           break
         case 's':
         case 'S':
@@ -961,7 +976,7 @@ export default function TaskProcessor() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [navigateToNextTask, navigateToPrevTask, showShortcuts, showPriorityOverlay, showProjectOverlay, showLabelOverlay, showScheduledOverlay, showDeadlineOverlay])
+  }, [navigateToNextTask, navigateToPrevTask, showShortcuts, showPriorityOverlay, showProjectOverlay, showLabelOverlay, showScheduledOverlay, showDeadlineOverlay, showAssigneeOverlay, hasCollaboratorsForCurrentProject])
 
   // Handle Enter key for confirmation dialogs
   useEffect(() => {
@@ -1187,6 +1202,7 @@ export default function TaskProcessor() {
               projects={projects} 
               labels={labels} 
               assignee={currentTaskAssignee}
+              hasCollaborators={hasCollaboratorsForCurrentProject()}
               onContentChange={handleContentChange}
               onDescriptionChange={handleDescriptionChange}
               onProjectClick={() => setShowProjectOverlay(true)}
@@ -1200,9 +1216,10 @@ export default function TaskProcessor() {
 
             {/* Project Metadata Display */}
             <ProjectMetadataDisplay
-              project={projects.find(p => p.id === state.currentTask.projectId)}
-              metadata={projectMetadata[state.currentTask.projectId]}
+              project={projects.find(p => p.id === state.currentTask?.projectId)}
+              metadata={projectMetadata[state.currentTask?.projectId || '']}
               allProjects={projects}
+              collaborators={state.currentTask ? (projectCollaborators[state.currentTask.projectId] || []) : []}
               className="animate-fade-in"
             />
 
