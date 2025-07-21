@@ -36,26 +36,8 @@ export async function GET(
         try {
             console.log('Fetching collaborators for project:', projectId)
             
-            // First check if project exists and get its details
-            let project
-            try {
-                project = await api.getProject(projectId)
-                console.log('Project details:', {
-                    id: project.id,
-                    name: project.name,
-                    canAssignTasks: project.canAssignTasks,
-                    isShared: project.isShared || false,
-                    isTeamInbox: project.isTeamInbox || false,
-                    workspaceId: project.workspaceId || null,
-                    keys: Object.keys(project)
-                })
-                
-                // Check if it's a shared/team project
-                // A project is shared if it has isShared=true, isTeamInbox=true, or has a workspaceId
-                isPersonalProject = !project.isShared && !project.isTeamInbox && !project.workspaceId
-            } catch (projectError) {
-                console.error('Error fetching project:', projectError)
-            }
+            // Skip trying to fetch project details with REST API since we're using Sync API IDs
+            // The getProjectCollaborators call will tell us if it's a personal project (400 error)
             
             const response = await api.getProjectCollaborators(projectId)
             console.log('Raw collaborators API response:', response)

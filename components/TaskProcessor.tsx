@@ -141,13 +141,15 @@ export default function TaskProcessor() {
         
         // Load ALL tasks immediately using sync API
         const allTasksRes = await fetch('/api/todoist/all-tasks')
+        let metadata: Record<string, any> = {}
+        
         if (allTasksRes.ok) {
           const data = await allTasksRes.json()
           console.log(`Loaded ${data.total} total tasks via ${data.message}`)
           setAllTasksGlobal(data.tasks)
           
           // Extract project metadata from special tasks
-          const metadata = extractProjectMetadata(data.tasks)
+          metadata = extractProjectMetadata(data.tasks)
           setProjectMetadata(metadata)
           console.log('Extracted project metadata:', metadata)
           
@@ -179,43 +181,43 @@ export default function TaskProcessor() {
             
             console.log(`Displayed ${inboxTasks.length} inbox tasks from sync data`)
           }
-        }
-        
-        // Build project hierarchy from already-loaded data
-        const buildProjectHierarchy = () => {
-          // Add metadata to projects
-          const projectsWithMetadata = projectsData.map((project: any) => ({
-            ...project,
-            description: metadata[project.id]?.description || '',
-            priority: metadata[project.id]?.priority || null,
-            due: metadata[project.id]?.due || null,
-          }))
           
-          // Build hierarchy
-          const rootProjects = projectsWithMetadata.filter((p: any) => !p.parentId)
-          const childProjects = projectsWithMetadata.filter((p: any) => p.parentId)
-          
-          const hierarchical = rootProjects.map((parent: any) => ({
-            ...parent,
-            children: childProjects.filter((child: any) => child.parentId === parent.id)
-          }))
-          
-          const hierarchyData = {
-            projects: projectsWithMetadata,
-            hierarchy: hierarchical,
-            summary: {
-              totalProjects: projectsWithMetadata.length,
-              projectsWithDescriptions: projectsWithMetadata.filter((p: any) => p.description).length,
-              rootProjects: rootProjects.length
+          // Build project hierarchy from already-loaded data
+          const buildProjectHierarchy = (projectsList: any[], metadataObj: any) => {
+            // Add metadata to projects
+            const projectsWithMetadata = projectsList.map((project: any) => ({
+              ...project,
+              description: metadataObj[project.id]?.description || '',
+              priority: metadataObj[project.id]?.priority || null,
+              due: metadataObj[project.id]?.due || null,
+            }))
+            
+            // Build hierarchy
+            const rootProjects = projectsWithMetadata.filter((p: any) => !p.parentId)
+            const childProjects = projectsWithMetadata.filter((p: any) => p.parentId)
+            
+            const hierarchical = rootProjects.map((parent: any) => ({
+              ...parent,
+              children: childProjects.filter((child: any) => child.parentId === parent.id)
+            }))
+            
+            const hierarchyData = {
+              projects: projectsWithMetadata,
+              hierarchy: hierarchical,
+              summary: {
+                totalProjects: projectsWithMetadata.length,
+                projectsWithDescriptions: projectsWithMetadata.filter((p: any) => p.description).length,
+                rootProjects: rootProjects.length
+              }
             }
+            
+            console.log('Project hierarchy built:', hierarchyData)
+            setProjectHierarchy(hierarchyData)
           }
           
-          console.log('Project hierarchy built:', hierarchyData)
-          setProjectHierarchy(hierarchyData)
+          // Build hierarchy after metadata is extracted
+          buildProjectHierarchy(projectsData, metadata)
         }
-        
-        // Build hierarchy after metadata is extracted
-        buildProjectHierarchy()
       } catch (err) {
         console.error('Error loading initial data:', err)
         setError(err instanceof Error ? err.message : 'Failed to load data')
