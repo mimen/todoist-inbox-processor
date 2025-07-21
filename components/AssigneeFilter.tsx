@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { TodoistTask } from '@/lib/types'
 
-export type AssigneeFilterType = 'all' | 'unassigned' | 'assigned-to-me' | 'assigned-to-others'
+export type AssigneeFilterType = 'all' | 'unassigned' | 'assigned-to-me' | 'assigned-to-others' | 'not-assigned-to-others'
 
 interface AssigneeFilterProps {
   value: AssigneeFilterType
@@ -19,16 +19,19 @@ export default function AssigneeFilter({ value, onChange, tasks, currentUserId }
   const counts = tasks.reduce((acc, task) => {
     if (!task.assigneeId) {
       acc.unassigned++
+      acc.notAssignedToOthers++
     } else if (task.assigneeId === currentUserId) {
       acc.assignedToMe++
+      acc.notAssignedToOthers++
     } else {
       acc.assignedToOthers++
     }
     acc.all++
     return acc
-  }, { all: 0, unassigned: 0, assignedToMe: 0, assignedToOthers: 0 })
+  }, { all: 0, unassigned: 0, assignedToMe: 0, assignedToOthers: 0, notAssignedToOthers: 0 })
 
   const options = [
+    { value: 'not-assigned-to-others' as AssigneeFilterType, label: 'Not assigned to others', count: counts.notAssignedToOthers },
     { value: 'all' as AssigneeFilterType, label: 'All tasks', count: counts.all },
     { value: 'unassigned' as AssigneeFilterType, label: 'Unassigned', count: counts.unassigned },
     { value: 'assigned-to-me' as AssigneeFilterType, label: 'Assigned to me', count: counts.assignedToMe },
@@ -41,17 +44,12 @@ export default function AssigneeFilter({ value, onChange, tasks, currentUserId }
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+        className="flex items-center gap-2 px-3 py-1 text-sm bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
       >
         <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
         </svg>
-        <span className="text-gray-700">{selectedOption.label}</span>
-        {selectedOption.count > 0 && (
-          <span className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
-            {selectedOption.count}
-          </span>
-        )}
+        <span>{selectedOption.label}</span>
         <svg 
           className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} 
           fill="none" 

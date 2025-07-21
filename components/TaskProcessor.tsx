@@ -54,7 +54,7 @@ import ProjectSuggestions from './ProjectSuggestions'
 import Toast from './Toast'
 import AssigneeSelectionOverlay from './AssigneeSelectionOverlay'
 import ProjectMetadataDisplay from './ProjectMetadataDisplay'
-import { AssigneeFilterType } from './AssigneeFilter'
+import AssigneeFilter, { AssigneeFilterType } from './AssigneeFilter'
 
 export default function TaskProcessor() {
   const [state, setState] = useState<ProcessingState>({
@@ -93,7 +93,7 @@ export default function TaskProcessor() {
   const [showAssigneeOverlay, setShowAssigneeOverlay] = useState(false)
   const [projectCollaborators, setProjectCollaborators] = useState<Record<string, TodoistUser[]>>({})
   const [currentTaskAssignee, setCurrentTaskAssignee] = useState<TodoistUser | undefined>(undefined)
-  const [assigneeFilter, setAssigneeFilter] = useState<AssigneeFilterType>('all')
+  const [assigneeFilter, setAssigneeFilter] = useState<AssigneeFilterType>('not-assigned-to-others')
   const currentUserId = '13801296' // This should match the user ID from the MCP config
 
   // Load initial data (projects and labels)
@@ -1028,6 +1028,13 @@ export default function TaskProcessor() {
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-3xl font-bold text-gray-900">Task Processor</h1>
               <div className="flex items-center gap-3">
+                <AssigneeFilter
+                  value={assigneeFilter}
+                  onChange={setAssigneeFilter}
+                  tasks={allTasksGlobal}
+                  currentUserId={currentUserId}
+                />
+                <div className="w-px h-6 bg-gray-300" />
                 <Link
                   href="/projects"
                   className="px-3 py-1 text-sm bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 rounded-md transition-colors"
@@ -1050,12 +1057,11 @@ export default function TaskProcessor() {
               projects={projects}
               allTasks={allTasksGlobal}
               allTasksGlobal={allTasksGlobal}
-              taskCounts={getTaskCountsForProjects(allTasksGlobal, projects.map(p => p.id))}
+              taskCounts={getTaskCountsForProjects(allTasksGlobal, projects.map(p => p.id), assigneeFilter, currentUserId)}
               labels={labels}
               projectMetadata={projectMetadata}
-              assigneeFilter={assigneeFilter}
-              onAssigneeFilterChange={setAssigneeFilter}
               currentUserId={currentUserId}
+              assigneeFilter={assigneeFilter}
             />
             
             {/* Loading State for Task Switching */}
@@ -1117,6 +1123,13 @@ export default function TaskProcessor() {
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-3xl font-bold text-gray-900">Task Processor</h1>
             <div className="flex items-center gap-3">
+              <AssigneeFilter
+                value={assigneeFilter}
+                onChange={setAssigneeFilter}
+                tasks={allTasksGlobal}
+                currentUserId={currentUserId}
+              />
+              <div className="w-px h-6 bg-gray-300" />
               <Link
                 href="/projects"
                 className="px-3 py-1 text-sm bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 rounded-md transition-colors"
@@ -1139,12 +1152,11 @@ export default function TaskProcessor() {
             projects={projects}
             allTasks={allTasksGlobal}
             allTasksGlobal={allTasksGlobal}
-            taskCounts={getTaskCountsForProjects(allTasksGlobal, projects.map(p => p.id))}
+            taskCounts={getTaskCountsForProjects(allTasksGlobal, projects.map(p => p.id), assigneeFilter, currentUserId)}
             labels={labels}
             projectMetadata={projectMetadata}
-            assigneeFilter={assigneeFilter}
-            onAssigneeFilterChange={setAssigneeFilter}
             currentUserId={currentUserId}
+            assigneeFilter={assigneeFilter}
           />
           
           {/* Loading State for Task Switching */}

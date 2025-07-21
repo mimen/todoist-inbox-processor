@@ -187,7 +187,7 @@ export default function TaskCard({
 
       {/* Footer with all metadata */}
       <div className="p-4 pt-2 border-t border-gray-50">
-        <div className="flex items-center flex-wrap gap-2 mb-3">
+        <div className="flex items-center flex-wrap gap-2">
           
           <button
             onClick={onProjectClick}
@@ -306,50 +306,41 @@ export default function TaskCard({
               <span>Assign</span>
             </button>
           )}
-        </div>
-        
-        {/* Labels inline with metadata */}
-        {(task.labels.length > 0 || onLabelAdd) && (
-          <div className="flex items-center flex-wrap gap-2 mb-3">
-            <span className="text-xs font-medium text-gray-500 mr-1">Labels:</span>
-            {task.labels.map((labelName) => {
-              const label = labels.find(l => l.name === labelName)
-              const labelColor = label ? getTodoistColor(label.color) : '#299fe6'
-              return (
-                <span
-                  key={labelName}
-                  className="text-xs px-2 py-1 rounded flex items-center space-x-1 group relative transition-all"
-                  style={{ backgroundColor: `${labelColor}20`, color: labelColor }}
+          
+          {/* Labels */}
+          {task.labels.map((labelName) => {
+            const label = labels.find(l => l.name === labelName)
+            const labelColor = label ? getTodoistColor(label.color) : '#299fe6'
+            return (
+              <span
+                key={labelName}
+                className="text-xs px-2 py-1 rounded inline-flex items-center space-x-1 group relative transition-all"
+                style={{ backgroundColor: `${labelColor}20`, color: labelColor }}
+              >
+                <div 
+                  className="w-2 h-2 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: labelColor }}
+                ></div>
+                <span>{labelName}</span>
+                <button
+                  onClick={() => onLabelRemove?.(labelName)}
+                  className="ml-1 hover:scale-125 transition-transform"
+                  title="Remove label"
                 >
-                  <div 
-                    className="w-2 h-2 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: labelColor }}
-                  ></div>
-                  <span>{labelName}</span>
-                  <button
-                    onClick={() => onLabelRemove?.(labelName)}
-                    className="ml-1 hover:scale-125 transition-transform"
-                    title="Remove label"
-                  >
-                    ×
-                  </button>
-                </span>
-              )
-            })}
+                  ×
+                </button>
+              </span>
+            )
+          })}
+          {onLabelAdd && (
             <button
               onClick={onLabelAdd}
-              className="text-xs px-2 py-1 rounded flex items-center transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200"
+              className="inline-flex items-center space-x-1 text-xs px-2 py-1 rounded transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200"
               title="Add labels"
             >
               <span className="font-medium">+ Add Label</span>
             </button>
-          </div>
-        )}
-
-        {/* Compact metadata footer */}
-        <div className="flex items-center justify-between text-xs text-gray-400">
-          <span>Created: {formatDate(task.createdAt)}</span>
-          <span>ID: {task.id}</span>
+          )}
         </div>
       </div>
     </div>

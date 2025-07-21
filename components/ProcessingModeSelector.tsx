@@ -9,7 +9,7 @@ import PriorityDropdown from './PriorityDropdown';
 import LabelDropdown from './LabelDropdown';
 import DateDropdown from './DateDropdown';
 import PresetDropdown from './PresetDropdown';
-import AssigneeFilter, { AssigneeFilterType } from './AssigneeFilter';
+import { AssigneeFilterType } from './AssigneeFilter';
 import { TodoistTask, TodoistLabel, TodoistProject } from '@/lib/types';
 
 interface ProcessingModeSelectorProps {
@@ -21,9 +21,8 @@ interface ProcessingModeSelectorProps {
   taskCounts: Record<string, number>;
   labels?: TodoistLabel[];
   projectMetadata?: Record<string, any>;
-  assigneeFilter?: AssigneeFilterType;
-  onAssigneeFilterChange?: (filter: AssigneeFilterType) => void;
   currentUserId?: string;
+  assigneeFilter?: AssigneeFilterType;
 }
 
 export default function ProcessingModeSelector({
@@ -35,9 +34,8 @@ export default function ProcessingModeSelector({
   taskCounts,
   labels = [],
   projectMetadata = {},
-  assigneeFilter = 'all',
-  onAssigneeFilterChange,
-  currentUserId
+  currentUserId,
+  assigneeFilter = 'all'
 }: ProcessingModeSelectorProps) {
   const handleModeTypeChange = (newType: ProcessingModeType) => {
     // Reset value when changing mode type
@@ -90,6 +88,24 @@ export default function ProcessingModeSelector({
   const allLabelNames = Array.from(
     new Set(allTasks.flatMap(task => task.labels))
   ).sort();
+  
+  // Filter tasks based on assignee filter for accurate counts
+  const filteredTasks = allTasks.filter(task => {
+    if (assigneeFilter === 'all') return true;
+    
+    switch (assigneeFilter) {
+      case 'unassigned':
+        return !task.assigneeId;
+      case 'assigned-to-me':
+        return task.assigneeId === currentUserId;
+      case 'assigned-to-others':
+        return task.assigneeId && task.assigneeId !== currentUserId;
+      case 'not-assigned-to-others':
+        return !task.assigneeId || task.assigneeId === currentUserId;
+      default:
+        return true;
+    }
+  });
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
@@ -125,7 +141,7 @@ export default function ProcessingModeSelector({
                 const project = projects.find(p => p.id === projectId);
                 handleValueChange(projectId, project?.name || 'Unknown');
               }}
-              allTasks={allTasks}
+              allTasks={filteredTasks}
             />
           )}
 
@@ -135,7 +151,7 @@ export default function ProcessingModeSelector({
               onPriorityChange={(priority, displayName) => {
                 handleValueChange(priority, displayName);
               }}
-              allTasks={allTasks}
+              allTasks={filteredTasks}
             />
           )}
 
@@ -146,7 +162,7 @@ export default function ProcessingModeSelector({
                 handleValueChange(labels, displayName);
               }}
               availableLabels={allLabelNames}
-              allTasks={allTasks}
+              allTasks={filteredTasks}
               labelObjects={labels}
             />
           )}
@@ -157,7 +173,7 @@ export default function ProcessingModeSelector({
               onDateChange={(date, displayName) => {
                 handleValueChange(date, displayName);
               }}
-              allTasks={allTasks}
+              allTasks={filteredTasks}
             />
           )}
 
@@ -167,23 +183,27 @@ export default function ProcessingModeSelector({
               onPresetChange={(presetId, displayName) => {
                 handleValueChange(presetId, displayName);
               }}
-              allTasks={allTasksGlobal.length > 0 ? allTasksGlobal : allTasks}
+              allTasks={allTasksGlobal.length > 0 ? allTasksGlobal.filter(task => {
+                if (assigneeFilter === 'all') return true;
+                
+                switch (assigneeFilter) {
+                  case 'unassigned':
+                    return !task.assigneeId;
+                  case 'assigned-to-me':
+                    return task.assigneeId === currentUserId;
+                  case 'assigned-to-others':
+                    return task.assigneeId && task.assigneeId !== currentUserId;
+                  case 'not-assigned-to-others':
+                    return !task.assigneeId || task.assigneeId === currentUserId;
+                  default:
+                    return true;
+                }
+              }) : filteredTasks}
               projectMetadata={projectMetadata}
             />
           )}
         </div>
         
-        {/* Assignee Filter */}
-        {onAssigneeFilterChange && (
-          <div className="ml-auto">
-            <AssigneeFilter
-              value={assigneeFilter}
-              onChange={onAssigneeFilterChange}
-              tasks={allTasks}
-              currentUserId={currentUserId}
-            />
-          </div>
-        )}
       </div>
       </div>
     </div>

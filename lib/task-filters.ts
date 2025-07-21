@@ -41,6 +41,8 @@ export function filterTasksByMode(
           return task.assigneeId === currentUserId;
         case 'assigned-to-others':
           return task.assigneeId && task.assigneeId !== currentUserId;
+        case 'not-assigned-to-others':
+          return !task.assigneeId || task.assigneeId === currentUserId;
         default:
           return true;
       }
@@ -145,15 +147,38 @@ export function filterTasksByMode(
 
 export function getTaskCountsForProjects(
   tasks: TodoistTask[],
-  projectIds: string[]
+  projectIds: string[],
+  assigneeFilter: AssigneeFilterType = 'all',
+  currentUserId?: string
 ): Record<string, number> {
   const counts: Record<string, number> = {};
   
   for (const projectId of projectIds) {
-    counts[projectId] = tasks.filter(task => 
-      String(task.projectId) === String(projectId) && 
-      !task.content.startsWith('* ')
-    ).length;
+    counts[projectId] = tasks.filter(task => {
+      // Basic filters
+      if (String(task.projectId) !== String(projectId)) return false;
+      if (task.content.startsWith('* ')) return false;
+      
+      // Apply assignee filter
+      if (assigneeFilter !== 'all') {
+        switch (assigneeFilter) {
+          case 'unassigned':
+            if (task.assigneeId) return false;
+            break;
+          case 'assigned-to-me':
+            if (task.assigneeId !== currentUserId) return false;
+            break;
+          case 'assigned-to-others':
+            if (!task.assigneeId || task.assigneeId === currentUserId) return false;
+            break;
+          case 'not-assigned-to-others':
+            if (task.assigneeId && task.assigneeId !== currentUserId) return false;
+            break;
+        }
+      }
+      
+      return true;
+    }).length;
   }
   
   return counts;
