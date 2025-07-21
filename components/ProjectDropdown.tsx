@@ -202,6 +202,9 @@ export default function ProjectDropdown({
                 style={{ backgroundColor: selectedProject.color }}
               ></div>
               <span className="font-medium text-gray-900">{selectedProject.name}</span>
+              <span className="text-gray-500">
+                ({taskCounts[selectedProjectId] || 0})
+              </span>
             </>
           ) : (
             <span className="text-gray-500">{placeholder}</span>

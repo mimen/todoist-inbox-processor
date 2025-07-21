@@ -5,11 +5,13 @@ import Link from 'next/link'
 import { TodoistTask, TodoistProject, TodoistLabel, ProcessingState, TaskUpdate } from '@/lib/types'
 import { generateMockSuggestions } from '@/lib/mock-data'
 import { suggestionsCache } from '@/lib/suggestions-cache'
+import { ProcessingMode } from '@/types/processing-mode'
+import { filterTasksByMode, getTaskCountsForProjects } from '@/lib/task-filters'
 import TaskCard from './TaskCard'
 import TaskForm from './TaskForm'
 import KeyboardShortcuts from './KeyboardShortcuts'
 import ProgressIndicator from './ProgressIndicator'
-import ProjectSwitcher from './ProjectSwitcher'
+import ProcessingModeSelector from './ProcessingModeSelector'
 import PriorityOverlay from './PriorityOverlay'
 import ProjectSelectionOverlay from './ProjectSelectionOverlay'
 import LabelSelectionOverlay from './LabelSelectionOverlay'
@@ -28,12 +30,17 @@ export default function TaskProcessor() {
   
   const [projects, setProjects] = useState<TodoistProject[]>([])
   const [labels, setLabels] = useState<TodoistLabel[]>([])
+  const [filters, setFilters] = useState<any[]>([])
   const [projectHierarchy, setProjectHierarchy] = useState<any>(null)
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [loading, setLoading] = useState(true)
   const [loadingTasks, setLoadingTasks] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [selectedProjectId, setSelectedProjectId] = useState<string>('')
+  const [processingMode, setProcessingMode] = useState<ProcessingMode>({
+    type: 'project',
+    value: '',
+    displayName: 'Inbox'
+  })
   const [allTasks, setAllTasks] = useState<TodoistTask[]>([])
   const [allTasksGlobal, setAllTasksGlobal] = useState<TodoistTask[]>([]) // All tasks across all projects
   const [taskKey, setTaskKey] = useState(0) // Force re-render of TaskForm
@@ -54,20 +61,22 @@ export default function TaskProcessor() {
         setLoading(true)
         setError(null)
 
-        // Fetch critical data first (projects and labels only)
+        // Fetch critical data first (projects, labels, and filters)
         // Use sync API for projects to ensure consistent IDs with tasks
-        const [projectsRes, labelsRes] = await Promise.all([
+        const [projectsRes, labelsRes, filtersRes] = await Promise.all([
           fetch('/api/todoist/projects-sync'),
           fetch('/api/todoist/labels'),
+          fetch('/api/todoist/filters'),
         ])
 
         if (!projectsRes.ok || !labelsRes.ok) {
           throw new Error('Failed to fetch data from Todoist API')
         }
 
-        const [projectsResponse, labelsData] = await Promise.all([
+        const [projectsResponse, labelsData, filtersData] = await Promise.all([
           projectsRes.json(),
           labelsRes.json(),
+          filtersRes.ok ? filtersRes.json() : [],
         ])
         
         // Extract projects from response
@@ -75,13 +84,18 @@ export default function TaskProcessor() {
 
         setProjects(projectsData)
         setLabels(labelsData)
+        setFilters(filtersData)
         
         console.log(`Loaded ${projectsData.length} projects`)
         
         // Set default to actual inbox project if it exists
         const inboxProject = projectsData.find((p: any) => p.isInboxProject)
         const inboxId = inboxProject?.id || 'inbox'
-        setSelectedProjectId(inboxId)
+        setProcessingMode({
+          type: 'project',
+          value: inboxId,
+          displayName: inboxProject?.name || 'Inbox'
+        })
         
         // Load ALL tasks immediately using sync API
         const allTasksRes = await fetch('/api/todoist/all-tasks')
@@ -92,9 +106,11 @@ export default function TaskProcessor() {
           
           // Filter and display inbox tasks immediately
           if (inboxProject) {
-            const inboxTasks = data.tasks.filter((task: any) => 
-              String(task.projectId) === String(inboxProject.id) && !task.content.startsWith('* ')
-            )
+            const inboxTasks = filterTasksByMode(data.tasks, {
+              type: 'project',
+              value: inboxProject.id,
+              displayName: inboxProject.name
+            })
             
             setAllTasks(inboxTasks)
             
@@ -128,25 +144,45 @@ export default function TaskProcessor() {
     loadInitialData()
   }, [])
 
-  // Load tasks for selected project (ONLY from global data, no API calls)
-  const loadProjectTasks = useCallback((projectId: string) => {
-    if (!projectId || allTasksGlobal.length === 0) return
+  // Load tasks for selected mode
+  const loadTasksForMode = useCallback(async (mode: ProcessingMode) => {
+    if (!mode.value) return
     
     setLoadingTasks(true)
     
-    // Filter tasks from the global list - NO API CALLS
-    const projectTasks = allTasksGlobal.filter((task: any) => 
-      String(task.projectId) === String(projectId) && !task.content.startsWith('* ')
-    )
-    
-    console.log(`Project ${projectId}: Found ${projectTasks.length} tasks from ${allTasksGlobal.length} total tasks`)
-    setAllTasks(projectTasks)
+    try {
+      let filteredTasks: TodoistTask[] = []
+      
+      // For filter mode, fetch tasks from API
+      if (mode.type === 'filter') {
+        const filterQuery = mode.value.toString().split('|')[1] // Get query part after ID
+        if (filterQuery) {
+          const response = await fetch(`/api/todoist/filter-tasks?filter=${encodeURIComponent(filterQuery)}`)
+          if (response.ok) {
+            filteredTasks = await response.json()
+            console.log(`Filter "${mode.displayName}": Fetched ${filteredTasks.length} tasks from API`)
+          } else {
+            console.error('Failed to fetch filtered tasks')
+            setToast({ message: 'Failed to fetch filtered tasks', type: 'error' })
+          }
+        }
+      } else {
+        // For other modes, filter from global data
+        if (allTasksGlobal.length === 0) {
+          setLoadingTasks(false)
+          return
+        }
+        filteredTasks = filterTasksByMode(allTasksGlobal, mode)
+        console.log(`${mode.type} ${mode.displayName}: Found ${filteredTasks.length} tasks from ${allTasksGlobal.length} total tasks`)
+      }
+      
+      setAllTasks(filteredTasks)
 
       // Set up task processing queue and force form re-render
-      if (projectTasks.length > 0) {
+      if (filteredTasks.length > 0) {
         setState({
-          currentTask: projectTasks[0],
-          queuedTasks: projectTasks.slice(1),
+          currentTask: filteredTasks[0],
+          queuedTasks: filteredTasks.slice(1),
           processedTasks: [],
           skippedTasks: [],
         })
@@ -161,33 +197,28 @@ export default function TaskProcessor() {
       }
       
     
-    // Prefetch suggestions in the background (non-blocking)
-    if (projectTasks.length > 0 && projectHierarchy) {
-      // Only prefetch for first 3 tasks to avoid too many API calls
-      const tasksToPreload = projectTasks.slice(0, 3)
-      suggestionsCache.prefetchSuggestions(tasksToPreload, projectHierarchy)
-        .catch(error => console.warn('Failed to prefetch suggestions:', error))
-    }
-    
-    setLoadingTasks(false)
-  }, [allTasksGlobal, projectHierarchy])
-
-
-  // Load tasks when project changes
-  useEffect(() => {
-    // Skip if we're still on inbox and already have tasks displayed
-    const isInbox = projects.find(p => p.isInboxProject)?.id === selectedProjectId
-    const hasDisplayedTasks = allTasks.length > 0
-    
-    if (selectedProjectId && allTasksGlobal.length > 0) {
-      // Only reload if:
-      // 1. We're switching to a different project, OR
-      // 2. We're on inbox but have no tasks displayed yet
-      if (!isInbox || !hasDisplayedTasks) {
-        loadProjectTasks(selectedProjectId)
+      // Prefetch suggestions in the background (non-blocking)
+      if (filteredTasks.length > 0 && projectHierarchy) {
+        // Only prefetch for first 3 tasks to avoid too many API calls
+        const tasksToPreload = filteredTasks.slice(0, 3)
+        suggestionsCache.prefetchSuggestions(tasksToPreload, projectHierarchy)
+          .catch(error => console.warn('Failed to prefetch suggestions:', error))
       }
+    } catch (error) {
+      console.error('Error loading tasks:', error)
+      setToast({ message: 'Failed to load tasks', type: 'error' })
+    } finally {
+      setLoadingTasks(false)
     }
-  }, [selectedProjectId, allTasksGlobal.length, projects, allTasks.length, loadProjectTasks])
+  }, [allTasksGlobal, projectHierarchy, setToast])
+
+
+  // Load tasks when processing mode changes
+  useEffect(() => {
+    if (processingMode.value && (processingMode.type === 'filter' || allTasksGlobal.length > 0)) {
+      loadTasksForMode(processingMode)
+    }
+  }, [processingMode, allTasksGlobal.length, loadTasksForMode])
 
   // Load suggestions when current task changes
   useEffect(() => {
@@ -742,8 +773,7 @@ export default function TaskProcessor() {
   }
 
   if (!state.currentTask && state.queuedTasks.length === 0 && !loading) {
-    const projectName = selectedProjectId === 'inbox' ? 'Inbox' : 
-                       projects.find(p => p.id === selectedProjectId)?.name || 'Project'
+    const displayName = processingMode.displayName || 'Tasks'
     
     return (
       <div className="min-h-screen p-4">
@@ -768,13 +798,15 @@ export default function TaskProcessor() {
               </div>
             </div>
             
-            {/* Project Switcher */}
-            <ProjectSwitcher
+            {/* Processing Mode Selector */}
+            <ProcessingModeSelector
+              mode={processingMode}
+              onModeChange={setProcessingMode}
               projects={projects}
-              selectedProjectId={selectedProjectId}
-              onProjectChange={setSelectedProjectId}
-              taskCount={totalTasks}
               allTasks={allTasksGlobal}
+              taskCounts={getTaskCountsForProjects(allTasksGlobal, projects.map(p => p.id))}
+              labels={labels}
+              filters={filters}
             />
             
             {/* Loading State for Task Switching */}
@@ -796,11 +828,11 @@ export default function TaskProcessor() {
                   {totalTasks === 0 ? '📭' : '🎉'}
                 </div>
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                  {totalTasks === 0 ? `${projectName} is Empty` : `${projectName} Complete!`}
+                  {totalTasks === 0 ? `${displayName} is Empty` : `${displayName} Complete!`}
                 </h1>
                 <p className="text-gray-600 mb-4">
                   {totalTasks === 0 
-                    ? `No tasks found in ${projectName}. Try selecting a different project.`
+                    ? `No tasks found for ${displayName}. Try selecting different criteria.`
                     : 'All tasks have been processed.'
                   }
                 </p>
@@ -810,7 +842,7 @@ export default function TaskProcessor() {
                   </div>
                 )}
                 <button
-                  onClick={() => loadProjectTasks(selectedProjectId)}
+                  onClick={() => loadTasksForMode(processingMode)}
                   className="mt-4 px-4 py-2 bg-todoist-blue text-white rounded-md hover:bg-blue-600 transition-colors"
                 >
                   Refresh Tasks
@@ -851,13 +883,15 @@ export default function TaskProcessor() {
             </div>
           </div>
           
-          {/* Project Switcher */}
-          <ProjectSwitcher
+          {/* Processing Mode Selector */}
+          <ProcessingModeSelector
+            mode={processingMode}
+            onModeChange={setProcessingMode}
             projects={projects}
-            selectedProjectId={selectedProjectId}
-            onProjectChange={setSelectedProjectId}
-            taskCount={totalTasks}
             allTasks={allTasksGlobal}
+            taskCounts={getTaskCountsForProjects(allTasksGlobal, projects.map(p => p.id))}
+            labels={labels}
+            filters={filters}
           />
           
           {/* Loading State for Task Switching */}

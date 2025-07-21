@@ -132,24 +132,61 @@ export class TodoistApiClient {
         }
     }
 
-    // Fetch active tasks (inbox tasks or all tasks)
+    // Fetch active tasks using REST API with filter support
     static async getTasks(filter?: string): Promise<TodoistTaskApi[]> {
         try {
-            // Use Sync API to get all tasks, then filter client-side
-            const allTasks = await TodoistApiClient.getAllTasksSync()
-            
-            if (filter) {
-                // For now, we'll just support inbox filter
-                // In the future, could add more complex filtering
-                console.log('Filtering tasks with:', filter)
-                return allTasks
+            if (!filter) {
+                // If no filter, use Sync API to get all tasks
+                return await TodoistApiClient.getAllTasksSync()
             }
             
-            // Return all tasks if no filter
-            return allTasks
+            // Use REST API v2 directly with filter parameter
+            console.log('Fetching tasks with filter:', filter)
+            const apiKey = process.env.TODOIST_API_KEY
+            if (!apiKey) {
+                throw new Error('TODOIST_API_KEY is not configured')
+            }
+            
+            // Fetch from REST API v2 with filter
+            const response = await fetch(`https://api.todoist.com/rest/v2/tasks?${new URLSearchParams({ filter })}`, {
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`
+                }
+            })
+            
+            if (!response.ok) {
+                throw new Error(`API request failed: ${response.status}`)
+            }
+            
+            const tasks = await response.json()
+            
+            console.log(`Filter query returned ${tasks.length} tasks`)
+            
+            // Convert to our format
+            return tasks.map((task: any) => ({
+                id: task.id,
+                content: task.content,
+                description: task.description || '',
+                projectId: String(task.projectId),
+                priority: task.priority as 1 | 2 | 3 | 4,
+                labels: task.labels || [],
+                due: task.due ? {
+                    date: task.due.date,
+                    string: task.due.string,
+                    datetime: task.due.datetime || undefined,
+                    recurring: task.due.recurring || false
+                } : undefined,
+                deadline: task.deadline ? {
+                    date: task.deadline.date,
+                    string: task.deadline.string
+                } : undefined,
+                createdAt: task.createdAt,
+                responsibleUid: task.responsibleUid || null,
+                isCompleted: task.isCompleted || false
+            }))
         } catch (error) {
-            console.error('Error fetching tasks:', error)
-            throw new Error('Failed to fetch tasks')
+            console.error('Error fetching tasks with filter:', error)
+            throw new Error('Failed to fetch filtered tasks')
         }
     }
 
