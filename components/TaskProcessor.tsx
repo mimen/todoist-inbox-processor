@@ -2,11 +2,44 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { TodoistTask, TodoistProject, TodoistLabel, ProcessingState, TaskUpdate } from '@/lib/types'
+import { TodoistTask, TodoistProject, TodoistLabel, ProcessingState, TaskUpdate, TodoistUser } from '@/lib/types'
 import { generateMockSuggestions } from '@/lib/mock-data'
 import { suggestionsCache } from '@/lib/suggestions-cache'
 import { ProcessingMode } from '@/types/processing-mode'
 import { filterTasksByMode, getTaskCountsForProjects } from '@/lib/task-filters'
+
+// Extract project metadata from special tasks marked with * prefix or project-metadata label
+function extractProjectMetadata(tasks: TodoistTask[]): Record<string, any> {
+  const metadata: Record<string, any> = {}
+  
+  tasks.forEach(task => {
+    // Look for project-metadata tasks (these contain project priority and due date)
+    if (task.labels.includes('project-metadata') || task.content.startsWith('* ')) {
+      const projectId = task.projectId
+      if (!metadata[projectId]) {
+        metadata[projectId] = {}
+      }
+      
+      // The task's priority IS the project's priority
+      // Todoist uses: P1=4, P2=3, P3=2, P4=1
+      if (task.priority) {
+        metadata[projectId].priority = task.priority
+      }
+      
+      // The task's due date IS the project's due date
+      if (task.due) {
+        metadata[projectId].due = task.due
+      }
+      
+      // Store the task description if available
+      if (task.description) {
+        metadata[projectId].description = task.description
+      }
+    }
+  })
+  
+  return metadata
+}
 import TaskCard from './TaskCard'
 import TaskForm from './TaskForm'
 import KeyboardShortcuts from './KeyboardShortcuts'
@@ -19,6 +52,9 @@ import ScheduledDateSelector from './ScheduledDateSelector'
 import DeadlineSelector from './DeadlineSelector'
 import ProjectSuggestions from './ProjectSuggestions'
 import Toast from './Toast'
+import AssigneeSelectionOverlay from './AssigneeSelectionOverlay'
+import ProjectMetadataDisplay from './ProjectMetadataDisplay'
+import { AssigneeFilterType } from './AssigneeFilter'
 
 export default function TaskProcessor() {
   const [state, setState] = useState<ProcessingState>({
@@ -44,6 +80,7 @@ export default function TaskProcessor() {
   const [allTasks, setAllTasks] = useState<TodoistTask[]>([])
   const [allTasksGlobal, setAllTasksGlobal] = useState<TodoistTask[]>([]) // All tasks across all projects
   const [taskKey, setTaskKey] = useState(0) // Force re-render of TaskForm
+  const [projectMetadata, setProjectMetadata] = useState<Record<string, any>>({})
   const [showPriorityOverlay, setShowPriorityOverlay] = useState(false)
   const [showProjectOverlay, setShowProjectOverlay] = useState(false)
   const [showLabelOverlay, setShowLabelOverlay] = useState(false)
@@ -53,6 +90,11 @@ export default function TaskProcessor() {
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
   const [currentTaskSuggestions, setCurrentTaskSuggestions] = useState<any[]>([])
+  const [showAssigneeOverlay, setShowAssigneeOverlay] = useState(false)
+  const [projectCollaborators, setProjectCollaborators] = useState<Record<string, TodoistUser[]>>({})
+  const [currentTaskAssignee, setCurrentTaskAssignee] = useState<TodoistUser | undefined>(undefined)
+  const [assigneeFilter, setAssigneeFilter] = useState<AssigneeFilterType>('all')
+  const currentUserId = '13801296' // This should match the user ID from the MCP config
 
   // Load initial data (projects and labels)
   useEffect(() => {
@@ -104,13 +146,24 @@ export default function TaskProcessor() {
           console.log(`Loaded ${data.total} total tasks via ${data.message}`)
           setAllTasksGlobal(data.tasks)
           
+          // Extract project metadata from special tasks
+          const metadata = extractProjectMetadata(data.tasks)
+          setProjectMetadata(metadata)
+          console.log('Extracted project metadata:', metadata)
+          
+          // Debug: Log projects with P1 priority
+          const p1Projects = Object.entries(metadata)
+            .filter(([_, meta]) => meta.priority === 4)
+            .map(([projectId, meta]) => ({ projectId, ...meta }))
+          console.log('Projects with P1 priority:', p1Projects)
+          
           // Filter and display inbox tasks immediately
           if (inboxProject) {
             const inboxTasks = filterTasksByMode(data.tasks, {
               type: 'project',
               value: inboxProject.id,
               displayName: inboxProject.name
-            })
+            }, metadata, assigneeFilter, currentUserId)
             
             setAllTasks(inboxTasks)
             
@@ -128,11 +181,41 @@ export default function TaskProcessor() {
           }
         }
         
-        // Load hierarchy in the background (non-blocking)
-        fetch('/api/projects/hierarchy?format=context')
-          .then(res => res.json())
-          .then(hierarchyData => setProjectHierarchy(hierarchyData))
-          .catch(err => console.error('Failed to load project hierarchy:', err))
+        // Build project hierarchy from already-loaded data
+        const buildProjectHierarchy = () => {
+          // Add metadata to projects
+          const projectsWithMetadata = projectsData.map((project: any) => ({
+            ...project,
+            description: metadata[project.id]?.description || '',
+            priority: metadata[project.id]?.priority || null,
+            due: metadata[project.id]?.due || null,
+          }))
+          
+          // Build hierarchy
+          const rootProjects = projectsWithMetadata.filter((p: any) => !p.parentId)
+          const childProjects = projectsWithMetadata.filter((p: any) => p.parentId)
+          
+          const hierarchical = rootProjects.map((parent: any) => ({
+            ...parent,
+            children: childProjects.filter((child: any) => child.parentId === parent.id)
+          }))
+          
+          const hierarchyData = {
+            projects: projectsWithMetadata,
+            hierarchy: hierarchical,
+            summary: {
+              totalProjects: projectsWithMetadata.length,
+              projectsWithDescriptions: projectsWithMetadata.filter((p: any) => p.description).length,
+              rootProjects: rootProjects.length
+            }
+          }
+          
+          console.log('Project hierarchy built:', hierarchyData)
+          setProjectHierarchy(hierarchyData)
+        }
+        
+        // Build hierarchy after metadata is extracted
+        buildProjectHierarchy()
       } catch (err) {
         console.error('Error loading initial data:', err)
         setError(err instanceof Error ? err.message : 'Failed to load data')
@@ -172,7 +255,7 @@ export default function TaskProcessor() {
           setLoadingTasks(false)
           return
         }
-        filteredTasks = filterTasksByMode(allTasksGlobal, mode)
+        filteredTasks = filterTasksByMode(allTasksGlobal, mode, projectMetadata, assigneeFilter, currentUserId)
         console.log(`${mode.type} ${mode.displayName}: Found ${filteredTasks.length} tasks from ${allTasksGlobal.length} total tasks`)
       }
       
@@ -197,12 +280,15 @@ export default function TaskProcessor() {
       }
       
     
-      // Prefetch suggestions in the background (non-blocking)
+      // Prefetch suggestions in the background (non-blocking) - only for inbox tasks
       if (filteredTasks.length > 0 && projectHierarchy) {
-        // Only prefetch for first 3 tasks to avoid too many API calls
-        const tasksToPreload = filteredTasks.slice(0, 3)
-        suggestionsCache.prefetchSuggestions(tasksToPreload, projectHierarchy)
-          .catch(error => console.warn('Failed to prefetch suggestions:', error))
+        const inboxProject = projects.find(p => p.isInboxProject)
+        if (inboxProject && mode.type === 'project' && mode.value === inboxProject.id) {
+          // Only prefetch for first 3 tasks to avoid too many API calls
+          const tasksToPreload = filteredTasks.slice(0, 3)
+          suggestionsCache.prefetchSuggestions(tasksToPreload, projectHierarchy)
+            .catch(error => console.warn('Failed to prefetch suggestions:', error))
+        }
       }
     } catch (error) {
       console.error('Error loading tasks:', error)
@@ -210,20 +296,33 @@ export default function TaskProcessor() {
     } finally {
       setLoadingTasks(false)
     }
-  }, [allTasksGlobal, projectHierarchy, setToast])
+  }, [allTasksGlobal, projectHierarchy, setToast, assigneeFilter, currentUserId, projectMetadata])
 
 
-  // Load tasks when processing mode changes
+  // Load tasks when processing mode or assignee filter changes
   useEffect(() => {
     if (processingMode.value && (processingMode.type === 'filter' || allTasksGlobal.length > 0)) {
       loadTasksForMode(processingMode)
     }
-  }, [processingMode, allTasksGlobal.length, loadTasksForMode])
+  }, [processingMode, allTasksGlobal.length, loadTasksForMode, assigneeFilter])
 
   // Load suggestions when current task changes
   useEffect(() => {
     async function loadSuggestions() {
-      if (!state.currentTask || !projectHierarchy) {
+      // Check if current task is in inbox
+      const currentProject = projects.find(p => p.id === state.currentTask?.projectId)
+      const isInboxTask = currentProject?.isInboxProject || false
+      
+      console.log('Loading suggestions for task:', {
+        hasTask: !!state.currentTask,
+        taskId: state.currentTask?.id,
+        projectId: state.currentTask?.projectId,
+        isInboxTask,
+        hasHierarchy: !!projectHierarchy
+      })
+      
+      // Only generate suggestions for inbox tasks
+      if (!state.currentTask || !projectHierarchy || !isInboxTask) {
         setCurrentTaskSuggestions([])
         return
       }
@@ -237,9 +336,16 @@ export default function TaskProcessor() {
           state.currentTask.projectId
         )
         
+        console.log('Raw suggestions from cache:', suggestions)
+        console.log('Available projects:', projects.map(p => ({ id: p.id, name: p.name })))
+        
         // Filter out inbox suggestions
         const filteredSuggestions = suggestions.filter(s => {
           const project = projects.find(p => p.id === s.projectId)
+          console.log(`Checking suggestion ${s.projectName} (${s.projectId}):`, {
+            found: !!project,
+            isInbox: project?.isInboxProject
+          })
           return project && !project.isInboxProject
         })
         
@@ -252,7 +358,91 @@ export default function TaskProcessor() {
     }
 
     loadSuggestions()
-  }, [state.currentTask?.id, state.currentTask?.content, state.currentTask?.description, projectHierarchy, projects])
+  }, [state.currentTask?.id, state.currentTask?.content, state.currentTask?.description, state.currentTask?.projectId, projectHierarchy, projects])
+  
+  // Load collaborators and assignee when current task changes
+  useEffect(() => {
+    async function loadAssigneeData() {
+      if (!state.currentTask) {
+        setCurrentTaskAssignee(undefined)
+        return
+      }
+
+      // Load collaborators for the project if not already cached
+      const projectId = state.currentTask.projectId
+      console.log('Loading assignee data for task:', {
+        taskId: state.currentTask.id,
+        projectId,
+        assigneeId: state.currentTask.assigneeId
+      })
+      
+      if (projectId && !projectCollaborators[projectId]) {
+        try {
+          // Include current assignee in the request if they exist
+          const url = state.currentTask.assigneeId 
+            ? `/api/todoist/projects/${projectId}/collaborators?includeAssignee=${state.currentTask.assigneeId}`
+            : `/api/todoist/projects/${projectId}/collaborators`
+            
+          const response = await fetch(url)
+          if (response.ok) {
+            const data = await response.json()
+            const collaborators = data.users || data // Handle both old and new response formats
+            console.log(`Fetched ${collaborators.length} collaborators for project ${projectId}:`, collaborators)
+            console.log('Project metadata:', {
+              isPersonalProject: data.isPersonalProject,
+              hasCollaborators: data.hasCollaborators
+            })
+            setProjectCollaborators(prev => ({
+              ...prev,
+              [projectId]: collaborators
+            }))
+          } else {
+            console.error('Failed to fetch collaborators, status:', response.status)
+          }
+        } catch (error) {
+          console.error('Error fetching project collaborators:', error)
+        }
+      }
+
+      // Find the assignee from collaborators
+      if (state.currentTask.assigneeId && projectCollaborators[projectId]) {
+        console.log('Looking for assignee:', {
+          assigneeId: state.currentTask.assigneeId,
+          assigneeIdType: typeof state.currentTask.assigneeId,
+          collaborators: projectCollaborators[projectId].map(c => ({
+            id: c.id,
+            idType: typeof c.id,
+            name: c.name
+          }))
+        })
+        
+        // Try to find assignee with string comparison
+        const assignee = projectCollaborators[projectId].find(
+          collab => String(collab.id) === String(state.currentTask?.assigneeId)
+        )
+        
+        if (assignee) {
+          console.log('Found assignee:', assignee)
+          setCurrentTaskAssignee(assignee)
+        } else {
+          // If we can't find the assignee in collaborators, create a placeholder
+          console.log('Assignee not found in collaborators, creating placeholder')
+          setCurrentTaskAssignee({
+            id: state.currentTask.assigneeId,
+            name: `User ${state.currentTask.assigneeId}`,
+            email: '',
+            avatarSmall: undefined,
+            avatarMedium: undefined,
+            avatarBig: undefined
+          })
+        }
+      } else {
+        setCurrentTaskAssignee(undefined)
+      }
+    }
+
+    loadAssigneeData()
+  }, [state.currentTask?.id, state.currentTask?.assigneeId, state.currentTask?.projectId, projectCollaborators])
   
   // Update task key when current task changes to force form re-render
   const moveToNext = useCallback(() => {
@@ -264,12 +454,16 @@ export default function TaskProcessor() {
       if (nextTask) {
         setTaskKey(prevKey => prevKey + 1)
         
-        // Prefetch suggestions for the next few tasks if we have project hierarchy
+        // Prefetch suggestions for the next few tasks if we have project hierarchy and in inbox
         if (projectHierarchy && remainingQueue.length > 0) {
-          const tasksToPreload = remainingQueue.slice(0, 3) // Preload next 3 tasks
-          suggestionsCache.prefetchSuggestions(tasksToPreload, projectHierarchy).catch(error => {
-            console.warn('Failed to prefetch suggestions for upcoming tasks:', error)
-          })
+          const inboxProject = projects.find(p => p.isInboxProject)
+          const currentProject = projects.find(p => p.id === nextTask?.projectId)
+          if (inboxProject && currentProject?.isInboxProject) {
+            const tasksToPreload = remainingQueue.slice(0, 3) // Preload next 3 tasks
+            suggestionsCache.prefetchSuggestions(tasksToPreload, projectHierarchy).catch(error => {
+              console.warn('Failed to prefetch suggestions for upcoming tasks:', error)
+            })
+          }
         }
       }
       
@@ -549,6 +743,51 @@ export default function TaskProcessor() {
     }
   }, [state.currentTask, autoSaveTask])
 
+  const handleAssigneeSelect = useCallback(async (userId: string | null) => {
+    setShowAssigneeOverlay(false) // Close immediately
+    
+    if (state.currentTask) {
+      const originalAssigneeId = state.currentTask.assigneeId
+      
+      // Update the task immediately in the UI
+      setState(prev => ({
+        ...prev,
+        currentTask: prev.currentTask ? { ...prev.currentTask, assigneeId: userId || undefined } : null
+      }))
+      
+      // Update the current assignee display
+      if (userId && projectCollaborators[state.currentTask.projectId]) {
+        const newAssignee = projectCollaborators[state.currentTask.projectId].find(
+          collab => String(collab.id) === String(userId)
+        )
+        setCurrentTaskAssignee(newAssignee)
+      } else {
+        setCurrentTaskAssignee(undefined)
+      }
+      
+      try {
+        // Queue the auto-save
+        await autoSaveTask(state.currentTask.id, { assigneeId: userId || undefined })
+      } catch (err) {
+        // Revert on error
+        setState(prev => ({
+          ...prev,
+          currentTask: prev.currentTask ? { ...prev.currentTask, assigneeId: originalAssigneeId } : null
+        }))
+        
+        // Revert assignee display
+        if (originalAssigneeId && projectCollaborators[state.currentTask.projectId]) {
+          const originalAssignee = projectCollaborators[state.currentTask.projectId].find(
+            collab => String(collab.id) === String(originalAssigneeId)
+          )
+          setCurrentTaskAssignee(originalAssignee)
+        } else {
+          setCurrentTaskAssignee(undefined)
+        }
+      }
+    }
+  }, [state.currentTask, autoSaveTask, projectCollaborators])
+
   const handleArchiveTask = useCallback(async () => {
     if (!state.currentTask) return
     
@@ -638,7 +877,7 @@ export default function TaskProcessor() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't handle shortcuts when overlays are open - they handle their own keys
-      if (showPriorityOverlay || showProjectOverlay || showLabelOverlay || showScheduledOverlay || showDeadlineOverlay) {
+      if (showPriorityOverlay || showProjectOverlay || showLabelOverlay || showScheduledOverlay || showDeadlineOverlay || showAssigneeOverlay) {
         return
       }
 
@@ -663,6 +902,10 @@ export default function TaskProcessor() {
         case '@':
           e.preventDefault()
           setShowLabelOverlay(true)
+          break
+        case '+':
+          e.preventDefault()
+          setShowAssigneeOverlay(true)
           break
         case 's':
         case 'S':
@@ -804,14 +1047,18 @@ export default function TaskProcessor() {
               onModeChange={setProcessingMode}
               projects={projects}
               allTasks={allTasksGlobal}
+              allTasksGlobal={allTasksGlobal}
               taskCounts={getTaskCountsForProjects(allTasksGlobal, projects.map(p => p.id))}
               labels={labels}
-              filters={filters}
+              projectMetadata={projectMetadata}
+              assigneeFilter={assigneeFilter}
+              onAssigneeFilterChange={setAssigneeFilter}
+              currentUserId={currentUserId}
             />
             
             {/* Loading State for Task Switching */}
             {loadingTasks && (
-              <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
+              <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
                 <div className="flex items-center justify-center space-x-3">
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-todoist-blue"></div>
                   <span className="text-gray-600">Loading tasks...</span>
@@ -889,14 +1136,18 @@ export default function TaskProcessor() {
             onModeChange={setProcessingMode}
             projects={projects}
             allTasks={allTasksGlobal}
+            allTasksGlobal={allTasksGlobal}
             taskCounts={getTaskCountsForProjects(allTasksGlobal, projects.map(p => p.id))}
             labels={labels}
-            filters={filters}
+            projectMetadata={projectMetadata}
+            assigneeFilter={assigneeFilter}
+            onAssigneeFilterChange={setAssigneeFilter}
+            currentUserId={currentUserId}
           />
           
           {/* Loading State for Task Switching */}
           {loadingTasks && (
-            <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
+            <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
               <div className="flex items-center justify-center space-x-3">
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-todoist-blue"></div>
                 <span className="text-gray-600">Loading tasks...</span>
@@ -921,6 +1172,7 @@ export default function TaskProcessor() {
               task={state.currentTask} 
               projects={projects} 
               labels={labels} 
+              assignee={currentTaskAssignee}
               onContentChange={handleContentChange}
               onDescriptionChange={handleDescriptionChange}
               onProjectClick={() => setShowProjectOverlay(true)}
@@ -929,6 +1181,15 @@ export default function TaskProcessor() {
               onLabelRemove={handleLabelRemove}
               onScheduledClick={() => setShowScheduledOverlay(true)}
               onDeadlineClick={() => setShowDeadlineOverlay(true)}
+              onAssigneeClick={() => setShowAssigneeOverlay(true)}
+            />
+
+            {/* Project Metadata Display */}
+            <ProjectMetadataDisplay
+              project={projects.find(p => p.id === state.currentTask.projectId)}
+              metadata={projectMetadata[state.currentTask.projectId]}
+              allProjects={projects}
+              className="animate-fade-in"
             />
 
             {/* Project Suggestions */}
@@ -1046,6 +1307,17 @@ export default function TaskProcessor() {
           onDeadlineChange={handleDeadlineChange}
           onClose={() => setShowDeadlineOverlay(false)}
           isVisible={showDeadlineOverlay}
+        />
+      )}
+
+      {/* Assignee Selection Overlay */}
+      {state.currentTask && (
+        <AssigneeSelectionOverlay
+          isVisible={showAssigneeOverlay}
+          onClose={() => setShowAssigneeOverlay(false)}
+          onAssigneeSelect={handleAssigneeSelect}
+          currentAssigneeId={state.currentTask.assigneeId}
+          collaborators={projectCollaborators[state.currentTask.projectId] || []}
         />
       )}
 

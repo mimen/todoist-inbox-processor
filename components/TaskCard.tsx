@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { TodoistTask, TodoistProject, TodoistLabel } from '@/lib/types'
+import { TodoistTask, TodoistProject, TodoistLabel, TodoistUser } from '@/lib/types'
 
 interface TaskCardProps {
   task: TodoistTask
   projects: TodoistProject[]
   labels: TodoistLabel[]
+  assignee?: TodoistUser
   onContentChange?: (newContent: string) => void
   onDescriptionChange?: (newDescription: string) => void
   onProjectClick?: () => void
@@ -15,12 +16,14 @@ interface TaskCardProps {
   onLabelRemove?: (labelName: string) => void
   onScheduledClick?: () => void
   onDeadlineClick?: () => void
+  onAssigneeClick?: () => void
 }
 
 export default function TaskCard({ 
   task, 
   projects, 
   labels, 
+  assignee,
   onContentChange, 
   onDescriptionChange,
   onProjectClick,
@@ -28,7 +31,8 @@ export default function TaskCard({
   onLabelAdd,
   onLabelRemove,
   onScheduledClick,
-  onDeadlineClick 
+  onDeadlineClick,
+  onAssigneeClick 
 }: TaskCardProps) {
   const [content, setContent] = useState(task.content)
   const [description, setDescription] = useState(task.description || '')
@@ -153,7 +157,7 @@ export default function TaskCard({
 
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border task-card-enter">
+    <div className="bg-white rounded-lg border border-gray-200 task-card-enter">
       {/* Main Content Area */}
       <div className="p-4 pb-2">
         {/* Task Content */}
@@ -265,6 +269,41 @@ export default function TaskCard({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <span>Deadline</span>
+            </button>
+          )}
+          
+          {/* Assignee */}
+          {task.assigneeId ? (
+            <button
+              onClick={onAssigneeClick}
+              className="inline-flex items-center space-x-1.5 bg-purple-100 hover:bg-purple-200 px-2 py-1 rounded text-xs transition-colors cursor-pointer"
+              title={assignee ? `Assigned to ${assignee.name}` : "Click to change assignee"}
+            >
+              {assignee?.avatarSmall ? (
+                <img 
+                  src={assignee.avatarSmall} 
+                  alt={assignee.name}
+                  className="w-3 h-3 rounded-full"
+                />
+              ) : (
+                <svg className="w-3 h-3 text-purple-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              )}
+              <span className="text-purple-700">
+                {assignee ? assignee.name : 'Unknown'}
+              </span>
+            </button>
+          ) : (
+            <button
+              onClick={onAssigneeClick}
+              className="inline-flex items-center space-x-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-100 px-2 py-1 rounded text-xs transition-colors"
+              title="Assign to someone"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              <span>Assign</span>
             </button>
           )}
         </div>

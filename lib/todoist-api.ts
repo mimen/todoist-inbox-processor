@@ -1,5 +1,6 @@
 import { TodoistApi } from '@doist/todoist-api-typescript'
 import crypto from 'crypto'
+import { TodoistTask } from './types'
 
 // Initialize Todoist API client
 const api = new TodoistApi(process.env.TODOIST_API_KEY!)
@@ -25,6 +26,34 @@ export interface TodoistTaskApi {
     isCompleted: boolean
 }
 
+// Transform API task to app task format
+export function transformApiTaskToAppTask(apiTask: TodoistTaskApi): TodoistTask {
+    return {
+        id: apiTask.id,
+        content: apiTask.content,
+        description: apiTask.description || undefined,
+        projectId: apiTask.projectId,
+        sectionId: undefined,
+        parentId: undefined,
+        order: 0,
+        priority: apiTask.priority,
+        labels: apiTask.labels,
+        due: apiTask.due ? {
+            date: apiTask.due.date,
+            string: apiTask.due.string,
+            datetime: apiTask.due.datetime,
+            recurring: false
+        } : undefined,
+        duration: undefined,
+        deadline: apiTask.deadline,
+        url: `https://todoist.com/app/task/${apiTask.id}`,
+        commentCount: 0,
+        assigneeId: apiTask.responsibleUid ? String(apiTask.responsibleUid) : undefined,
+        createdAt: apiTask.createdAt,
+        isCompleted: apiTask.isCompleted
+    }
+}
+
 export interface TodoistProjectApi {
     id: string
     name: string
@@ -47,6 +76,7 @@ export interface TaskUpdateRequest {
     labels?: string[]
     dueString?: string
     deadline?: string
+    assigneeId?: string
 }
 
 export class TodoistApiClient {
@@ -581,6 +611,11 @@ export class TodoistApiClient {
                 syncArgs.labels = updates.labels
                 hasUpdates = true
             }
+            if (updates.assigneeId !== undefined) {
+                console.log('Setting responsible_uid to:', updates.assigneeId || null)
+                syncArgs.responsible_uid = updates.assigneeId || null
+                hasUpdates = true
+            }
             if (updates.dueString !== undefined) {
                 // Parse due date string
                 if (updates.dueString) {
@@ -843,15 +878,13 @@ export class TodoistApiClient {
         deadline?: { date: string; string: string }
     } | null> {
         try {
-            const [tasks, projects] = await Promise.all([
-                TodoistApiClient.getProjectTasks(projectId),
-                TodoistApiClient.getProjects(),
-            ])
-
-            const project = projects.find((p) => p.id === projectId)
-            if (!project) return null
-
-            const metadataTask = tasks.find((task) => task.labels.includes('project-metadata'))
+            // Get all tasks using Sync API to avoid project ID mismatch issues
+            const allTasks = await TodoistApiClient.getAllTasksSync()
+            
+            // Filter tasks for this project
+            const projectTasks = allTasks.filter(task => task.projectId === String(projectId))
+            
+            const metadataTask = projectTasks.find((task) => task.labels.includes('project-metadata'))
 
             if (metadataTask) {
                 // Extract category from labels
@@ -1016,25 +1049,49 @@ export class TodoistApiClient {
         })[]
     }> {
         try {
-            // 1. Get all projects
-            const projects = await TodoistApiClient.getProjects()
+            // 1. Get all projects using Sync API for consistent IDs
+            const projects = await TodoistApiClient.getProjectsSync()
 
-            // 2. Get metadata for all projects in parallel
-            const projectsWithMetadata = await Promise.all(
-                projects.map(async (project) => {
-                    const metadata = await TodoistApiClient.getProjectMetadata(project.id)
-                    return {
-                        ...project,
-                        description: metadata?.description || '',
-                        category: metadata?.category || null,
-                        priority: metadata?.priority || null,
-                        due: metadata?.due,
-                        deadline: metadata?.deadline,
+            // 2. Get all tasks once to avoid multiple API calls
+            const allTasks = await TodoistApiClient.getAllTasksSync()
+            
+            // 3. Build metadata for each project from the tasks
+            const projectsWithMetadata = projects.map((project) => {
+                // Find metadata task for this project
+                const projectTasks = allTasks.filter(task => task.projectId === String(project.id))
+                const metadataTask = projectTasks.find((task) => task.labels.includes('project-metadata'))
+                
+                let category: 'area' | 'project' | null = null
+                let description = ''
+                let priority = null
+                let due = undefined
+                let deadline = undefined
+                
+                if (metadataTask) {
+                    // Extract category from labels
+                    if (metadataTask.labels.includes('area-of-responsibility')) {
+                        category = 'area'
+                    } else if (metadataTask.labels.includes('project-type')) {
+                        category = 'project'
                     }
-                }),
-            )
+                    
+                    description = metadataTask.description || ''
+                    priority = metadataTask.priority
+                    due = metadataTask.due
+                    deadline = metadataTask.deadline
+                }
+                
+                return {
+                    ...project,
+                    description,
+                    category,
+                    priority,
+                    due,
+                    deadline,
+                }
+            })
 
-            // 3. Build hierarchy map
+            // 4. Build hierarchy map
             const rootProjects = projectsWithMetadata.filter((p) => !p.parentId)
             const childProjects = projectsWithMetadata.filter((p) => p.parentId)
 
@@ -1061,14 +1118,37 @@ export class TodoistApiClient {
             children: (TodoistProjectApi & { description: string })[]
         })[]
     }> {
-        const result = await TodoistApiClient.fetchProjectHierarchyWithMetadata()
-        return {
-            flat: result.flat.map((p) => ({ ...p, description: p.description })),
-            hierarchical: result.hierarchical.map((p) => ({
-                ...p,
-                description: p.description,
-                children: p.children.map((c) => ({ ...c, description: c.description })),
-            })),
+        try {
+            // 1. Get all projects using Sync API for consistent IDs
+            const projects = await TodoistApiClient.getProjectsSync()
+
+            // 2. Get metadata for all projects in parallel
+            const projectsWithDescription = await Promise.all(
+                projects.map(async (project) => {
+                    const metadata = await TodoistApiClient.getProjectMetadata(project.id)
+                    return {
+                        ...project,
+                        description: metadata?.description || '',
+                    }
+                }),
+            )
+
+            // 3. Build hierarchy map
+            const rootProjects = projectsWithDescription.filter((p) => !p.parentId)
+            const childProjects = projectsWithDescription.filter((p) => p.parentId)
+
+            const hierarchy = rootProjects.map((parent) => ({
+                ...parent,
+                children: childProjects.filter((child) => child.parentId === parent.id),
+            }))
+
+            return {
+                flat: projectsWithDescription,
+                hierarchical: hierarchy,
+            }
+        } catch (error) {
+            console.error('Error fetching project hierarchy:', error)
+            throw new Error('Failed to fetch project hierarchy with descriptions')
         }
     }
 

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { TodoistApiClient } from '@/lib/todoist-api';
+import { TodoistApiClient, transformApiTaskToAppTask } from '@/lib/todoist-api';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -13,7 +13,10 @@ export async function GET(request: Request) {
     // Use the Todoist API to get tasks matching the filter
     const tasks = await TodoistApiClient.getTasks({ filter });
     
-    return NextResponse.json(tasks);
+    // Transform tasks to app format
+    const transformedTasks = tasks.map(transformApiTaskToAppTask);
+    
+    return NextResponse.json(transformedTasks);
   } catch (error) {
     console.error('Error fetching filtered tasks:', error);
     return NextResponse.json(

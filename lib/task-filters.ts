@@ -1,5 +1,6 @@
 import { TodoistTask } from '@/lib/types';
-import { ProcessingMode } from '@/types/processing-mode';
+import { ProcessingMode, PRESET_FILTERS } from '@/types/processing-mode';
+import { AssigneeFilterType } from '@/components/AssigneeFilter';
 
 // Helper function to detect recurring tasks
 function isRecurringTask(task: TodoistTask): boolean {
@@ -22,10 +23,29 @@ function isRecurringTask(task: TodoistTask): boolean {
 
 export function filterTasksByMode(
   tasks: TodoistTask[],
-  mode: ProcessingMode
+  mode: ProcessingMode,
+  projectMetadata?: Record<string, any>,
+  assigneeFilter: AssigneeFilterType = 'all',
+  currentUserId?: string
 ): TodoistTask[] {
   // Always exclude archived tasks (those starting with "* ")
   let filtered = tasks.filter(task => !task.content.startsWith('* '));
+
+  // Apply assignee filter
+  if (assigneeFilter !== 'all') {
+    filtered = filtered.filter(task => {
+      switch (assigneeFilter) {
+        case 'unassigned':
+          return !task.assigneeId;
+        case 'assigned-to-me':
+          return task.assigneeId === currentUserId;
+        case 'assigned-to-others':
+          return task.assigneeId && task.assigneeId !== currentUserId;
+        default:
+          return true;
+      }
+    });
+  }
 
   switch (mode.type) {
     case 'project':
@@ -83,11 +103,40 @@ export function filterTasksByMode(
         }
       });
 
-    case 'filter':
-      // For now, return all non-archived tasks
-      // TODO: Implement Todoist filter query parsing
-      console.warn('Todoist filter queries not yet implemented');
-      return filtered;
+    case 'preset':
+      const presetId = mode.value as string;
+      const preset = PRESET_FILTERS.find(p => p.id === presetId);
+      
+      if (!preset) {
+        console.warn(`Preset filter ${presetId} not found`);
+        return filtered;
+      }
+      
+      console.log(`Applying preset filter: ${presetId}`, {
+        totalTasks: filtered.length,
+        projectMetadataKeys: Object.keys(projectMetadata || {})
+      });
+      
+      const result = filtered.filter(task => {
+        try {
+          const matches = preset.filter(task, projectMetadata || {});
+          if (presetId === 'priority-projects' && matches) {
+            const meta = projectMetadata?.[task.projectId];
+            console.log(`Task "${task.content}" matches priority-projects:`, {
+              projectId: task.projectId,
+              projectMetadata: meta,
+              taskPriority: task.priority
+            });
+          }
+          return matches;
+        } catch (error) {
+          console.error(`Error applying preset filter ${presetId}:`, error);
+          return false;
+        }
+      });
+      
+      console.log(`Preset filter ${presetId} matched ${result.length} tasks`);
+      return result;
 
     default:
       return filtered;

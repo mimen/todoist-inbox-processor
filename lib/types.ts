@@ -75,6 +75,7 @@ export interface TaskUpdate {
   duration?: number
   durationUnit?: 'minute' | 'hour'
   deadline?: string
+  assigneeId?: string
 }
 
 export interface MockAISuggestion {
@@ -82,4 +83,13 @@ export interface MockAISuggestion {
   suggestion: string
   confidence: number
   reasoning?: string
+}
+
+export interface TodoistUser {
+  id: string
+  name: string
+  email: string
+  avatarBig?: string
+  avatarMedium?: string
+  avatarSmall?: string
 }

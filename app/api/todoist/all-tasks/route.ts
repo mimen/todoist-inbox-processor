@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { TodoistApiClient } from '@/lib/todoist-api'
+import { TodoistApiClient, transformApiTaskToAppTask } from '@/lib/todoist-api'
 
 export async function GET() {
     try {
@@ -10,9 +10,12 @@ export async function GET() {
 
         console.log('API: Total tasks fetched via Sync API:', allTasks.length)
 
+        // Transform all tasks to app format
+        const transformedTasks = allTasks.map(transformApiTaskToAppTask)
+
         return NextResponse.json({
-            tasks: allTasks,
-            total: allTasks.length,
+            tasks: transformedTasks,
+            total: transformedTasks.length,
             message: 'All tasks fetched successfully via Sync API',
         })
     } catch (error) {
@@ -23,9 +26,12 @@ export async function GET() {
             console.log('API: Falling back to regular getTasks API')
             const allTasks = await TodoistApiClient.getTasks()
 
+            // Transform all tasks to app format
+            const transformedTasks = allTasks.map(transformApiTaskToAppTask)
+
             return NextResponse.json({
-                tasks: allTasks,
-                total: allTasks.length,
+                tasks: transformedTasks,
+                total: transformedTasks.length,
                 message: 'Tasks fetched via regular API (fallback)',
             })
         } catch (fallbackError) {

@@ -19,7 +19,7 @@ export default function ProjectSwitcher({
   allTasks = []
 }: ProjectSwitcherProps) {
   return (
-    <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
+    <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-medium text-gray-700">Processing Project</h3>
         <span className="text-xs text-gray-500">

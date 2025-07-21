@@ -1,4 +1,4 @@
-interface ProjectSuggestion {
+export interface ProjectSuggestion {
   projectId: string
   projectName: string
   confidence: number
@@ -94,6 +94,13 @@ class SuggestionsCache {
     }
 
     try {
+      // Debug: Log what we're sending to the API
+      console.log('Generating suggestions with hierarchy:', {
+        projectCount: projectHierarchy?.projects?.length || 0,
+        firstProject: projectHierarchy?.projects?.[0],
+        currentProjectId
+      })
+
       const response = await fetch('/api/llm/generate-project-suggestions', {
         method: 'POST',
         headers: {
@@ -110,6 +117,8 @@ class SuggestionsCache {
       if (response.ok) {
         const data = await response.json()
         const suggestions = data.suggestions || []
+        
+        console.log('API returned suggestions:', suggestions)
         
         // Cache the result
         this.setSuggestions(taskId, content, description, suggestions)

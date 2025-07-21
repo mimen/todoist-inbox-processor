@@ -1,4 +1,4 @@
-export type ProcessingModeType = 'project' | 'priority' | 'label' | 'date' | 'filter';
+export type ProcessingModeType = 'project' | 'priority' | 'label' | 'date' | 'preset';
 
 export interface ProcessingMode {
   type: ProcessingModeType;
@@ -39,10 +39,10 @@ export const PROCESSING_MODE_OPTIONS: ProcessingModeOption[] = [
     description: 'Process tasks by due date'
   },
   {
-    type: 'filter',
-    label: 'Filter',
+    type: 'preset',
+    label: 'Smart Filter',
     icon: '',
-    description: 'Use saved Todoist filters'
+    description: 'Use smart preset filters'
   }
 ];
 
@@ -60,4 +60,64 @@ export const DATE_OPTIONS = [
   { value: 'scheduled', label: 'Scheduled (One-time)', icon: '🗓️', color: 'text-purple-500' },
   { value: 'recurring', label: 'Scheduled (Recurring)', icon: '🔄', color: 'text-indigo-500' },
   { value: 'no_date', label: 'No Date', icon: '📭', color: 'text-gray-500' }
+];
+
+export interface PresetFilter {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  filter: (task: any, projectMetadata: any) => boolean;
+}
+
+export const PRESET_FILTERS: PresetFilter[] = [
+  {
+    id: 'daily-planning',
+    name: 'Daily Planning',
+    description: 'Priority 1 tasks, due today, or overdue',
+    icon: '🎯',
+    filter: (task, projectMetadata) => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      // P1 task
+      if (task.priority === 4) return true;
+      
+      // Due today or overdue
+      if (task.due) {
+        const dueDate = new Date(task.due.date);
+        dueDate.setHours(0, 0, 0, 0);
+        return dueDate <= today;
+      }
+      
+      return false;
+    }
+  },
+  {
+    id: 'priority-projects',
+    name: 'Priority Projects',
+    description: 'Tasks in projects marked as P1',
+    icon: '🔥',
+    filter: (task, projectMetadata) => {
+      const metadata = projectMetadata[task.projectId];
+      return metadata?.priority === 4; // P1
+    }
+  },
+  {
+    id: 'due-projects',
+    name: 'Due Projects',
+    description: 'Tasks in projects due this week',
+    icon: '📊',
+    filter: (task, projectMetadata) => {
+      const metadata = projectMetadata[task.projectId];
+      if (!metadata?.due) return false;
+      
+      const projectDue = new Date(metadata.due.date);
+      const today = new Date();
+      const nextWeek = new Date(today);
+      nextWeek.setDate(today.getDate() + 7);
+      
+      return projectDue >= today && projectDue <= nextWeek;
+    }
+  }
 ];

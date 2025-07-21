@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { ProcessingMode, ProcessingModeType, PROCESSING_MODE_OPTIONS } from '@/types/processing-mode';
@@ -8,7 +8,8 @@ import ProjectDropdown from './ProjectDropdown';
 import PriorityDropdown from './PriorityDropdown';
 import LabelDropdown from './LabelDropdown';
 import DateDropdown from './DateDropdown';
-import FilterDropdown, { TodoistFilter } from './FilterDropdown';
+import PresetDropdown from './PresetDropdown';
+import AssigneeFilter, { AssigneeFilterType } from './AssigneeFilter';
 import { TodoistTask, TodoistLabel, TodoistProject } from '@/lib/types';
 
 interface ProcessingModeSelectorProps {
@@ -16,9 +17,13 @@ interface ProcessingModeSelectorProps {
   onModeChange: (mode: ProcessingMode) => void;
   projects: TodoistProject[];
   allTasks: TodoistTask[];
+  allTasksGlobal?: TodoistTask[]; // Add this for preset filters
   taskCounts: Record<string, number>;
   labels?: TodoistLabel[];
-  filters?: TodoistFilter[];
+  projectMetadata?: Record<string, any>;
+  assigneeFilter?: AssigneeFilterType;
+  onAssigneeFilterChange?: (filter: AssigneeFilterType) => void;
+  currentUserId?: string;
 }
 
 export default function ProcessingModeSelector({
@@ -26,9 +31,13 @@ export default function ProcessingModeSelector({
   onModeChange,
   projects,
   allTasks,
+  allTasksGlobal = [],
   taskCounts,
   labels = [],
-  filters = []
+  projectMetadata = {},
+  assigneeFilter = 'all',
+  onAssigneeFilterChange,
+  currentUserId
 }: ProcessingModeSelectorProps) {
   const handleModeTypeChange = (newType: ProcessingModeType) => {
     // Reset value when changing mode type
@@ -56,9 +65,9 @@ export default function ProcessingModeSelector({
         defaultValue = 'today';
         defaultDisplayName = 'Today';
         break;
-      case 'filter':
-        defaultValue = filters[0]?.id || '';
-        defaultDisplayName = filters[0]?.name || 'Select filter...';
+      case 'preset':
+        defaultValue = 'daily-planning';
+        defaultDisplayName = 'Daily Planning';
         break;
     }
 
@@ -83,7 +92,7 @@ export default function ProcessingModeSelector({
   ).sort();
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6 shadow-sm">
+    <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
       <h3 className="text-sm font-medium text-gray-700 mb-3">Processing Options</h3>
       <div className="space-y-4">
         <div className="flex items-center gap-6">
@@ -152,18 +161,29 @@ export default function ProcessingModeSelector({
             />
           )}
 
-          {mode.type === 'filter' && (
-            <FilterDropdown
-              selectedFilter={mode.value as string}
-              onFilterChange={(filterId, displayName, query) => {
-                // Store the query in the value along with the ID for filtering
-                handleValueChange(`${filterId}|${query}`, displayName);
+          {mode.type === 'preset' && (
+            <PresetDropdown
+              selectedPreset={mode.value as string}
+              onPresetChange={(presetId, displayName) => {
+                handleValueChange(presetId, displayName);
               }}
-              allTasks={allTasks}
-              filters={filters}
+              allTasks={allTasksGlobal.length > 0 ? allTasksGlobal : allTasks}
+              projectMetadata={projectMetadata}
             />
           )}
         </div>
+        
+        {/* Assignee Filter */}
+        {onAssigneeFilterChange && (
+          <div className="ml-auto">
+            <AssigneeFilter
+              value={assigneeFilter}
+              onChange={onAssigneeFilterChange}
+              tasks={allTasks}
+              currentUserId={currentUserId}
+            />
+          </div>
+        )}
       </div>
       </div>
     </div>
