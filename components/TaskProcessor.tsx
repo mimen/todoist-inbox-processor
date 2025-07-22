@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { TodoistTask, TodoistProject, TodoistLabel, ProcessingState, TaskUpdate, TodoistUser, CollaboratorsData } from '@/lib/types'
 import { generateMockSuggestions } from '@/lib/mock-data'
@@ -57,13 +57,7 @@ import ProjectMetadataDisplay from './ProjectMetadataDisplay'
 import AssigneeFilter, { AssigneeFilterType } from './AssigneeFilter'
 
 export default function TaskProcessor() {
-  const [state, setState] = useState<ProcessingState>({
-    currentTask: null,
-    queuedTasks: [],
-    processedTasks: [],
-    skippedTasks: [],
-  })
-  
+  // MAIN STATE
   const [projects, setProjects] = useState<TodoistProject[]>([])
   const [labels, setLabels] = useState<TodoistLabel[]>([])
   const [filters, setFilters] = useState<any[]>([])
@@ -77,8 +71,7 @@ export default function TaskProcessor() {
     value: '',
     displayName: 'Inbox'
   })
-  const [allTasks, setAllTasks] = useState<TodoistTask[]>([])
-  const [allTasksGlobal, setAllTasksGlobal] = useState<TodoistTask[]>([]) // All tasks across all projects
+  const [allTasksGlobal, setAllTasksGlobal] = useState<TodoistTask[]>([]) // Keep for loading tasks
   const [taskKey, setTaskKey] = useState(0) // Force re-render of TaskForm
   const [projectMetadata, setProjectMetadata] = useState<Record<string, any>>({})
   const [showPriorityOverlay, setShowPriorityOverlay] = useState(false)
@@ -111,12 +104,21 @@ export default function TaskProcessor() {
   
   const currentUserId = collaboratorsData?.currentUser?.id || '13801296' // Use dynamic user ID
   
-  // Derived current task from queue + master store
-  const getCurrentTask = useCallback((): TodoistTask | null => {
+  // DERIVED STATE from queue architecture
+  const currentTask = useMemo((): TodoistTask | null => {
     if (queuePosition >= taskQueue.length) return null
     const taskId = taskQueue[queuePosition]
     return masterTasks[taskId] || null
   }, [taskQueue, queuePosition, masterTasks])
+  
+  const queuedTasks = useMemo((): TodoistTask[] => {
+    return taskQueue.slice(queuePosition + 1)
+      .map(id => masterTasks[id])
+      .filter(Boolean)
+  }, [taskQueue, queuePosition, masterTasks])
+  
+  const totalTasks = taskQueue.length
+  const completedTasks = processedTaskIds.length + skippedTaskIds.length
   
   // NEW QUEUE ARCHITECTURE: Navigation functions
   const moveToNextTask = useCallback(() => {
@@ -161,8 +163,8 @@ export default function TaskProcessor() {
   
   // Helper function to check if current project has collaborators
   const hasCollaboratorsForCurrentProject = useCallback(() => {
-    if (!state.currentTask) return false
-    const projectId = state.currentTask.projectId
+    if (!currentTask) return false
+    const projectId = currentTask.projectId
     
     // Check if we have collaborator data for this project
     const projectCollabs = projectCollaborators[projectId]
@@ -178,7 +180,7 @@ export default function TaskProcessor() {
     }
     
     return false
-  }, [state.currentTask, projectCollaborators, collaboratorsData, currentUserId])
+  }, [currentTask, projectCollaborators, collaboratorsData, currentUserId])
 
   // Load initial data (projects and labels)
   useEffect(() => {
@@ -289,15 +291,18 @@ export default function TaskProcessor() {
               displayName: inboxProject.name
             }, metadata, assigneeFilter, currentUserId)
             
-            setAllTasks(inboxTasks)
-            
+            // Initialize queue architecture with inbox tasks
             if (inboxTasks.length > 0) {
-              setState({
-                currentTask: inboxTasks[0],
-                queuedTasks: inboxTasks.slice(1),
-                processedTasks: [],
-                skippedTasks: [],
-              })
+              const taskMap = inboxTasks.reduce((acc, task) => {
+                acc[task.id] = task
+                return acc
+              }, {} as Record<string, TodoistTask>)
+              
+              setMasterTasks(taskMap)
+              setTaskQueue(inboxTasks.map(task => task.id))
+              setQueuePosition(0)
+              setProcessedTaskIds([])
+              setSkippedTaskIds([])
               setTaskKey(prev => prev + 1)
             }
             
@@ -383,9 +388,6 @@ export default function TaskProcessor() {
         console.log(`${mode.type} ${mode.displayName}: Found ${filteredTasks.length} tasks from ${allTasksGlobal.length} total tasks`)
       }
       
-      // Keep legacy setAllTasks for now (gradual migration)
-      setAllTasks(filteredTasks)
-
       // NEW QUEUE ARCHITECTURE: Update master store and reset queue
       if (filteredTasks.length > 0) {
         // 1. Update master task store
@@ -405,13 +407,6 @@ export default function TaskProcessor() {
         setProcessedTaskIds([])
         setSkippedTaskIds([])
         
-        // Legacy state update (keeping for now)
-        setState({
-          currentTask: filteredTasks[0],
-          queuedTasks: filteredTasks.slice(1),
-          processedTasks: [],
-          skippedTasks: [],
-        })
         setTaskKey(prev => prev + 1) // Force TaskForm to re-render with new task
       } else {
         // Empty state
@@ -419,14 +414,6 @@ export default function TaskProcessor() {
         setQueuePosition(0)
         setProcessedTaskIds([])
         setSkippedTaskIds([])
-        
-        // Legacy state
-        setState({
-          currentTask: null,
-          queuedTasks: [],
-          processedTasks: [],
-          skippedTasks: [],
-        })
       }
       
     
@@ -460,30 +447,30 @@ export default function TaskProcessor() {
   useEffect(() => {
     async function loadSuggestions() {
       // Check if current task is in inbox
-      const currentProject = projects.find(p => p.id === state.currentTask?.projectId)
+      const currentProject = projects.find(p => p.id === currentTask?.projectId)
       const isInboxTask = currentProject?.isInboxProject || false
       
       console.log('Loading suggestions for task:', {
-        hasTask: !!state.currentTask,
-        taskId: state.currentTask?.id,
-        projectId: state.currentTask?.projectId,
+        hasTask: !!currentTask,
+        taskId: currentTask?.id,
+        projectId: currentTask?.projectId,
         isInboxTask,
         hasHierarchy: !!projectHierarchy
       })
       
       // Only generate suggestions for inbox tasks
-      if (!state.currentTask || !projectHierarchy || !isInboxTask) {
+      if (!currentTask || !projectHierarchy || !isInboxTask) {
         setCurrentTaskSuggestions([])
         return
       }
 
       try {
         const suggestions = await suggestionsCache.generateSuggestions(
-          state.currentTask.id,
-          state.currentTask.content,
-          state.currentTask.description || '',
+          currentTask.id,
+          currentTask.content,
+          currentTask.description || '',
           projectHierarchy,
-          state.currentTask.projectId
+          currentTask.projectId
         )
         
         console.log('Raw suggestions from cache:', suggestions)
@@ -499,7 +486,7 @@ export default function TaskProcessor() {
           return project && !project.isInboxProject
         })
         
-        console.log(`TaskProcessor: Setting suggestions for task ${state.currentTask.id}:`, filteredSuggestions)
+        console.log(`TaskProcessor: Setting suggestions for task ${currentTask.id}:`, filteredSuggestions)
         setCurrentTaskSuggestions(filteredSuggestions)
       } catch (error) {
         console.error('Error loading suggestions:', error)
@@ -508,20 +495,20 @@ export default function TaskProcessor() {
     }
 
     loadSuggestions()
-  }, [state.currentTask?.id, state.currentTask?.content, state.currentTask?.description, state.currentTask?.projectId, projectHierarchy, projects])
+  }, [currentTask?.id, currentTask?.content, currentTask?.description, currentTask?.projectId, projectHierarchy, projects])
   
   // Load assignee when current task changes
   useEffect(() => {
     async function loadAssigneeData() {
-      if (!state.currentTask) {
+      if (!currentTask) {
         setCurrentTaskAssignee(undefined)
         return
       }
 
       // Find the assignee from all available users
-      if (state.currentTask.assigneeId && collaboratorsData?.allUsers) {
+      if (currentTask.assigneeId && collaboratorsData?.allUsers) {
         const assignee = collaboratorsData.allUsers.find(
-          user => String(user.id) === String(state.currentTask?.assigneeId)
+          user => String(user.id) === String(currentTask?.assigneeId)
         )
         
         if (assignee) {
@@ -531,8 +518,8 @@ export default function TaskProcessor() {
           // If we can't find the assignee in collaborators, create a placeholder
           console.log('Assignee not found in collaborators, creating placeholder')
           setCurrentTaskAssignee({
-            id: state.currentTask.assigneeId,
-            name: `User ${state.currentTask.assigneeId}`,
+            id: currentTask.assigneeId,
+            name: `User ${currentTask.assigneeId}`,
             email: '',
             avatarSmall: undefined,
             avatarMedium: undefined,
@@ -545,38 +532,34 @@ export default function TaskProcessor() {
     }
 
     loadAssigneeData()
-  }, [state.currentTask?.id, state.currentTask?.assigneeId, collaboratorsData])
+  }, [currentTask?.id, currentTask?.assigneeId, collaboratorsData])
   
   // Update task key when current task changes to force form re-render
   const moveToNext = useCallback(() => {
-    setState(prev => {
-      const nextTask = prev.queuedTasks[0] || null
-      const remainingQueue = prev.queuedTasks.slice(1)
+    // Simply advance the queue position
+    setQueuePosition(prev => prev + 1)
+    
+    // Force form re-render when task changes
+    setTaskKey(prevKey => prevKey + 1)
+    
+    // Prefetch suggestions for the next few tasks if we have project hierarchy and in inbox
+    if (projectHierarchy && queuedTasks.length > queuePosition + 1) {
+      const nextTaskId = queuedTasks[queuePosition + 1]
+      const nextTask = masterTasks[nextTaskId]
       
-      // Force form re-render when task changes
       if (nextTask) {
-        setTaskKey(prevKey => prevKey + 1)
-        
-        // Prefetch suggestions for the next few tasks if we have project hierarchy and in inbox
-        if (projectHierarchy && remainingQueue.length > 0) {
-          const inboxProject = projects.find(p => p.isInboxProject)
-          const currentProject = projects.find(p => p.id === nextTask?.projectId)
-          if (inboxProject && currentProject?.isInboxProject) {
-            const tasksToPreload = remainingQueue.slice(0, 3) // Preload next 3 tasks
-            suggestionsCache.prefetchSuggestions(tasksToPreload, projectHierarchy).catch(error => {
-              console.warn('Failed to prefetch suggestions for upcoming tasks:', error)
-            })
-          }
+        const inboxProject = projects.find(p => p.isInboxProject)
+        const currentProject = projects.find(p => p.id === nextTask?.projectId)
+        if (inboxProject && currentProject?.isInboxProject) {
+          const upcomingTaskIds = queuedTasks.slice(queuePosition + 1, queuePosition + 4) // Preload next 3 tasks
+          const upcomingTasks = upcomingTaskIds.map(id => masterTasks[id]).filter(Boolean)
+          suggestionsCache.prefetchSuggestions(upcomingTasks, projectHierarchy).catch(error => {
+            console.warn('Failed to prefetch suggestions for upcoming tasks:', error)
+          })
         }
       }
-      
-      return {
-        ...prev,
-        currentTask: nextTask,
-        queuedTasks: remainingQueue,
-      }
-    })
-  }, [projectHierarchy])
+    }
+  }, [projectHierarchy, queuedTasks, queuePosition, masterTasks, projects])
 
   // NEW QUEUE ARCHITECTURE: Only update master store, queue unchanged
   const autoSaveTask = useCallback(async (taskId: string, updates: TaskUpdate) => {
@@ -673,87 +656,30 @@ export default function TaskProcessor() {
         }
       })
       
-      // LEGACY: Keep old array updates for gradual migration
-      const updateTaskInArray = (tasks: TodoistTask[]) => {
-        const index = tasks.findIndex(t => t.id === taskId)
+      // Also update allTasksGlobal for loading purposes
+      setAllTasksGlobal(prev => {
+        const index = prev.findIndex(t => t.id === taskId)
         if (index !== -1) {
-          // Same update logic as above but for arrays
+          const updated = [...prev]
+          const existingTask = updated[index]
+          
           if (responseData.dates) {
             if (responseData.dates.due !== undefined) {
-              tasks[index].due = responseData.dates.due
+              existingTask.due = responseData.dates.due
             }
             if (responseData.dates.deadline !== undefined) {
-              tasks[index].deadline = responseData.dates.deadline
+              existingTask.deadline = responseData.dates.deadline
             }
             Object.keys(updates).forEach(key => {
               if (key !== 'dueString' && key !== 'deadline' && key !== 'due') {
-                (tasks[index] as any)[key] = updates[key as keyof TaskUpdate]
+                (existingTask as any)[key] = updates[key as keyof TaskUpdate]
               }
             })
-          } else if (responseData.task) {
-            const existingDeadline = tasks[index].deadline
-            Object.assign(tasks[index], responseData.task)
-            if (existingDeadline && !responseData.task.deadline) {
-              tasks[index].deadline = existingDeadline
-            }
           } else {
-            if ('dueString' in updates || 'due' in updates) {
-              if (updates.due) {
-                tasks[index].due = updates.due
-              } else if (updates.dueString) {
-                tasks[index].due = { 
-                  date: updates.dueString, 
-                  string: updates.dueString,
-                  recurring: false 
-                }
-              } else {
-                tasks[index].due = undefined
-              }
-            }
-            if ('deadline' in updates) {
-              if (updates.deadline && typeof updates.deadline === 'string') {
-                tasks[index].deadline = { 
-                  date: updates.deadline, 
-                  string: updates.deadline
-                }
-              } else if (typeof updates.deadline === 'object') {
-                tasks[index].deadline = updates.deadline
-              } else {
-                tasks[index].deadline = undefined
-              }
-            }
-            Object.keys(updates).forEach(key => {
-              if (key !== 'dueString' && key !== 'deadline' && key !== 'due') {
-                (tasks[index] as any)[key] = updates[key as keyof TaskUpdate]
-              }
-            })
+            Object.assign(existingTask, updates)
           }
-        }
-      }
-      
-      // LEGACY: Update legacy arrays (keeping during migration)
-      if (!('projectId' in updates)) {
-        setAllTasks(prev => {
-          const newTasks = [...prev]
-          updateTaskInArray(newTasks)
-          return newTasks
-        })
-      }
-      
-      setAllTasksGlobal(prev => {
-        const newTasks = [...prev]
-        updateTaskInArray(newTasks)
-        return newTasks
-      })
-      
-      // LEGACY: Update legacy current task (keeping during migration)
-      setState(prev => {
-        if (prev.currentTask?.id === taskId) {
-          const currentTask = masterTasks[taskId] || prev.currentTask
-          return {
-            ...prev,
-            currentTask: { ...currentTask, ...updates }
-          }
+          
+          return updated
         }
         return prev
       })
@@ -769,157 +695,141 @@ export default function TaskProcessor() {
   }, [masterTasks])
 
   const handleContentChange = useCallback(async (newContent: string) => {
-    if (state.currentTask) {
+    if (currentTask) {
       // Invalidate suggestions cache since content changed
-      suggestionsCache.invalidateTask(state.currentTask.id)
-      await autoSaveTask(state.currentTask.id, { content: newContent })
+      suggestionsCache.invalidateTask(currentTask.id)
+      await autoSaveTask(currentTask.id, { content: newContent })
     }
-  }, [state.currentTask, autoSaveTask])
+  }, [currentTask, autoSaveTask])
 
   const handleNext = useCallback(() => {
-    if (!state.currentTask) return
-    
-    setState(prev => ({
-      ...prev,
-      processedTasks: [...prev.processedTasks, prev.currentTask!.id],
-    }))
-    
-    moveToNext()
-  }, [state.currentTask, moveToNext])
+    // Use new architecture navigation
+    moveToNextTask()
+  }, [moveToNextTask])
 
   const handlePrioritySelect = useCallback(async (priority: 1 | 2 | 3 | 4) => {
     setShowPriorityOverlay(false) // Close immediately
     
-    if (state.currentTask) {
-      const originalPriority = state.currentTask.priority
-      
-      // Update the task immediately in the UI for better UX
-      setState(prev => ({
-        ...prev,
-        currentTask: prev.currentTask ? { ...prev.currentTask, priority } : null
-      }))
-      
+    if (currentTask) {
       try {
-        // Queue the auto-save - this will also update all arrays
-        await autoSaveTask(state.currentTask.id, { priority })
+        // Update master store directly - no need for UI state manipulation
+        await autoSaveTask(currentTask.id, { priority })
       } catch (err) {
-        // Revert on error
-        setState(prev => ({
-          ...prev,
-          currentTask: prev.currentTask ? { ...prev.currentTask, priority: originalPriority } : null
-        }))
+        // Error handled in autoSaveTask
       }
     }
-  }, [state.currentTask, autoSaveTask])
+  }, [currentTask, autoSaveTask])
 
   const handleProjectSelect = useCallback(async (projectId: string) => {
     setShowProjectOverlay(false) // Close immediately
     
-    if (state.currentTask) {
-      const originalProjectId = state.currentTask.projectId
+    if (currentTask) {
+      const originalProjectId = currentTask.projectId
       
-      // Update the task immediately in the UI
-      setState(prev => ({
+      // Update the task immediately in the master store
+      setMasterTasks(prev => ({
         ...prev,
-        currentTask: prev.currentTask ? { ...prev.currentTask, projectId } : null
+        [currentTask.id]: {
+          ...prev[currentTask.id],
+          projectId
+        }
       }))
       
       try {
         // Queue the auto-save
-        await autoSaveTask(state.currentTask.id, { projectId })
+        await autoSaveTask(currentTask.id, { projectId })
       } catch (err) {
         // Revert on error
-        setState(prev => ({
+        setMasterTasks(prev => ({
           ...prev,
-          currentTask: prev.currentTask ? { ...prev.currentTask, projectId: originalProjectId } : null
+          [currentTask.id]: {
+            ...prev[currentTask.id],
+            projectId: originalProjectId
+          }
         }))
       }
     }
-  }, [state.currentTask, autoSaveTask])
+  }, [currentTask, autoSaveTask])
 
   const handleLabelsChange = useCallback(async (labels: string[]) => {
-    if (state.currentTask) {
-      const originalLabels = state.currentTask.labels
+    if (currentTask) {
+      const originalLabels = currentTask.labels
       
-      // Update the task immediately in the UI
-      setState(prev => ({
+      // Update the task immediately in the master store
+      setMasterTasks(prev => ({
         ...prev,
-        currentTask: prev.currentTask ? { ...prev.currentTask, labels } : null
+        [currentTask.id]: {
+          ...prev[currentTask.id],
+          labels
+        }
       }))
       
       try {
         // Queue the auto-save
-        await autoSaveTask(state.currentTask.id, { labels })
+        await autoSaveTask(currentTask.id, { labels })
       } catch (err) {
         // Revert on error
-        setState(prev => ({
+        setMasterTasks(prev => ({
           ...prev,
-          currentTask: prev.currentTask ? { ...prev.currentTask, labels: originalLabels } : null
+          [currentTask.id]: {
+            ...prev[currentTask.id],
+            labels: originalLabels
+          }
         }))
       }
     }
-  }, [state.currentTask, autoSaveTask])
+  }, [currentTask, autoSaveTask])
 
   const handleDescriptionChange = useCallback(async (newDescription: string) => {
-    if (state.currentTask) {
+    if (currentTask) {
       // Invalidate suggestions cache since description changed
-      suggestionsCache.invalidateTask(state.currentTask.id)
+      suggestionsCache.invalidateTask(currentTask.id)
       
-      // Update the task immediately in the UI
-      setState(prev => ({
+      // Update the task immediately in the master store
+      setMasterTasks(prev => ({
         ...prev,
-        currentTask: prev.currentTask ? { ...prev.currentTask, description: newDescription } : null
+        [currentTask.id]: {
+          ...prev[currentTask.id],
+          description: newDescription
+        }
       }))
       
-      await autoSaveTask(state.currentTask.id, { description: newDescription })
+      await autoSaveTask(currentTask.id, { description: newDescription })
     }
-  }, [state.currentTask, autoSaveTask])
+  }, [currentTask, autoSaveTask])
 
   const handleLabelRemove = useCallback((labelName: string) => {
-    if (state.currentTask) {
-      const newLabels = state.currentTask.labels.filter(l => l !== labelName)
+    if (currentTask) {
+      const newLabels = currentTask.labels.filter(l => l !== labelName)
       handleLabelsChange(newLabels)
     }
-  }, [state.currentTask, handleLabelsChange])
+  }, [currentTask, handleLabelsChange])
 
   const navigateToNextTask = useCallback(() => {
-    if (!state.currentTask) return
+    if (!currentTask) return
     
-    setState(prev => ({
-      ...prev,
-      processedTasks: [...prev.processedTasks, prev.currentTask!.id],
-    }))
-    
+    setProcessedTaskIds(prev => [...prev, currentTask.id])
     moveToNext()
-  }, [state.currentTask, moveToNext])
+  }, [currentTask, moveToNext])
 
   const navigateToPrevTask = useCallback(() => {
-    if (state.processedTasks.length === 0) return
+    if (processedTaskIds.length === 0) return
     
-    // Move the last processed task back to current
-    setState(prev => {
-      const lastProcessedId = prev.processedTasks[prev.processedTasks.length - 1]
-      const lastProcessedTask = allTasks.find(task => task.id === lastProcessedId)
-      
-      if (!lastProcessedTask) return prev
-      
-      return {
-        ...prev,
-        currentTask: lastProcessedTask,
-        queuedTasks: prev.currentTask ? [prev.currentTask, ...prev.queuedTasks] : prev.queuedTasks,
-        processedTasks: prev.processedTasks.slice(0, -1)
-      }
-    })
+    // Simply move back one position in the queue
+    setQueuePosition(prev => Math.max(0, prev - 1))
+    
+    // Remove the last processed task ID
+    setProcessedTaskIds(prev => prev.slice(0, -1))
     
     setTaskKey(prev => prev + 1) // Force re-render
-  }, [state.processedTasks, allTasks])
+  }, [processedTaskIds])
 
   const handleScheduledDateChange = useCallback(async (dateString: string) => {
-    if (!state.currentTask) return;
+    if (!currentTask) return;
     
     // Capture the current task ID and due date immediately
-    const taskId = state.currentTask.id;
-    const originalDue = state.currentTask.due;
+    const taskId = currentTask.id;
+    const originalDue = currentTask.due;
     
     try {
       // Set loading state
@@ -927,26 +837,38 @@ export default function TaskProcessor() {
       
       // Update UI state immediately with a temporary value
       if (dateString) {
-        setState(prev => ({
-          ...prev,
-          currentTask: prev.currentTask && prev.currentTask.id === taskId ? { 
-            ...prev.currentTask, 
-            due: { 
-              date: dateString, 
-              string: dateString,
-              recurring: false 
+        setMasterTasks(prev => {
+          const task = prev[taskId]
+          if (task) {
+            return {
+              ...prev,
+              [taskId]: {
+                ...task,
+                due: {
+                  date: dateString,
+                  string: dateString,
+                  recurring: false
+                }
+              }
             }
-          } : prev.currentTask
-        }))
+          }
+          return prev
+        })
       } else {
         // Clear the do date
-        setState(prev => ({
-          ...prev,
-          currentTask: prev.currentTask && prev.currentTask.id === taskId ? { 
-            ...prev.currentTask, 
-            due: undefined 
-          } : prev.currentTask
-        }))
+        setMasterTasks(prev => {
+          const task = prev[taskId]
+          if (task) {
+            return {
+              ...prev,
+              [taskId]: {
+                ...task,
+                due: undefined
+              }
+            }
+          }
+          return prev
+        })
       }
       
       // Then update the API
@@ -974,22 +896,28 @@ export default function TaskProcessor() {
       // Clear loading state on error
       setDateLoadingStates(prev => ({ ...prev, [taskId]: null }))
       // Revert the UI state on error
-      setState(prev => ({
-        ...prev,
-        currentTask: prev.currentTask && prev.currentTask.id === taskId ? { 
-          ...prev.currentTask, 
-          due: originalDue 
-        } : prev.currentTask
-      }))
+      setMasterTasks(prev => {
+        const task = prev[taskId]
+        if (task) {
+          return {
+            ...prev,
+            [taskId]: {
+              ...task,
+              due: originalDue
+            }
+          }
+        }
+        return prev
+      })
     }
-  }, [state.currentTask, autoSaveTask])
+  }, [currentTask, autoSaveTask])
 
   const handleDeadlineChange = useCallback(async (dateString: string) => {
-    if (!state.currentTask) return;
+    if (!currentTask) return;
     
     // Capture the current task ID and deadline immediately
-    const taskId = state.currentTask.id;
-    const originalDeadline = state.currentTask.deadline;
+    const taskId = currentTask.id;
+    const originalDeadline = currentTask.deadline;
     
     try {
       // Set loading state
@@ -997,25 +925,37 @@ export default function TaskProcessor() {
       
       // Update UI state immediately
       if (dateString) {
-        setState(prev => ({
-          ...prev,
-          currentTask: prev.currentTask && prev.currentTask.id === taskId ? { 
-            ...prev.currentTask, 
-            deadline: { 
-              date: dateString, 
-              string: dateString 
+        setMasterTasks(prev => {
+          const task = prev[taskId]
+          if (task) {
+            return {
+              ...prev,
+              [taskId]: {
+                ...task,
+                deadline: {
+                  date: dateString,
+                  string: dateString
+                }
+              }
             }
-          } : prev.currentTask
-        }))
+          }
+          return prev
+        })
       } else {
         // Clear the deadline
-        setState(prev => ({
-          ...prev,
-          currentTask: prev.currentTask && prev.currentTask.id === taskId ? { 
-            ...prev.currentTask, 
-            deadline: undefined 
-          } : prev.currentTask
-        }))
+        setMasterTasks(prev => {
+          const task = prev[taskId]
+          if (task) {
+            return {
+              ...prev,
+              [taskId]: {
+                ...task,
+                deadline: undefined
+              }
+            }
+          }
+          return prev
+        })
       }
       
       // Then update the API
@@ -1032,26 +972,35 @@ export default function TaskProcessor() {
       // Clear loading state on error
       setDateLoadingStates(prev => ({ ...prev, [taskId]: null }))
       // Revert the UI state on error
-      setState(prev => ({
-        ...prev,
-        currentTask: prev.currentTask && prev.currentTask.id === taskId ? { 
-          ...prev.currentTask, 
-          deadline: originalDeadline 
-        } : prev.currentTask
-      }))
+      setMasterTasks(prev => {
+        const task = prev[taskId]
+        if (task) {
+          return {
+            ...prev,
+            [taskId]: {
+              ...task,
+              deadline: originalDeadline
+            }
+          }
+        }
+        return prev
+      })
     }
-  }, [state.currentTask, autoSaveTask])
+  }, [currentTask, autoSaveTask])
 
   const handleAssigneeSelect = useCallback(async (userId: string | null) => {
     setShowAssigneeOverlay(false) // Close immediately
     
-    if (state.currentTask) {
-      const originalAssigneeId = state.currentTask.assigneeId
+    if (currentTask) {
+      const originalAssigneeId = currentTask.assigneeId
       
-      // Update the task immediately in the UI
-      setState(prev => ({
+      // Update the task immediately in the master store
+      setMasterTasks(prev => ({
         ...prev,
-        currentTask: prev.currentTask ? { ...prev.currentTask, assigneeId: userId || undefined } : null
+        [currentTask.id]: {
+          ...prev[currentTask.id],
+          assigneeId: userId || undefined
+        }
       }))
       
       // Update the current assignee display
@@ -1066,12 +1015,15 @@ export default function TaskProcessor() {
       
       try {
         // Queue the auto-save
-        await autoSaveTask(state.currentTask.id, { assigneeId: userId || undefined })
+        await autoSaveTask(currentTask.id, { assigneeId: userId || undefined })
       } catch (err) {
         // Revert on error
-        setState(prev => ({
+        setMasterTasks(prev => ({
           ...prev,
-          currentTask: prev.currentTask ? { ...prev.currentTask, assigneeId: originalAssigneeId } : null
+          [currentTask.id]: {
+            ...prev[currentTask.id],
+            assigneeId: originalAssigneeId
+          }
         }))
         
         // Revert assignee display
@@ -1085,22 +1037,19 @@ export default function TaskProcessor() {
         }
       }
     }
-  }, [state.currentTask, autoSaveTask, projectCollaborators])
+  }, [currentTask, autoSaveTask, projectCollaborators])
 
   const handleArchiveTask = useCallback(async () => {
-    if (!state.currentTask) return
+    if (!currentTask) return
     
     // Close the overlay immediately to prevent UI issues
     setShowArchiveConfirm(false)
     
     // Store the current task ID before moving to next
-    const taskId = state.currentTask.id
+    const taskId = currentTask.id
     
     // Move to next task immediately for better UX
-    setState(prev => ({
-      ...prev,
-      processedTasks: [...prev.processedTasks, prev.currentTask!.id],
-    }))
+    setProcessedTaskIds(prev => [...prev, taskId])
     moveToNext()
     
     // Show optimistic success message
@@ -1122,22 +1071,19 @@ export default function TaskProcessor() {
         type: 'error' 
       })
     }
-  }, [state.currentTask, moveToNext])
+  }, [currentTask, moveToNext])
 
   const handleCompleteTask = useCallback(async () => {
-    if (!state.currentTask) return
+    if (!currentTask) return
     
     // Close the overlay immediately to prevent UI issues
     setShowCompleteConfirm(false)
     
     // Store the current task ID before moving to next
-    const taskId = state.currentTask.id
+    const taskId = currentTask.id
     
     // Move to next task immediately for better UX
-    setState(prev => ({
-      ...prev,
-      processedTasks: [...prev.processedTasks, prev.currentTask!.id],
-    }))
+    setProcessedTaskIds(prev => [...prev, taskId])
     moveToNext()
     
     // Show optimistic success message
@@ -1159,18 +1105,14 @@ export default function TaskProcessor() {
         type: 'error' 
       })
     }
-  }, [state.currentTask, moveToNext])
+  }, [currentTask, moveToNext])
 
   const skipTask = useCallback(() => {
-    if (!state.currentTask) return
+    if (!currentTask) return
     
-    setState(prev => ({
-      ...prev,
-      skippedTasks: [...prev.skippedTasks, prev.currentTask!.id],
-    }))
-    
+    setSkippedTaskIds(prev => [...prev, currentTask.id])
     moveToNext()
-  }, [state.currentTask, moveToNext])
+  }, [currentTask, moveToNext])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -1283,8 +1225,6 @@ export default function TaskProcessor() {
     }
   }, [showArchiveConfirm, showCompleteConfirm, handleArchiveTask, handleCompleteTask])
 
-  const totalTasks = allTasks.length
-  const completedTasks = state.processedTasks.length + state.skippedTasks.length
   const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
 
   if (loading) {
@@ -1317,7 +1257,7 @@ export default function TaskProcessor() {
     )
   }
 
-  if (!state.currentTask && state.queuedTasks.length === 0 && !loading) {
+  if (!currentTask && queuedTasks.length === 0 && !loading) {
     const displayName = processingMode.displayName || 'Tasks'
     
     return (
@@ -1479,16 +1419,16 @@ export default function TaskProcessor() {
         </div>
 
         {/* Main Processing Area */}
-        {state.currentTask && !loadingTasks && (
+        {currentTask && !loadingTasks && (
           <div className="space-y-6">
             {/* Full-width Task Card */}
             <TaskCard 
-              task={state.currentTask} 
+              task={currentTask} 
               projects={projects} 
               labels={labels} 
               assignee={currentTaskAssignee}
               hasCollaborators={hasCollaboratorsForCurrentProject()}
-              dateLoadingState={dateLoadingStates[state.currentTask.id] || null}
+              dateLoadingState={dateLoadingStates[currentTask.id] || null}
               onContentChange={handleContentChange}
               onDescriptionChange={handleDescriptionChange}
               onProjectClick={() => setShowProjectOverlay(true)}
@@ -1502,17 +1442,17 @@ export default function TaskProcessor() {
 
             {/* Project Metadata Display */}
             <ProjectMetadataDisplay
-              project={projects.find(p => p.id === state.currentTask?.projectId)}
-              metadata={projectMetadata[state.currentTask?.projectId || '']}
+              project={projects.find(p => p.id === currentTask?.projectId)}
+              metadata={projectMetadata[currentTask?.projectId || '']}
               allProjects={projects}
-              collaborators={state.currentTask ? (projectCollaborators[state.currentTask.projectId] || []) : []}
+              collaborators={currentTask ? (projectCollaborators[currentTask.projectId] || []) : []}
               className="animate-fade-in"
             />
 
             {/* Project Suggestions */}
             {currentTaskSuggestions.length > 0 && (
               <ProjectSuggestions
-                task={state.currentTask}
+                task={currentTask}
                 projects={projects}
                 suggestions={currentTaskSuggestions}
                 onProjectSelect={handleProjectSelect}
@@ -1522,28 +1462,28 @@ export default function TaskProcessor() {
             {/* Task Form Controls */}
             <TaskForm
               key={taskKey} // Force re-render when task changes
-              task={state.currentTask}
+              task={currentTask}
               projects={projects}
               labels={labels}
-              suggestions={generateMockSuggestions(state.currentTask.content)}
-              onAutoSave={(updates) => autoSaveTask(state.currentTask!.id, updates)}
-              onNext={navigateToNextTask}
-              onPrevious={navigateToPrevTask}
-              canGoNext={state.queuedTasks.length > 0}
-              canGoPrevious={state.processedTasks.length > 0}
+              suggestions={generateMockSuggestions(currentTask.content)}
+              onAutoSave={(updates) => autoSaveTask(currentTask!.id, updates)}
+              onNext={handleNext}
+              onPrevious={moveToPrevTask}
+              canGoNext={queuedTasks.length > 0}
+              canGoPrevious={processedTaskIds.length > 0}
             />
           </div>
         )}
 
         {/* Queue Preview */}
-        {state.queuedTasks.length > 0 && (
+        {queuedTasks.length > 0 && (
           <div className="mt-8 flex flex-col items-center">
             <div className="w-full max-w-2xl p-4 bg-gray-50 rounded-lg">
               <h3 className="text-sm font-medium text-gray-700 mb-3 text-center">
-                Next in queue ({state.queuedTasks.length} remaining)
+                Next in queue ({queuedTasks.length} remaining)
               </h3>
               <div className="space-y-2">
-                {state.queuedTasks.slice(0, 10).map((task, index) => {
+                {queuedTasks.slice(0, 10).map((task, index) => {
                   // Calculate opacity - fade out from task 5 to task 10
                   const opacity = index < 5 ? 1 : 1 - ((index - 4) * 0.2)
                   return (
@@ -1556,9 +1496,9 @@ export default function TaskProcessor() {
                     </div>
                   )
                 })}
-                {state.queuedTasks.length > 10 && (
+                {queuedTasks.length > 10 && (
                   <div className="text-sm text-gray-400 text-center" style={{ opacity: 0.3 }}>
-                    + {state.queuedTasks.length - 10} more...
+                    + {queuedTasks.length - 10} more...
                   </div>
                 )}
               </div>
@@ -1573,9 +1513,9 @@ export default function TaskProcessor() {
       )}
 
       {/* Priority Overlay */}
-      {state.currentTask && (
+      {currentTask && (
         <PriorityOverlay
-          currentPriority={state.currentTask.priority}
+          currentPriority={currentTask.priority}
           onPrioritySelect={handlePrioritySelect}
           onClose={() => setShowPriorityOverlay(false)}
           isVisible={showPriorityOverlay}
@@ -1583,12 +1523,12 @@ export default function TaskProcessor() {
       )}
 
       {/* Project Selection Overlay */}
-      {state.currentTask && (
+      {currentTask && (
         <ProjectSelectionOverlay
-          key={`project-overlay-${state.currentTask.id}`}
+          key={`project-overlay-${currentTask.id}`}
           projects={projects}
-          currentProjectId={state.currentTask.projectId}
-          currentTask={state.currentTask}
+          currentProjectId={currentTask.projectId}
+          currentTask={currentTask}
           suggestions={currentTaskSuggestions}
           onProjectSelect={handleProjectSelect}
           onClose={() => setShowProjectOverlay(false)}
@@ -1597,10 +1537,10 @@ export default function TaskProcessor() {
       )}
 
       {/* Label Selection Overlay */}
-      {state.currentTask && (
+      {currentTask && (
         <LabelSelectionOverlay
           labels={labels}
-          currentTask={state.currentTask}
+          currentTask={currentTask}
           onLabelsChange={handleLabelsChange}
           onClose={() => setShowLabelOverlay(false)}
           isVisible={showLabelOverlay}
@@ -1608,9 +1548,9 @@ export default function TaskProcessor() {
       )}
 
       {/* Scheduled Date Selector */}
-      {state.currentTask && (
+      {currentTask && (
         <ScheduledDateSelector
-          currentTask={state.currentTask}
+          currentTask={currentTask}
           onScheduledDateChange={handleScheduledDateChange}
           onClose={() => setShowScheduledOverlay(false)}
           isVisible={showScheduledOverlay}
@@ -1618,9 +1558,9 @@ export default function TaskProcessor() {
       )}
 
       {/* Deadline Selector */}
-      {state.currentTask && (
+      {currentTask && (
         <DeadlineSelector
-          currentTask={state.currentTask}
+          currentTask={currentTask}
           onDeadlineChange={handleDeadlineChange}
           onClose={() => setShowDeadlineOverlay(false)}
           isVisible={showDeadlineOverlay}
@@ -1628,18 +1568,18 @@ export default function TaskProcessor() {
       )}
 
       {/* Assignee Selection Overlay */}
-      {state.currentTask && (
+      {currentTask && (
         <AssigneeSelectionOverlay
           isVisible={showAssigneeOverlay}
           onClose={() => setShowAssigneeOverlay(false)}
           onAssigneeSelect={handleAssigneeSelect}
-          currentAssigneeId={state.currentTask.assigneeId}
-          collaborators={projectCollaborators[state.currentTask.projectId] || []}
+          currentAssigneeId={currentTask.assigneeId}
+          collaborators={projectCollaborators[currentTask.projectId] || []}
         />
       )}
 
       {/* Archive Confirmation Dialog */}
-      {showArchiveConfirm && state.currentTask && (
+      {showArchiveConfirm && currentTask && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
           onClick={() => setShowArchiveConfirm(false)}
@@ -1653,7 +1593,7 @@ export default function TaskProcessor() {
               This will remove the task from your active list. You can still find it in your completed tasks.
             </p>
             <p className="text-sm font-medium text-gray-800 mb-6 p-3 bg-gray-50 rounded">
-              "{state.currentTask.content}"
+              "{currentTask.content}"
             </p>
             <div className="flex gap-3">
               <button
@@ -1674,7 +1614,7 @@ export default function TaskProcessor() {
       )}
 
       {/* Complete Confirmation Dialog */}
-      {showCompleteConfirm && state.currentTask && (
+      {showCompleteConfirm && currentTask && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
           onClick={() => setShowCompleteConfirm(false)}
@@ -1688,7 +1628,7 @@ export default function TaskProcessor() {
               Mark this task as completed. This action can be undone from your completed tasks.
             </p>
             <p className="text-sm font-medium text-gray-800 mb-6 p-3 bg-gray-50 rounded">
-              "{state.currentTask.content}"
+              "{currentTask.content}"
             </p>
             <div className="flex gap-3">
               <button
