@@ -603,9 +603,8 @@ export class TodoistApiClient {
                 hasUpdates = true
             }
             if (updates.priority !== undefined) {
-                // Sync API uses 1-4 where 1 is natural (p4), 4 is urgent (p1)
-                // We need to reverse the priority for Sync API
-                syncArgs.priority = 5 - updates.priority
+                // Both use same format: 1=p4 (normal), 2=p3, 3=p2, 4=p1 (urgent)
+                syncArgs.priority = updates.priority
                 hasUpdates = true
             }
             if (updates.labels !== undefined) {
