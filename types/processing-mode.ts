@@ -34,9 +34,9 @@ export const PROCESSING_MODE_OPTIONS: ProcessingModeOption[] = [
   },
   {
     type: 'date',
-    label: 'Due Date',
+    label: 'Do Date',
     icon: '',
-    description: 'Process tasks by due date'
+    description: 'Process tasks by do date'
   },
   {
     type: 'deadline',
@@ -66,20 +66,21 @@ export const PRIORITY_LEVELS = [
 ];
 
 export const DATE_OPTIONS = [
-  { value: 'overdue', label: 'Overdue', icon: '⏰', color: 'text-red-500' },
-  { value: 'today', label: 'Today', icon: '📅', color: 'text-blue-500' },
-  { value: 'next_7_days', label: 'Next 7 Days', icon: '📆', color: 'text-green-500' },
-  { value: 'scheduled', label: 'Scheduled (One-time)', icon: '🗓️', color: 'text-purple-500' },
-  { value: 'recurring', label: 'Scheduled (Recurring)', icon: '🔄', color: 'text-indigo-500' },
-  { value: 'no_date', label: 'No Due Date', icon: '📭', color: 'text-gray-500' }
+  { value: 'overdue', label: 'Overdue', icon: '⏰', color: 'text-red-600' },
+  { value: 'today', label: 'Today', icon: '📅', color: 'text-blue-600' },
+  { value: 'tomorrow', label: 'Tomorrow', icon: '☀️', color: 'text-amber-600' },
+  { value: 'next_7_days', label: 'Next 7 Days', icon: '📆', color: 'text-purple-600' },
+  { value: 'scheduled', label: 'Scheduled', icon: '🗓️', color: 'text-gray-600' },
+  { value: 'recurring', label: 'Recurring', icon: '🔄', color: 'text-indigo-600' },
+  { value: 'no_date', label: 'No Do Date', icon: '📭', color: 'text-gray-400' }
 ];
 
 export const DEADLINE_OPTIONS = [
-  { value: 'overdue', label: 'Overdue', icon: '⚠️', color: 'text-red-500' },
-  { value: 'today', label: 'Today', icon: '🎯', color: 'text-red-600' },
-  { value: 'next_7_days', label: 'Next 7 Days', icon: '📍', color: 'text-orange-500' },
-  { value: 'upcoming', label: 'Upcoming', icon: '🔥', color: 'text-yellow-500' },
-  { value: 'no_deadline', label: 'No Deadline', icon: '📋', color: 'text-gray-500' }
+  { value: 'overdue', label: 'Overdue', icon: '🚨', color: 'text-red-600' },
+  { value: 'today', label: 'Today', icon: '🎯', color: 'text-blue-600' },
+  { value: 'next_7_days', label: 'Next 7 Days', icon: '📍', color: 'text-purple-600' },
+  { value: 'upcoming', label: 'Upcoming', icon: '🔥', color: 'text-gray-600' },
+  { value: 'no_deadline', label: 'No Deadline', icon: '📋', color: 'text-gray-400' }
 ];
 
 export interface PresetFilter {
@@ -146,5 +147,5 @@ export const SORT_OPTIONS = [
   { value: 'oldest', label: 'Oldest First', description: 'Show the oldest tasks first' },
   { value: 'newest', label: 'Newest First', description: 'Show the newest tasks first' },
   { value: 'priority', label: 'Priority', description: 'Sort by priority (P1 first)' },
-  { value: 'due_date', label: 'Due Date', description: 'Sort by due date (overdue first)' }
+  { value: 'due_date', label: 'Do Date', description: 'Sort by do date (overdue first)' }
 ];

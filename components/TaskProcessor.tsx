@@ -26,7 +26,7 @@ function extractProjectMetadata(tasks: TodoistTask[]): Record<string, any> {
         metadata[projectId].priority = task.priority
       }
       
-      // The task's due date IS the project's due date
+      // The task's do date IS the project's do date
       if (task.due) {
         metadata[projectId].due = task.due
       }

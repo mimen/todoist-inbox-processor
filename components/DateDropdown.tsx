@@ -35,6 +35,7 @@ export default function DateDropdown({
   allTasks
 }: DateDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [keyboardSelectedIndex, setKeyboardSelectedIndex] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Count tasks for each date option
@@ -56,6 +57,12 @@ export default function DateDropdown({
         case 'today':
           if (!task.due) return false;
           return task.due.date === today.toISOString().split('T')[0];
+        
+        case 'tomorrow':
+          if (!task.due) return false;
+          const tomorrow = new Date(today);
+          tomorrow.setDate(today.getDate() + 1);
+          return task.due.date === tomorrow.toISOString().split('T')[0];
         
         case 'next_7_days':
           if (!task.due) return false;
@@ -97,6 +104,38 @@ export default function DateDropdown({
     };
   }, [isOpen]);
 
+  // Handle keyboard navigation
+  useEffect(() => {
+    if (!isOpen) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault()
+          setKeyboardSelectedIndex(prev => Math.min(prev + 1, DATE_OPTIONS.length - 1))
+          break
+        case 'ArrowUp':
+          e.preventDefault()
+          setKeyboardSelectedIndex(prev => Math.max(prev - 1, 0))
+          break
+        case 'Enter':
+          e.preventDefault()
+          const selected = DATE_OPTIONS[keyboardSelectedIndex]
+          if (selected) {
+            handleSelect(selected)
+          }
+          break
+        case 'Escape':
+          e.preventDefault()
+          setIsOpen(false)
+          break
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, keyboardSelectedIndex])
+
   const handleSelect = (option: typeof DATE_OPTIONS[0]) => {
     onDateChange(option.value, option.label);
     setIsOpen(false);
@@ -131,18 +170,23 @@ export default function DateDropdown({
       {isOpen && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50">
           <div className="max-h-64 overflow-y-auto">
-            {DATE_OPTIONS.map((option) => {
+            {DATE_OPTIONS.map((option, index) => {
               const count = dateCounts[option.value] || 0;
               const isSelected = selectedDate === option.value;
+              const isKeyboardSelected = index === keyboardSelectedIndex;
 
               return (
                 <button
                   key={option.value}
                   onClick={() => handleSelect(option)}
                   className={`
-                    w-full p-3 text-left hover:bg-gray-50 transition-colors
+                    w-full p-3 text-left transition-colors
                     flex items-center justify-between
-                    ${isSelected ? 'bg-blue-50 text-blue-900' : 'text-gray-900'}
+                    ${isSelected 
+                      ? 'bg-blue-50 text-blue-900' 
+                      : isKeyboardSelected 
+                        ? 'bg-gray-100' 
+                        : 'text-gray-900 hover:bg-gray-50'}
                   `}
                 >
                   <div className="flex items-center gap-2">

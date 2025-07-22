@@ -1,7 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { TodoistProject, TodoistUser } from '@/lib/types'
+import { getDateTimeLabel } from '@/lib/date-colors'
 
 interface ProjectMetadataDisplayProps {
   project: TodoistProject | undefined
@@ -46,6 +48,9 @@ export default function ProjectMetadataDisplay({
   className = ''
 }: ProjectMetadataDisplayProps) {
   const [isExpanded, setIsExpanded] = useState(false)
+  const [showDebug, setShowDebug] = useState(false)
+  const searchParams = useSearchParams()
+  const isDebugMode = searchParams.get('debug') === 'true'
   
   if (!project) {
     return (
@@ -86,16 +91,6 @@ export default function ProjectMetadataDisplay({
     }
   }
 
-  // Format due date
-  const formatDueDate = (due?: any) => {
-    if (!due?.date) return null
-    const date = new Date(due.date)
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric',
-      year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
-    })
-  }
 
   return (
     <div className={`bg-white border border-gray-200 rounded-lg p-4 ${className}`}>
@@ -128,13 +123,13 @@ export default function ProjectMetadataDisplay({
                 {metadata?.type || (project.name.startsWith('🏛') || project.name.includes('AoR') ? 'AoR' : 'Project')}
               </span>
 
-              {/* Due Date Badge */}
+              {/* Do Date Badge */}
               {metadata?.due && (
                 <span className="inline-flex items-center space-x-1.5 bg-blue-50 px-2 py-1 rounded text-xs">
                   <svg className="w-3 h-3 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
-                  <span className="text-blue-700">{formatDueDate(metadata.due)}</span>
+                  <span className="text-blue-700">{getDateTimeLabel(metadata.due?.date, false)}</span>
                 </span>
               )}
 
@@ -225,6 +220,47 @@ export default function ProjectMetadataDisplay({
                 </div>
               </div>
             )}
+          </div>
+        )}
+        
+        {/* Debug Mode */}
+        {isDebugMode && (
+          <div className="mt-3">
+            <button
+              onClick={() => setShowDebug(!showDebug)}
+              className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-600 font-mono"
+              title="Toggle JSON debug view"
+            >
+              {showDebug ? 'Hide' : 'Show'} Project JSON
+            </button>
+          </div>
+        )}
+        
+        {/* Debug JSON View */}
+        {showDebug && isDebugMode && (
+          <div className="mt-2 p-4 bg-gray-900 rounded-lg overflow-auto">
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-xs text-gray-400 font-mono mb-1">Project Data:</h4>
+                <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap">
+                  {JSON.stringify(project, null, 2)}
+                </pre>
+              </div>
+              <div>
+                <h4 className="text-xs text-gray-400 font-mono mb-1">Project Metadata:</h4>
+                <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap">
+                  {JSON.stringify(metadata, null, 2)}
+                </pre>
+              </div>
+              {collaborators.length > 0 && (
+                <div>
+                  <h4 className="text-xs text-gray-400 font-mono mb-1">Collaborators:</h4>
+                  <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap">
+                    {JSON.stringify(collaborators, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

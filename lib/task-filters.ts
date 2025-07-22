@@ -95,6 +95,12 @@ export function filterTasksByMode(
             if (!task.due) return false;
             return task.due.date === today.toISOString().split('T')[0];
           
+          case 'tomorrow':
+            if (!task.due) return false;
+            const tomorrow = new Date(today);
+            tomorrow.setDate(today.getDate() + 1);
+            return task.due.date === tomorrow.toISOString().split('T')[0];
+          
           case 'next_7_days':
             if (!task.due) return false;
             const taskDate = new Date(task.due.date);
@@ -221,7 +227,7 @@ export function filterTasksByMode(
           
         case 'due_date':
           sorted.sort((a, b) => {
-            // Tasks without due dates go last
+            // Tasks without do dates go last
             if (!a.due && !b.due) return 0;
             if (!a.due) return 1;
             if (!b.due) return -1;

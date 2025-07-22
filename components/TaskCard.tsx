@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { TodoistTask, TodoistProject, TodoistLabel, TodoistUser } from '@/lib/types'
 import { isExcludedLabel } from '@/lib/excluded-labels'
+import { getDateColor, getDateTimeLabel, getFullDateTime } from '@/lib/date-colors'
 
 interface TaskCardProps {
   task: TodoistTask
@@ -40,8 +42,11 @@ export default function TaskCard({
   const [content, setContent] = useState(task.content)
   const [description, setDescription] = useState(task.description || '')
   const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null)
+  const [showDebug, setShowDebug] = useState(false)
   const contentRef = useRef<HTMLTextAreaElement>(null)
   const descriptionRef = useRef<HTMLTextAreaElement>(null)
+  const searchParams = useSearchParams()
+  const isDebugMode = searchParams.get('debug') === 'true'
 
   // Update local state when task changes
   useEffect(() => {
@@ -89,23 +94,6 @@ export default function TaskCard({
     adjustHeight(contentRef.current)
     adjustHeight(descriptionRef.current)
   }, [content, description])
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString)
-      // Check if the date is valid
-      if (isNaN(date.getTime())) {
-        return 'Invalid date'
-      }
-      return date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      })
-    } catch (error) {
-      console.error('Error formatting date:', error, 'Input:', dateString)
-      return 'Invalid date'
-    }
-  }
 
   const getTodoistColor = (colorName: string) => {
     const colorMap: { [key: string]: string } = {
@@ -222,20 +210,25 @@ export default function TaskCard({
           </button>
           
           {/* Scheduled Date */}
-          {task.due ? (
-            <button
-              onClick={onScheduledClick}
-              className="inline-flex items-center space-x-1.5 bg-blue-100 hover:bg-blue-200 px-2.5 py-1.5 rounded text-sm transition-colors cursor-pointer"
-              title="Click to change scheduled date"
-            >
-              <svg className="w-4 h-4 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <span className="text-blue-700">
-                {task.due.string || formatDate(task.due.date)}
-              </span>
-            </button>
-          ) : (
+          {task.due ? (() => {
+            const colors = getDateColor(task.due.date, false);
+            const label = getDateTimeLabel(task.due.date, true);
+            const fullDateTime = getFullDateTime(task.due.date);
+            return (
+              <button
+                onClick={onScheduledClick}
+                className={`inline-flex items-center space-x-1.5 ${colors.bg} hover:opacity-80 px-2.5 py-1.5 rounded text-sm transition-colors cursor-pointer`}
+                title={fullDateTime}
+              >
+                <svg className={`w-4 h-4 ${colors.text}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span className={colors.text}>
+                  {label}
+                </span>
+              </button>
+            );
+          })() : (
             <button
               onClick={onScheduledClick}
               className="inline-flex items-center space-x-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-100 px-2.5 py-1.5 rounded text-sm transition-colors"
@@ -249,20 +242,25 @@ export default function TaskCard({
           )}
           
           {/* Deadline */}
-          {task.deadline ? (
-            <button
-              onClick={onDeadlineClick}
-              className="inline-flex items-center space-x-1.5 bg-red-100 hover:bg-red-200 px-2.5 py-1.5 rounded text-sm transition-colors cursor-pointer"
-              title="Click to change deadline"
-            >
-              <svg className="w-4 h-4 text-red-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="text-red-700">
-                {task.deadline.string || formatDate(task.deadline.date)}
-              </span>
-            </button>
-          ) : (
+          {task.deadline ? (() => {
+            const colors = getDateColor(task.deadline.date, true);
+            const label = getDateTimeLabel(task.deadline.date, true);
+            const fullDateTime = getFullDateTime(task.deadline.date);
+            return (
+              <button
+                onClick={onDeadlineClick}
+                className={`inline-flex items-center space-x-1.5 ${colors.bg} hover:opacity-80 px-2.5 py-1.5 rounded text-sm transition-colors cursor-pointer`}
+                title={fullDateTime}
+              >
+                <svg className={`w-4 h-4 ${colors.text}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className={colors.text}>
+                  {label}
+                </span>
+              </button>
+            );
+          })() : (
             <button
               onClick={onDeadlineClick}
               className="inline-flex items-center space-x-1.5 text-gray-400 hover:text-red-600 hover:bg-red-100 px-2.5 py-1.5 rounded text-sm transition-colors"
@@ -380,6 +378,28 @@ export default function TaskCard({
             const years = Math.floor(diffDays / 365);
             return years === 1 ? '1 year ago' : `${years} years ago`;
           })()}
+        </div>
+      )}
+      
+      {/* Debug Mode */}
+      {isDebugMode && (
+        <div className="absolute top-2 right-2">
+          <button
+            onClick={() => setShowDebug(!showDebug)}
+            className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-600 font-mono"
+            title="Toggle JSON debug view"
+          >
+            {showDebug ? 'Hide' : 'Show'} JSON
+          </button>
+        </div>
+      )}
+      
+      {/* Debug JSON View */}
+      {showDebug && isDebugMode && (
+        <div className="mt-4 p-4 bg-gray-900 rounded-lg overflow-auto">
+          <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap">
+            {JSON.stringify(task, null, 2)}
+          </pre>
         </div>
       )}
     </div>

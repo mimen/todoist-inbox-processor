@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { TodoistTask } from '@/lib/types'
-import SmartDueDateInput from './SmartDueDateInput'
+import SmartDoDateInput from './SmartDoDateInput'
+import { getDateColor, getDateTimeLabel } from '@/lib/date-colors'
 
 interface ScheduledDateSelectorProps {
   currentTask: TodoistTask
@@ -353,7 +354,7 @@ export default function ScheduledDateSelector({
 
         {/* Search Input */}
         <div className="p-6 border-b border-gray-200">
-          <SmartDueDateInput
+          <SmartDoDateInput
             ref={searchInputRef}
             value={searchTerm}
             onChange={setSearchTerm}
@@ -366,22 +367,29 @@ export default function ScheduledDateSelector({
 
         {/* Suggestions List */}
         <div className="flex-1 overflow-y-auto p-4">
-          {currentTask.due && (
-            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="text-sm">
-                  <span className="font-medium text-blue-800">Currently scheduled: </span>
-                  <span className="text-blue-700">{currentTask.due.string}</span>
+          {currentTask.due && (() => {
+            const colors = getDateColor(currentTask.due.date, false);
+            const label = getDateTimeLabel(currentTask.due.date, true);
+            return (
+              <div className={`mb-4 p-3 ${colors.bg} border ${colors.border} rounded-lg`}>
+                <div className="flex items-center justify-between">
+                  <div className="text-sm flex items-center gap-2">
+                    <svg className={`w-4 h-4 ${colors.text}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span className={`font-medium ${colors.text}`}>Currently scheduled: </span>
+                    <span className={colors.text}>{label}</span>
+                  </div>
+                  <button
+                    onClick={handleClearDate}
+                    className={`text-xs ${colors.text} hover:underline`}
+                  >
+                    Clear
+                  </button>
                 </div>
-                <button
-                  onClick={handleClearDate}
-                  className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
-                >
-                  Clear
-                </button>
               </div>
-            </div>
-          )}
+            );
+          })()}
           
           {filteredSuggestions.length === 0 ? (
             <div className="text-center py-8 text-gray-500">

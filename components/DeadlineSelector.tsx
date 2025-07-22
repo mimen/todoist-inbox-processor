@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { TodoistTask } from '@/lib/types'
-import SmartDueDateInput from './SmartDueDateInput'
+import SmartDoDateInput from './SmartDoDateInput'
+import { getDateColor, getDateTimeLabel } from '@/lib/date-colors'
 
 interface DeadlineSelectorProps {
   currentTask: TodoistTask
@@ -337,7 +338,7 @@ export default function DeadlineSelector({
 
         {/* Search Input */}
         <div className="p-6 border-b border-gray-200">
-          <SmartDueDateInput
+          <SmartDoDateInput
             ref={searchInputRef}
             value={searchTerm}
             onChange={setSearchTerm}
@@ -350,22 +351,29 @@ export default function DeadlineSelector({
 
         {/* Suggestions List */}
         <div className="flex-1 overflow-y-auto p-4">
-          {currentTask.deadline && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="text-sm">
-                  <span className="font-medium text-red-800">Current deadline: </span>
-                  <span className="text-red-700">{currentTask.deadline.string}</span>
+          {currentTask.deadline && (() => {
+            const colors = getDateColor(currentTask.deadline.date, true);
+            const label = getDateTimeLabel(currentTask.deadline.date, true);
+            return (
+              <div className={`mb-4 p-3 ${colors.bg} border ${colors.border} rounded-lg`}>
+                <div className="flex items-center justify-between">
+                  <div className="text-sm flex items-center gap-2">
+                    <svg className={`w-4 h-4 ${colors.text}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className={`font-medium ${colors.text}`}>Current deadline: </span>
+                    <span className={colors.text}>{label}</span>
+                  </div>
+                  <button
+                    onClick={handleClearDate}
+                    className={`text-xs ${colors.text} hover:underline`}
+                  >
+                    Clear
+                  </button>
                 </div>
-                <button
-                  onClick={handleClearDate}
-                  className="text-xs text-red-600 hover:text-red-800 hover:underline"
-                >
-                  Clear
-                </button>
               </div>
-            </div>
-          )}
+            );
+          })()}
           
           {filteredSuggestions.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
@@ -384,7 +392,7 @@ export default function DeadlineSelector({
                     className={`
                       w-full text-left p-3 rounded-md transition-all duration-150 flex items-center space-x-3 border
                       ${isSelected 
-                        ? 'bg-red-50 border-red-300' 
+                        ? 'bg-purple-50 border-purple-300' 
                         : suggestion.id === 'custom'
                         ? 'bg-green-50 border-green-200 hover:bg-green-100'
                         : 'hover:bg-gray-50 border-transparent'
@@ -408,7 +416,7 @@ export default function DeadlineSelector({
                     </div>
                     {isSelected && (
                       <div className={`text-xs font-bold ${
-                        suggestion.id === 'custom' ? 'text-green-600' : 'text-red-500'
+                        suggestion.id === 'custom' ? 'text-green-600' : 'text-purple-500'
                       }`}>
                         ↵
                       </div>

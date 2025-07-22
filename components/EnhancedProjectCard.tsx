@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { TodoistProject } from '@/lib/types'
 
 interface ProjectWithMetadata extends TodoistProject {
@@ -38,7 +39,10 @@ export default function EnhancedProjectCard({
   const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null)
   const [isGeneratingSuggestion, setIsGeneratingSuggestion] = useState(false)
   const [suggestionError, setSuggestionError] = useState<string | null>(null)
+  const [showDebug, setShowDebug] = useState(false)
   const descriptionRef = useRef<HTMLTextAreaElement>(null)
+  const searchParams = useSearchParams()
+  const isDebugMode = searchParams.get('debug') === 'true'
 
   // Update local state when project changes
   useEffect(() => {
@@ -382,6 +386,28 @@ export default function EnhancedProjectCard({
             </span>
             <span>ID: {project.id}</span>
           </div>
+          
+          {/* Debug Mode */}
+          {isDebugMode && (
+            <div className="mt-3 pt-3 border-t border-gray-100">
+              <button
+                onClick={() => setShowDebug(!showDebug)}
+                className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-600 font-mono"
+                title="Toggle JSON debug view"
+              >
+                {showDebug ? 'Hide' : 'Show'} Project JSON
+              </button>
+            </div>
+          )}
+          
+          {/* Debug JSON View */}
+          {showDebug && isDebugMode && (
+            <div className="mt-2 p-4 bg-gray-900 rounded-lg overflow-auto">
+              <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap">
+                {JSON.stringify(project, null, 2)}
+              </pre>
+            </div>
+          )}
         </>
       )}
     </div>
