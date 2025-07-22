@@ -1,4 +1,4 @@
-export type ProcessingModeType = 'project' | 'priority' | 'label' | 'date' | 'preset';
+export type ProcessingModeType = 'project' | 'priority' | 'label' | 'date' | 'preset' | 'all';
 
 export interface ProcessingMode {
   type: ProcessingModeType;
@@ -43,6 +43,12 @@ export const PROCESSING_MODE_OPTIONS: ProcessingModeOption[] = [
     label: 'Smart Filter',
     icon: '',
     description: 'Use smart preset filters'
+  },
+  {
+    type: 'all',
+    label: 'All Tasks',
+    icon: '',
+    description: 'View all tasks with sorting options'
   }
 ];
 
@@ -120,4 +126,11 @@ export const PRESET_FILTERS: PresetFilter[] = [
       return projectDue >= today && projectDue <= nextWeek;
     }
   }
+];
+
+export const SORT_OPTIONS = [
+  { value: 'oldest', label: 'Oldest First', description: 'Show the oldest tasks first' },
+  { value: 'newest', label: 'Newest First', description: 'Show the newest tasks first' },
+  { value: 'priority', label: 'Priority', description: 'Sort by priority (P1 first)' },
+  { value: 'due_date', label: 'Due Date', description: 'Sort by due date (overdue first)' }
 ];

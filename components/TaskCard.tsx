@@ -159,7 +159,7 @@ export default function TaskCard({
 
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 task-card-enter">
+    <div className="bg-white rounded-lg border border-gray-200 task-card-enter relative">
       {/* Main Content Area */}
       <div className="p-4 pb-2">
         {/* Task Content */}
@@ -358,6 +358,29 @@ export default function TaskCard({
           )}
         </div>
       </div>
+      
+      {/* Creation date - subtle, positioned at bottom right */}
+      {task.createdAt && (
+        <div className="absolute bottom-2 right-3 text-xs text-gray-500">
+          {(() => {
+            const now = new Date();
+            const created = new Date(task.createdAt);
+            const diffTime = Math.abs(now.getTime() - created.getTime());
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays === 0) return 'Created today';
+            if (diffDays === 1) return 'Created yesterday';
+            if (diffDays < 7) return `${diffDays} days ago`;
+            if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+            if (diffDays < 365) {
+              const months = Math.floor(diffDays / 30);
+              return months === 1 ? '1 month ago' : `${months} months ago`;
+            }
+            const years = Math.floor(diffDays / 365);
+            return years === 1 ? '1 year ago' : `${years} years ago`;
+          })()}
+        </div>
+      )}
     </div>
   )
 }

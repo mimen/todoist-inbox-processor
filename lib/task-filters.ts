@@ -140,6 +140,68 @@ export function filterTasksByMode(
       console.log(`Preset filter ${presetId} matched ${result.length} tasks`);
       return result;
 
+    case 'all':
+      const sortBy = mode.value as string;
+      let sorted = [...filtered];
+      
+      switch (sortBy) {
+        case 'oldest':
+          sorted.sort((a, b) => {
+            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : Infinity;
+            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : Infinity;
+            return dateA - dateB;
+          });
+          break;
+          
+        case 'newest':
+          sorted.sort((a, b) => {
+            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return dateB - dateA;
+          });
+          break;
+          
+        case 'priority':
+          sorted.sort((a, b) => {
+            // Higher priority number = higher priority (P1=4, P4=1)
+            if (b.priority !== a.priority) {
+              return b.priority - a.priority;
+            }
+            // If same priority, sort by creation date (oldest first)
+            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : Infinity;
+            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : Infinity;
+            return dateA - dateB;
+          });
+          break;
+          
+        case 'due_date':
+          sorted.sort((a, b) => {
+            // Tasks without due dates go last
+            if (!a.due && !b.due) return 0;
+            if (!a.due) return 1;
+            if (!b.due) return -1;
+            
+            const dateA = new Date(a.due.date);
+            const dateB = new Date(b.due.date);
+            const now = new Date();
+            
+            // Both overdue - most overdue first
+            if (dateA < now && dateB < now) {
+              return dateA.getTime() - dateB.getTime();
+            }
+            
+            // One overdue, one not - overdue first
+            if (dateA < now) return -1;
+            if (dateB < now) return 1;
+            
+            // Both future - closest first
+            return dateA.getTime() - dateB.getTime();
+          });
+          break;
+      }
+      
+      return sorted;
+
     default:
       return filtered;
   }

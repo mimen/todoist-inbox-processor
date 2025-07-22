@@ -24,6 +24,7 @@ export default function ProjectDropdown({
 }: ProjectDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedIndex, setSelectedIndex] = useState(0)
   const [taskCounts, setTaskCounts] = useState<{ [key: string]: number }>({})
   const loadingCounts = allTasks.length === 0 // Show loading state until we have data
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -48,6 +49,7 @@ export default function ProjectDropdown({
       searchInputRef.current.focus()
     }
   }, [isOpen])
+
 
   // Calculate task counts when projects or allTasks change
   useEffect(() => {
@@ -161,6 +163,39 @@ export default function ProjectDropdown({
 
   const selectedProject = projectHierarchy.find(p => p.id === selectedProjectId)
 
+  // Handle keyboard navigation
+  useEffect(() => {
+    if (!isOpen) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault()
+          setSelectedIndex(prev => Math.min(prev + 1, filteredProjects.length - 1))
+          break
+        case 'ArrowUp':
+          e.preventDefault()
+          setSelectedIndex(prev => Math.max(prev - 1, 0))
+          break
+        case 'Enter':
+          e.preventDefault()
+          const selected = filteredProjects[selectedIndex]
+          if (selected) {
+            handleProjectSelect(selected.id, e as any)
+          }
+          break
+        case 'Escape':
+          e.preventDefault()
+          setIsOpen(false)
+          setSearchTerm('')
+          break
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, selectedIndex, filteredProjects])
+
   const handleProjectSelect = (projectId: string, event: React.MouseEvent) => {
     event.preventDefault()
     event.stopPropagation()
@@ -240,37 +275,42 @@ export default function ProjectDropdown({
           {/* Project List */}
           <div className="max-h-64 overflow-y-auto">
             {filteredProjects.length > 0 ? (
-              filteredProjects.map((project) => (
-                <button
-                  type="button"
-                  key={project.id}
-                  onClick={(e) => handleProjectSelect(project.id, e)}
-                  className={`w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 transition-colors ${
-                    selectedProjectId === project.id ? 'bg-blue-50 text-blue-900' : 'text-gray-900'
-                  }`}
-                  style={{ paddingLeft: `${12 + (project.indent * 20)}px` }}
-                >
+              filteredProjects.map((project, index) => {
+                const isCurrentProject = selectedProjectId === project.id
+                const isKeyboardSelected = index === selectedIndex
+                return (
+                  <button
+                    type="button"
+                    key={project.id}
+                    onClick={(e) => handleProjectSelect(project.id, e)}
+                    className={`w-full flex items-center space-x-3 p-3 text-left transition-colors ${
+                      isCurrentProject 
+                        ? 'bg-blue-50 text-blue-900' 
+                        : isKeyboardSelected 
+                          ? 'bg-gray-100' 
+                          : 'text-gray-900 hover:bg-gray-50'
+                    }`}
+                    style={{ paddingLeft: `${12 + (project.indent * 20)}px` }}
+                  >
                   <div 
                     className="w-4 h-4 rounded-full flex-shrink-0"
                     style={{ backgroundColor: project.color }}
                   ></div>
-                  <div className="flex-1 flex items-center space-x-2">
-                    <span className="font-medium">{project.name}</span>
-                    {loadingCounts ? (
-                      <span className="text-xs text-gray-400">...</span>
-                    ) : (
-                      <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                        {taskCounts[project.id] || 0}
-                      </span>
-                    )}
+                  <div className="flex-1">
+                    <span className={selectedProjectId === project.id ? 'font-medium' : ''}>
+                      {project.name}
+                    </span>
                   </div>
-                  {selectedProjectId === project.id && (
-                    <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
+                  {loadingCounts ? (
+                    <span className="text-xs text-gray-400">...</span>
+                  ) : (
+                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                      {taskCounts[project.id] || 0}
+                    </span>
                   )}
                 </button>
-              ))
+                )
+              })
             ) : (
               <div className="p-3 text-center text-gray-500 text-sm">
                 No projects found

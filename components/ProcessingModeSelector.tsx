@@ -9,6 +9,7 @@ import PriorityDropdown from './PriorityDropdown';
 import LabelDropdown from './LabelDropdown';
 import DateDropdown from './DateDropdown';
 import PresetDropdown from './PresetDropdown';
+import AllTasksDropdown from './AllTasksDropdown';
 import { AssigneeFilterType } from './AssigneeFilter';
 import { TodoistTask, TodoistLabel, TodoistProject } from '@/lib/types';
 
@@ -66,6 +67,10 @@ export default function ProcessingModeSelector({
       case 'preset':
         defaultValue = 'daily-planning';
         defaultDisplayName = 'Daily Planning';
+        break;
+      case 'all':
+        defaultValue = 'oldest';
+        defaultDisplayName = 'Oldest First';
         break;
     }
 
@@ -200,6 +205,16 @@ export default function ProcessingModeSelector({
                 }
               }) : filteredTasks}
               projectMetadata={projectMetadata}
+            />
+          )}
+
+          {mode.type === 'all' && (
+            <AllTasksDropdown
+              selectedSort={mode.value as string}
+              onSortChange={(sortBy, displayName) => {
+                handleValueChange(sortBy, displayName);
+              }}
+              allTasks={allTasksGlobal.length > 0 ? allTasksGlobal : allTasks}
             />
           )}
         </div>

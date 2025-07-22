@@ -210,7 +210,7 @@ export class TodoistApiClient {
                     date: task.deadline.date,
                     string: task.deadline.string
                 } : undefined,
-                createdAt: task.createdAt,
+                createdAt: task.created_at || task.createdAt || task.added_at || new Date().toISOString(),
                 responsibleUid: task.responsibleUid || null,
                 isCompleted: task.isCompleted || false
             }))
@@ -323,7 +323,6 @@ export class TodoistApiClient {
 
             const result = await response.json()
             console.log('Sync API response received, items count:', result.items?.length || 0)
-            console.log('Sample sync item:', JSON.stringify(result.items?.[0], null, 2))
 
             // Convert sync API items to our task format
             const items = result.items || []
@@ -353,6 +352,7 @@ export class TodoistApiClient {
                         : undefined,
                     responsibleUid: item.responsible_uid || null,
                     isCompleted: false,
+                    createdAt: item.added_at || new Date().toISOString(),
                 }))
 
             console.log(
@@ -394,6 +394,7 @@ export class TodoistApiClient {
 
             // Filter out null/undefined items
             const validTasks = tasks.filter((task) => task && task.id)
+            
 
             return validTasks.map((task: any) => ({
                 id: task.id,
@@ -415,7 +416,7 @@ export class TodoistApiClient {
                           string: task.deadline.string,
                       }
                     : undefined,
-                createdAt: task.createdAt,
+                createdAt: task.created_at || task.createdAt || task.added_at || new Date().toISOString(),
                 responsibleUid: task.responsibleUid || null,
                 isCompleted: task.isCompleted || false,
             }))
