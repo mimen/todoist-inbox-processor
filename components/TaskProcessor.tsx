@@ -96,7 +96,68 @@ export default function TaskProcessor() {
   const [assigneeFilter, setAssigneeFilter] = useState<AssigneeFilterType>('not-assigned-to-others')
   const [projectCollaborators, setProjectCollaborators] = useState<Record<string, TodoistUser[]>>({})
   const [dateLoadingStates, setDateLoadingStates] = useState<Record<string, 'due' | 'deadline' | null>>({})
+  
+  // NEW QUEUE ARCHITECTURE STATE
+  // 1. Master task store - continuously updated as changes are made
+  const [masterTasks, setMasterTasks] = useState<Record<string, TodoistTask>>({})
+  
+  // 2. Current queue - stable until explicit reload  
+  const [taskQueue, setTaskQueue] = useState<string[]>([])
+  
+  // 3. Position tracking
+  const [queuePosition, setQueuePosition] = useState(0)
+  const [processedTaskIds, setProcessedTaskIds] = useState<string[]>([])
+  const [skippedTaskIds, setSkippedTaskIds] = useState<string[]>([])
+  
   const currentUserId = collaboratorsData?.currentUser?.id || '13801296' // Use dynamic user ID
+  
+  // Derived current task from queue + master store
+  const getCurrentTask = useCallback((): TodoistTask | null => {
+    if (queuePosition >= taskQueue.length) return null
+    const taskId = taskQueue[queuePosition]
+    return masterTasks[taskId] || null
+  }, [taskQueue, queuePosition, masterTasks])
+  
+  // NEW QUEUE ARCHITECTURE: Navigation functions
+  const moveToNextTask = useCallback(() => {
+    if (queuePosition >= taskQueue.length - 1) return // At end of queue
+    
+    // Add current task to processed
+    const currentTaskId = taskQueue[queuePosition]
+    if (currentTaskId) {
+      setProcessedTaskIds(prev => [...prev, currentTaskId])
+    }
+    
+    // Move to next position
+    setQueuePosition(prev => prev + 1)
+    setTaskKey(prev => prev + 1) // Force re-render
+  }, [queuePosition, taskQueue])
+  
+  const moveToPrevTask = useCallback(() => {
+    if (queuePosition <= 0) return // At start of queue
+    if (processedTaskIds.length === 0) return // No processed tasks
+    
+    // Move back one position
+    setQueuePosition(prev => prev - 1)
+    
+    // Remove last processed task
+    setProcessedTaskIds(prev => prev.slice(0, -1))
+    setTaskKey(prev => prev + 1) // Force re-render
+  }, [queuePosition, processedTaskIds.length])
+  
+  const skipCurrentTask = useCallback(() => {
+    if (queuePosition >= taskQueue.length) return
+    
+    // Add current task to skipped
+    const currentTaskId = taskQueue[queuePosition]
+    if (currentTaskId) {
+      setSkippedTaskIds(prev => [...prev, currentTaskId])
+    }
+    
+    // Move to next position
+    setQueuePosition(prev => prev + 1)
+    setTaskKey(prev => prev + 1)
+  }, [queuePosition, taskQueue])
   
   // Helper function to check if current project has collaborators
   const hasCollaboratorsForCurrentProject = useCallback(() => {
@@ -290,7 +351,7 @@ export default function TaskProcessor() {
     loadInitialData()
   }, [])
 
-  // Load tasks for selected mode
+  // Load tasks for selected mode - NEW QUEUE ARCHITECTURE
   const loadTasksForMode = useCallback(async (mode: ProcessingMode) => {
     if (!mode.value) return
     
@@ -322,10 +383,29 @@ export default function TaskProcessor() {
         console.log(`${mode.type} ${mode.displayName}: Found ${filteredTasks.length} tasks from ${allTasksGlobal.length} total tasks`)
       }
       
+      // Keep legacy setAllTasks for now (gradual migration)
       setAllTasks(filteredTasks)
 
-      // Set up task processing queue and force form re-render
+      // NEW QUEUE ARCHITECTURE: Update master store and reset queue
       if (filteredTasks.length > 0) {
+        // 1. Update master task store
+        const taskMap = filteredTasks.reduce((acc, task) => {
+          acc[task.id] = task
+          return acc
+        }, {} as Record<string, TodoistTask>)
+        
+        setMasterTasks(prev => ({ ...prev, ...taskMap }))
+        
+        // 2. Reset queue to new task IDs
+        const taskIds = filteredTasks.map(task => task.id)
+        setTaskQueue(taskIds)
+        
+        // 3. Reset position tracking
+        setQueuePosition(0)
+        setProcessedTaskIds([])
+        setSkippedTaskIds([])
+        
+        // Legacy state update (keeping for now)
         setState({
           currentTask: filteredTasks[0],
           queuedTasks: filteredTasks.slice(1),
@@ -334,6 +414,13 @@ export default function TaskProcessor() {
         })
         setTaskKey(prev => prev + 1) // Force TaskForm to re-render with new task
       } else {
+        // Empty state
+        setTaskQueue([])
+        setQueuePosition(0)
+        setProcessedTaskIds([])
+        setSkippedTaskIds([])
+        
+        // Legacy state
         setState({
           currentTask: null,
           queuedTasks: [],
@@ -359,7 +446,7 @@ export default function TaskProcessor() {
     } finally {
       setLoadingTasks(false)
     }
-  }, [allTasksGlobal, projectHierarchy, setToast, assigneeFilter, currentUserId, projectMetadata])
+  }, [projectHierarchy, setToast, assigneeFilter, currentUserId, projectMetadata])
 
 
   // Load tasks when processing mode or assignee filter changes
@@ -491,6 +578,7 @@ export default function TaskProcessor() {
     })
   }, [projectHierarchy])
 
+  // NEW QUEUE ARCHITECTURE: Only update master store, queue unchanged
   const autoSaveTask = useCallback(async (taskId: string, updates: TaskUpdate) => {
     try {
       console.log('TaskProcessor.autoSaveTask called with:', { taskId, updates })
@@ -515,11 +603,81 @@ export default function TaskProcessor() {
       const responseData = await response.json()
       console.log('API Response data:', responseData)
       
-      // Update the task in all arrays to persist changes
+      // NEW ARCHITECTURE: Only update master task store
+      setMasterTasks(prev => {
+        const existingTask = prev[taskId]
+        if (!existingTask) return prev // Task not in master store
+        
+        let updatedTask = { ...existingTask }
+        
+        // If we have parsed dates from API, use them
+        if (responseData.dates) {
+          if (responseData.dates.due !== undefined) {
+            updatedTask.due = responseData.dates.due
+          }
+          if (responseData.dates.deadline !== undefined) {
+            updatedTask.deadline = responseData.dates.deadline
+          }
+          // Apply other updates
+          Object.keys(updates).forEach(key => {
+            if (key !== 'dueString' && key !== 'deadline' && key !== 'due') {
+              (updatedTask as any)[key] = updates[key as keyof TaskUpdate]
+            }
+          })
+        } else if (responseData.task) {
+          // Preserve deadline since REST API doesn't return it
+          const existingDeadline = updatedTask.deadline
+          updatedTask = { ...updatedTask, ...responseData.task }
+          if (existingDeadline && !responseData.task.deadline) {
+            updatedTask.deadline = existingDeadline
+          }
+        } else {
+          // Apply updates manually
+          // Special handling for dates to maintain proper structure
+          if ('dueString' in updates || 'due' in updates) {
+            if (updates.due) {
+              updatedTask.due = updates.due
+            } else if (updates.dueString) {
+              updatedTask.due = { 
+                date: updates.dueString, 
+                string: updates.dueString,
+                recurring: false 
+              }
+            } else {
+              updatedTask.due = undefined
+            }
+          }
+          if ('deadline' in updates) {
+            if (updates.deadline && typeof updates.deadline === 'string') {
+              updatedTask.deadline = { 
+                date: updates.deadline, 
+                string: updates.deadline
+              }
+            } else if (typeof updates.deadline === 'object') {
+              updatedTask.deadline = updates.deadline
+            } else {
+              updatedTask.deadline = undefined
+            }
+          }
+          // Apply other updates
+          Object.keys(updates).forEach(key => {
+            if (key !== 'dueString' && key !== 'deadline' && key !== 'due') {
+              (updatedTask as any)[key] = updates[key as keyof TaskUpdate]
+            }
+          })
+        }
+        
+        return {
+          ...prev,
+          [taskId]: updatedTask
+        }
+      })
+      
+      // LEGACY: Keep old array updates for gradual migration
       const updateTaskInArray = (tasks: TodoistTask[]) => {
         const index = tasks.findIndex(t => t.id === taskId)
         if (index !== -1) {
-          // If we have parsed dates from API, use them
+          // Same update logic as above but for arrays
           if (responseData.dates) {
             if (responseData.dates.due !== undefined) {
               tasks[index].due = responseData.dates.due
@@ -527,27 +685,22 @@ export default function TaskProcessor() {
             if (responseData.dates.deadline !== undefined) {
               tasks[index].deadline = responseData.dates.deadline
             }
-            // Apply other updates
             Object.keys(updates).forEach(key => {
               if (key !== 'dueString' && key !== 'deadline' && key !== 'due') {
                 (tasks[index] as any)[key] = updates[key as keyof TaskUpdate]
               }
             })
           } else if (responseData.task) {
-            // Preserve deadline since REST API doesn't return it
             const existingDeadline = tasks[index].deadline
             Object.assign(tasks[index], responseData.task)
             if (existingDeadline && !responseData.task.deadline) {
               tasks[index].deadline = existingDeadline
             }
           } else {
-            // Otherwise, apply updates manually
-            // Special handling for dates to maintain proper structure
             if ('dueString' in updates || 'due' in updates) {
               if (updates.due) {
                 tasks[index].due = updates.due
               } else if (updates.dueString) {
-                // Create a due object from the string
                 tasks[index].due = { 
                   date: updates.dueString, 
                   string: updates.dueString,
@@ -569,7 +722,6 @@ export default function TaskProcessor() {
                 tasks[index].deadline = undefined
               }
             }
-            // Apply other updates
             Object.keys(updates).forEach(key => {
               if (key !== 'dueString' && key !== 'deadline' && key !== 'due') {
                 (tasks[index] as any)[key] = updates[key as keyof TaskUpdate]
@@ -579,8 +731,7 @@ export default function TaskProcessor() {
         }
       }
       
-      // Update in allTasks (current filtered view)
-      // Don't update if project changed - keep task in current queue
+      // LEGACY: Update legacy arrays (keeping during migration)
       if (!('projectId' in updates)) {
         setAllTasks(prev => {
           const newTasks = [...prev]
@@ -589,88 +740,19 @@ export default function TaskProcessor() {
         })
       }
       
-      // Always update in allTasksGlobal (all tasks)
       setAllTasksGlobal(prev => {
         const newTasks = [...prev]
         updateTaskInArray(newTasks)
         return newTasks
       })
       
-      // Update current task if it's the one being edited
+      // LEGACY: Update legacy current task (keeping during migration)
       setState(prev => {
         if (prev.currentTask?.id === taskId) {
-          // If we have parsed dates from API, use them
-          if (responseData.dates) {
-            const updatedTask = { ...prev.currentTask }
-            if (responseData.dates.due !== undefined) {
-              updatedTask.due = responseData.dates.due
-            }
-            if (responseData.dates.deadline !== undefined) {
-              updatedTask.deadline = responseData.dates.deadline
-            }
-            // Apply other updates
-            Object.keys(updates).forEach(key => {
-              if (key !== 'dueString' && key !== 'deadline' && key !== 'due') {
-                (updatedTask as any)[key] = updates[key as keyof TaskUpdate]
-              }
-            })
-            return {
-              ...prev,
-              currentTask: updatedTask
-            }
-          } else if (responseData.task) {
-            // Preserve deadline since REST API doesn't return it
-            const existingDeadline = prev.currentTask.deadline
-            const updatedTask = { ...prev.currentTask, ...responseData.task }
-            if (existingDeadline && !responseData.task.deadline) {
-              updatedTask.deadline = existingDeadline
-            }
-            return {
-              ...prev,
-              currentTask: updatedTask
-            }
-          } else {
-            // Otherwise, apply updates manually
-            const updatedTask = { ...prev.currentTask }
-            
-            // Special handling for dates to maintain proper structure
-            if ('dueString' in updates || 'due' in updates) {
-              if (updates.due) {
-                updatedTask.due = updates.due
-              } else if (updates.dueString) {
-                // Create a due object from the string
-                updatedTask.due = { 
-                  date: updates.dueString, 
-                  string: updates.dueString,
-                  recurring: false 
-                }
-              } else {
-                updatedTask.due = undefined
-              }
-            }
-            if ('deadline' in updates) {
-              if (updates.deadline && typeof updates.deadline === 'string') {
-                updatedTask.deadline = { 
-                  date: updates.deadline, 
-                  string: updates.deadline
-                }
-              } else if (typeof updates.deadline === 'object') {
-                updatedTask.deadline = updates.deadline
-              } else {
-                updatedTask.deadline = undefined
-              }
-            }
-            // Apply other updates
-            Object.keys(updates).forEach(key => {
-              if (key !== 'dueString' && key !== 'deadline' && key !== 'due') {
-                (updatedTask as any)[key] = updates[key as keyof TaskUpdate]
-              }
-            })
-            
-            return {
-              ...prev,
-              currentTask: updatedTask
-            }
+          const currentTask = masterTasks[taskId] || prev.currentTask
+          return {
+            ...prev,
+            currentTask: { ...currentTask, ...updates }
           }
         }
         return prev
@@ -678,15 +760,13 @@ export default function TaskProcessor() {
       
     } catch (err) {
       console.error('Error auto-saving task:', err)
-      // Show toast instead of setting error state
       setToast({ 
         message: err instanceof Error ? err.message : 'Failed to save changes', 
         type: 'error' 
       })
-      // Re-throw to allow handlers to revert changes
       throw err
     }
-  }, [])
+  }, [masterTasks])
 
   const handleContentChange = useCallback(async (newContent: string) => {
     if (state.currentTask) {
