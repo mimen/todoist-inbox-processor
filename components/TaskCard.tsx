@@ -284,11 +284,20 @@ export default function TaskCard({
                   title={assignee ? `Assigned to ${assignee.name}` : "Click to change assignee"}
                 >
                   {assignee?.avatarSmall ? (
-                    <img 
-                      src={assignee.avatarSmall} 
-                      alt={assignee.name}
-                      className="w-4 h-4 rounded-full"
-                    />
+                    <>
+                      <img 
+                        src={assignee.avatarSmall} 
+                        alt={assignee.name}
+                        className="w-4 h-4 rounded-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none'
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden')
+                        }}
+                      />
+                      <svg className="w-4 h-4 text-purple-700 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </>
                   ) : (
                     <svg className="w-4 h-4 text-purple-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />

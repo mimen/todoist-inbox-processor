@@ -900,7 +900,8 @@ export default function TaskProcessor() {
       if (e.target instanceof HTMLInputElement || 
           e.target instanceof HTMLTextAreaElement ||
           document.querySelector('[role="listbox"]') ||
-          document.querySelector('.dropdown-open')) {
+          document.querySelector('.dropdown-open') ||
+          showAssigneeOverlay) {
         return
       }
 

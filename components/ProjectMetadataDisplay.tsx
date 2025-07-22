@@ -183,7 +183,7 @@ export default function ProjectMetadataDisplay({
             {hasDescription && (
               <div>
                 <p className="text-sm text-gray-600 italic">
-                  "{metadata.description}"
+                  &ldquo;{metadata.description}&rdquo;
                 </p>
               </div>
             )}
