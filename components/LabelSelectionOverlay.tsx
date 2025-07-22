@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { TodoistTask, TodoistLabel } from '@/lib/types'
+import { isExcludedLabel } from '@/lib/excluded-labels'
 
 interface LabelSelectionOverlayProps {
   labels: TodoistLabel[]
@@ -50,8 +51,9 @@ export default function LabelSelectionOverlay({
     return colorMap[colorName] || '#299fe6'
   }
 
-  // Filter labels based on search term
+  // Filter labels based on search term, excluding system labels
   const filteredLabels = labels.filter(label => 
+    !isExcludedLabel(label.name) &&
     label.name.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
@@ -120,6 +122,11 @@ export default function LabelSelectionOverlay({
   }, [isVisible, selectedIndex, filteredLabels])
 
   const toggleLabel = useCallback((labelName: string) => {
+    // Prevent assigning excluded labels
+    if (isExcludedLabel(labelName)) {
+      return;
+    }
+    
     const newLabels = selectedLabels.includes(labelName)
       ? selectedLabels.filter(l => l !== labelName)
       : [...selectedLabels, labelName]

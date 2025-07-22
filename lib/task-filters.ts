@@ -1,6 +1,7 @@
 import { TodoistTask } from '@/lib/types';
 import { ProcessingMode, PRESET_FILTERS } from '@/types/processing-mode';
 import { AssigneeFilterType } from '@/components/AssigneeFilter';
+import { isExcludedLabel } from '@/lib/excluded-labels';
 
 // Helper function to detect recurring tasks
 function isRecurringTask(task: TodoistTask): boolean {
@@ -28,8 +29,16 @@ export function filterTasksByMode(
   assigneeFilter: AssigneeFilterType = 'all',
   currentUserId?: string
 ): TodoistTask[] {
-  // Always exclude archived tasks (those starting with "* ")
-  let filtered = tasks.filter(task => !task.content.startsWith('* '));
+  // Always exclude archived tasks (those starting with "* ") and tasks with excluded labels
+  let filtered = tasks.filter(task => {
+    // Exclude archived tasks
+    if (task.content.startsWith('* ')) return false;
+    
+    // Exclude tasks with any excluded labels
+    if (task.labels.some(label => isExcludedLabel(label))) return false;
+    
+    return true;
+  });
 
   // Apply assignee filter
   if (assigneeFilter !== 'all') {
@@ -220,6 +229,9 @@ export function getTaskCountsForProjects(
       // Basic filters
       if (String(task.projectId) !== String(projectId)) return false;
       if (task.content.startsWith('* ')) return false;
+      
+      // Exclude tasks with excluded labels
+      if (task.labels.some(label => isExcludedLabel(label))) return false;
       
       // Apply assignee filter
       if (assigneeFilter !== 'all') {

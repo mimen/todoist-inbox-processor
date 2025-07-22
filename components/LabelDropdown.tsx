@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Check, X } from 'lucide-react';
 import { TodoistTask, TodoistLabel } from '@/lib/types';
 import LabelIcon from './LabelIcon';
+import { filterExcludedLabels } from '@/lib/excluded-labels';
 
 interface LabelDropdownProps {
   selectedLabels: string[];
@@ -33,8 +34,8 @@ export default function LabelDropdown({
     return counts;
   }, {} as Record<string, number>);
 
-  // Filter and sort labels based on search and task count
-  const filteredLabels = availableLabels
+  // Filter and sort labels based on search and task count, excluding system labels
+  const filteredLabels = filterExcludedLabels(availableLabels)
     .filter(label => label.toLowerCase().includes(searchTerm.toLowerCase()))
     .sort((a, b) => {
       const countA = labelCounts[a] || 0;

@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { TodoistTask, TodoistProject, TodoistLabel, TodoistUser } from '@/lib/types'
+import { isExcludedLabel } from '@/lib/excluded-labels'
 
 interface TaskCardProps {
   task: TodoistTask
@@ -323,7 +324,7 @@ export default function TaskCard({
           )}
           
           {/* Labels */}
-          {task.labels.map((labelName) => {
+          {task.labels.filter(labelName => !isExcludedLabel(labelName)).map((labelName) => {
             const label = labels.find(l => l.name === labelName)
             const labelColor = label ? getTodoistColor(label.color) : '#299fe6'
             return (
