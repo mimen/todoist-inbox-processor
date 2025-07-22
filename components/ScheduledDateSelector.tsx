@@ -10,6 +10,7 @@ interface ScheduledDateSelectorProps {
   onScheduledDateChange: (dateString: string) => void
   onClose: () => void
   isVisible: boolean
+  isLoading?: boolean
 }
 
 interface DateSuggestion {

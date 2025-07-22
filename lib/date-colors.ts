@@ -24,7 +24,34 @@ export function getDateColor(dateString: string | undefined, isDeadline: boolean
     };
   }
 
-  const date = new Date(dateString);
+  // Parse the date more robustly
+  let date: Date;
+  try {
+    // If it's just a date like "2025-01-27", add time to make it parseable
+    if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      date = new Date(dateString + 'T00:00:00');
+    } else {
+      date = new Date(dateString);
+    }
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      console.error('Invalid date in getDateColor:', dateString);
+      return {
+        text: 'text-gray-500',
+        bg: 'bg-gray-50',
+        border: 'border-gray-200'
+      };
+    }
+  } catch (e) {
+    console.error('Error parsing date in getDateColor:', dateString, e);
+    return {
+      text: 'text-gray-500',
+      bg: 'bg-gray-50',
+      border: 'border-gray-200'
+    };
+  }
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   date.setHours(0, 0, 0, 0);
@@ -50,9 +77,9 @@ export function getDateColor(dateString: string | undefined, isDeadline: boolean
   // Today
   if (diffDays === 0) {
     return {
-      text: 'text-blue-600',
-      bg: 'bg-blue-50',
-      border: 'border-blue-200'
+      text: 'text-green-600',
+      bg: 'bg-green-50',
+      border: 'border-green-200'
     };
   }
   
@@ -88,7 +115,26 @@ export function getDateColor(dateString: string | undefined, isDeadline: boolean
 export function getDateLabel(dateString: string | undefined): string {
   if (!dateString) return 'No date';
   
-  const date = new Date(dateString);
+  // Parse the date more robustly
+  let date: Date;
+  try {
+    // If it's just a date like "2025-01-27", add time to make it parseable
+    if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      date = new Date(dateString + 'T00:00:00');
+    } else {
+      date = new Date(dateString);
+    }
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      console.error('Invalid date in getDateLabel:', dateString);
+      return 'Invalid date';
+    }
+  } catch (e) {
+    console.error('Error parsing date in getDateLabel:', dateString, e);
+    return 'Invalid date';
+  }
+  
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   date.setHours(0, 0, 0, 0);
@@ -141,12 +187,33 @@ export function getDateLabel(dateString: string | undefined): string {
 export function getDateTimeLabel(dateString: string | undefined, includeTime: boolean = true): string {
   if (!dateString) return 'No date';
   
-  const date = new Date(dateString);
+  // Parse the date more robustly
+  let date: Date;
+  try {
+    // If it's just a date like "2025-01-27", add time to make it parseable
+    if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      date = new Date(dateString + 'T00:00:00');
+    } else {
+      date = new Date(dateString);
+    }
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      console.error('Invalid date:', dateString);
+      return 'Invalid date';
+    }
+  } catch (e) {
+    console.error('Error parsing date:', dateString, e);
+    return 'Invalid date';
+  }
+  
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  date.setHours(0, 0, 0, 0);
   
-  const diffTime = date.getTime() - today.getTime();
+  const dateOnly = new Date(date);
+  dateOnly.setHours(0, 0, 0, 0);
+  
+  const diffTime = dateOnly.getTime() - today.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   
   // For overdue dates, just show the relative date without time
@@ -155,15 +222,14 @@ export function getDateTimeLabel(dateString: string | undefined, includeTime: bo
   }
   
   const dateLabel = getDateLabel(dateString);
-  const originalDate = new Date(dateString);
   
   // Check if the date has a specific time (not midnight)
-  const hasTime = includeTime && (originalDate.getHours() !== 0 || originalDate.getMinutes() !== 0);
+  const hasTime = includeTime && (date.getHours() !== 0 || date.getMinutes() !== 0);
   
   if (hasTime) {
-    const timeString = originalDate.toLocaleTimeString('en-US', { 
+    const timeString = date.toLocaleTimeString('en-US', { 
       hour: 'numeric', 
-      minute: originalDate.getMinutes() !== 0 ? '2-digit' : undefined,
+      minute: date.getMinutes() !== 0 ? '2-digit' : undefined,
       hour12: true 
     });
     return `${dateLabel} at ${timeString}`;
@@ -178,7 +244,26 @@ export function getDateTimeLabel(dateString: string | undefined, includeTime: bo
 export function getFullDateTime(dateString: string | undefined): string {
   if (!dateString) return 'No date set';
   
-  const date = new Date(dateString);
+  // Parse the date more robustly
+  let date: Date;
+  try {
+    // If it's just a date like "2025-01-27", add time to make it parseable
+    if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      date = new Date(dateString + 'T00:00:00');
+    } else {
+      date = new Date(dateString);
+    }
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      console.error('Invalid date in getFullDateTime:', dateString);
+      return 'Invalid date';
+    }
+  } catch (e) {
+    console.error('Error parsing date in getFullDateTime:', dateString, e);
+    return 'Invalid date';
+  }
+  
   const hasTime = date.getHours() !== 0 || date.getMinutes() !== 0;
   
   if (hasTime) {
@@ -206,7 +291,7 @@ export function getFullDateTime(dateString: string | undefined): string {
  */
 export const DATE_OPTION_COLORS = {
   overdue: { text: 'text-red-600', bg: 'bg-red-50', icon: '⏰' },
-  today: { text: 'text-blue-600', bg: 'bg-blue-50', icon: '📅' },
+  today: { text: 'text-green-600', bg: 'bg-green-50', icon: '📅' },
   tomorrow: { text: 'text-amber-600', bg: 'bg-amber-50', icon: '☀️' },
   next_7_days: { text: 'text-purple-600', bg: 'bg-purple-50', icon: '📆' },
   scheduled: { text: 'text-gray-600', bg: 'bg-gray-50', icon: '🗓️' },
@@ -219,7 +304,7 @@ export const DATE_OPTION_COLORS = {
  */
 export const DEADLINE_OPTION_COLORS = {
   overdue: { text: 'text-red-600', bg: 'bg-red-50', icon: '🚨' },
-  today: { text: 'text-blue-600', bg: 'bg-blue-50', icon: '🎯' },
+  today: { text: 'text-green-600', bg: 'bg-green-50', icon: '🎯' },
   next_7_days: { text: 'text-purple-600', bg: 'bg-purple-50', icon: '📍' },
   upcoming: { text: 'text-gray-600', bg: 'bg-gray-50', icon: '🔥' },
   no_deadline: { text: 'text-gray-400', bg: 'bg-gray-50', icon: '📋' }

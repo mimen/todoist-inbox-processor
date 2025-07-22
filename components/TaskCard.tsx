@@ -12,6 +12,7 @@ interface TaskCardProps {
   labels: TodoistLabel[]
   assignee?: TodoistUser
   hasCollaborators?: boolean
+  dateLoadingState?: 'due' | 'deadline' | null
   onContentChange?: (newContent: string) => void
   onDescriptionChange?: (newDescription: string) => void
   onProjectClick?: () => void
@@ -29,6 +30,7 @@ export default function TaskCard({
   labels, 
   assignee,
   hasCollaborators = false,
+  dateLoadingState = null,
   onContentChange, 
   onDescriptionChange,
   onProjectClick,
@@ -210,7 +212,12 @@ export default function TaskCard({
           </button>
           
           {/* Scheduled Date */}
-          {task.due ? (() => {
+          {dateLoadingState === 'due' ? (
+            <div className="inline-flex items-center space-x-1.5 bg-gray-100 px-2.5 py-1.5 rounded text-sm">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-500"></div>
+              <span className="text-gray-500">Updating...</span>
+            </div>
+          ) : task.due ? (() => {
             const colors = getDateColor(task.due.date, false);
             const label = getDateTimeLabel(task.due.date, true);
             const fullDateTime = getFullDateTime(task.due.date);
@@ -242,7 +249,12 @@ export default function TaskCard({
           )}
           
           {/* Deadline */}
-          {task.deadline ? (() => {
+          {dateLoadingState === 'deadline' ? (
+            <div className="inline-flex items-center space-x-1.5 bg-gray-100 px-2.5 py-1.5 rounded text-sm">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-500"></div>
+              <span className="text-gray-500">Updating...</span>
+            </div>
+          ) : task.deadline ? (() => {
             const colors = getDateColor(task.deadline.date, true);
             const label = getDateTimeLabel(task.deadline.date, true);
             const fullDateTime = getFullDateTime(task.deadline.date);

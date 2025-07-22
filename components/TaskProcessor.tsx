@@ -95,6 +95,7 @@ export default function TaskProcessor() {
   const [currentTaskAssignee, setCurrentTaskAssignee] = useState<TodoistUser | undefined>(undefined)
   const [assigneeFilter, setAssigneeFilter] = useState<AssigneeFilterType>('not-assigned-to-others')
   const [projectCollaborators, setProjectCollaborators] = useState<Record<string, TodoistUser[]>>({})
+  const [dateLoadingStates, setDateLoadingStates] = useState<Record<string, 'due' | 'deadline' | null>>({})
   const currentUserId = collaboratorsData?.currentUser?.id || '13801296' // Use dynamic user ID
   
   // Helper function to check if current project has collaborators
@@ -366,7 +367,7 @@ export default function TaskProcessor() {
     if (processingMode.value && (processingMode.type === 'filter' || allTasksGlobal.length > 0)) {
       loadTasksForMode(processingMode)
     }
-  }, [processingMode, allTasksGlobal.length, loadTasksForMode, assigneeFilter])
+  }, [processingMode, loadTasksForMode, assigneeFilter])
 
   // Load suggestions when current task changes
   useEffect(() => {
@@ -513,6 +514,168 @@ export default function TaskProcessor() {
 
       const responseData = await response.json()
       console.log('API Response data:', responseData)
+      
+      // Update the task in all arrays to persist changes
+      const updateTaskInArray = (tasks: TodoistTask[]) => {
+        const index = tasks.findIndex(t => t.id === taskId)
+        if (index !== -1) {
+          // If we have parsed dates from API, use them
+          if (responseData.dates) {
+            if (responseData.dates.due !== undefined) {
+              tasks[index].due = responseData.dates.due
+            }
+            if (responseData.dates.deadline !== undefined) {
+              tasks[index].deadline = responseData.dates.deadline
+            }
+            // Apply other updates
+            Object.keys(updates).forEach(key => {
+              if (key !== 'dueString' && key !== 'deadline' && key !== 'due') {
+                (tasks[index] as any)[key] = updates[key as keyof TaskUpdate]
+              }
+            })
+          } else if (responseData.task) {
+            // Preserve deadline since REST API doesn't return it
+            const existingDeadline = tasks[index].deadline
+            Object.assign(tasks[index], responseData.task)
+            if (existingDeadline && !responseData.task.deadline) {
+              tasks[index].deadline = existingDeadline
+            }
+          } else {
+            // Otherwise, apply updates manually
+            // Special handling for dates to maintain proper structure
+            if ('dueString' in updates || 'due' in updates) {
+              if (updates.due) {
+                tasks[index].due = updates.due
+              } else if (updates.dueString) {
+                // Create a due object from the string
+                tasks[index].due = { 
+                  date: updates.dueString, 
+                  string: updates.dueString,
+                  recurring: false 
+                }
+              } else {
+                tasks[index].due = undefined
+              }
+            }
+            if ('deadline' in updates) {
+              if (updates.deadline && typeof updates.deadline === 'string') {
+                tasks[index].deadline = { 
+                  date: updates.deadline, 
+                  string: updates.deadline
+                }
+              } else if (typeof updates.deadline === 'object') {
+                tasks[index].deadline = updates.deadline
+              } else {
+                tasks[index].deadline = undefined
+              }
+            }
+            // Apply other updates
+            Object.keys(updates).forEach(key => {
+              if (key !== 'dueString' && key !== 'deadline' && key !== 'due') {
+                (tasks[index] as any)[key] = updates[key as keyof TaskUpdate]
+              }
+            })
+          }
+        }
+      }
+      
+      // Update in allTasks (current filtered view)
+      // Don't update if project changed - keep task in current queue
+      if (!('projectId' in updates)) {
+        setAllTasks(prev => {
+          const newTasks = [...prev]
+          updateTaskInArray(newTasks)
+          return newTasks
+        })
+      }
+      
+      // Always update in allTasksGlobal (all tasks)
+      setAllTasksGlobal(prev => {
+        const newTasks = [...prev]
+        updateTaskInArray(newTasks)
+        return newTasks
+      })
+      
+      // Update current task if it's the one being edited
+      setState(prev => {
+        if (prev.currentTask?.id === taskId) {
+          // If we have parsed dates from API, use them
+          if (responseData.dates) {
+            const updatedTask = { ...prev.currentTask }
+            if (responseData.dates.due !== undefined) {
+              updatedTask.due = responseData.dates.due
+            }
+            if (responseData.dates.deadline !== undefined) {
+              updatedTask.deadline = responseData.dates.deadline
+            }
+            // Apply other updates
+            Object.keys(updates).forEach(key => {
+              if (key !== 'dueString' && key !== 'deadline' && key !== 'due') {
+                (updatedTask as any)[key] = updates[key as keyof TaskUpdate]
+              }
+            })
+            return {
+              ...prev,
+              currentTask: updatedTask
+            }
+          } else if (responseData.task) {
+            // Preserve deadline since REST API doesn't return it
+            const existingDeadline = prev.currentTask.deadline
+            const updatedTask = { ...prev.currentTask, ...responseData.task }
+            if (existingDeadline && !responseData.task.deadline) {
+              updatedTask.deadline = existingDeadline
+            }
+            return {
+              ...prev,
+              currentTask: updatedTask
+            }
+          } else {
+            // Otherwise, apply updates manually
+            const updatedTask = { ...prev.currentTask }
+            
+            // Special handling for dates to maintain proper structure
+            if ('dueString' in updates || 'due' in updates) {
+              if (updates.due) {
+                updatedTask.due = updates.due
+              } else if (updates.dueString) {
+                // Create a due object from the string
+                updatedTask.due = { 
+                  date: updates.dueString, 
+                  string: updates.dueString,
+                  recurring: false 
+                }
+              } else {
+                updatedTask.due = undefined
+              }
+            }
+            if ('deadline' in updates) {
+              if (updates.deadline && typeof updates.deadline === 'string') {
+                updatedTask.deadline = { 
+                  date: updates.deadline, 
+                  string: updates.deadline
+                }
+              } else if (typeof updates.deadline === 'object') {
+                updatedTask.deadline = updates.deadline
+              } else {
+                updatedTask.deadline = undefined
+              }
+            }
+            // Apply other updates
+            Object.keys(updates).forEach(key => {
+              if (key !== 'dueString' && key !== 'deadline' && key !== 'due') {
+                (updatedTask as any)[key] = updates[key as keyof TaskUpdate]
+              }
+            })
+            
+            return {
+              ...prev,
+              currentTask: updatedTask
+            }
+          }
+        }
+        return prev
+      })
+      
     } catch (err) {
       console.error('Error auto-saving task:', err)
       // Show toast instead of setting error state
@@ -550,14 +713,14 @@ export default function TaskProcessor() {
     if (state.currentTask) {
       const originalPriority = state.currentTask.priority
       
-      // Update the task immediately in the UI
+      // Update the task immediately in the UI for better UX
       setState(prev => ({
         ...prev,
         currentTask: prev.currentTask ? { ...prev.currentTask, priority } : null
       }))
       
       try {
-        // Queue the auto-save
+        // Queue the auto-save - this will also update all arrays
         await autoSaveTask(state.currentTask.id, { priority })
       } catch (err) {
         // Revert on error
@@ -672,89 +835,130 @@ export default function TaskProcessor() {
   }, [state.processedTasks, allTasks])
 
   const handleScheduledDateChange = useCallback(async (dateString: string) => {
-    if (state.currentTask) {
-      try {
-        // Update UI state immediately
-        if (dateString) {
-          setState(prev => ({
-            ...prev,
-            currentTask: prev.currentTask ? { 
-              ...prev.currentTask, 
-              due: { 
-                date: dateString, 
-                string: dateString,
-                recurring: false 
-              }
-            } : null
-          }))
-        } else {
-          // Clear the due date
-          setState(prev => ({
-            ...prev,
-            currentTask: prev.currentTask ? { 
-              ...prev.currentTask, 
-              due: undefined 
-            } : null
-          }))
-        }
-        
-        // Then update the API
-        const updates = { dueString: dateString }
-        await autoSaveTask(state.currentTask.id, updates)
-      } catch (error) {
-        console.error('Error updating scheduled date:', error)
-        // Revert the UI state on error
+    if (!state.currentTask) return;
+    
+    // Capture the current task ID and due date immediately
+    const taskId = state.currentTask.id;
+    const originalDue = state.currentTask.due;
+    
+    try {
+      // Set loading state
+      setDateLoadingStates(prev => ({ ...prev, [taskId]: 'due' }))
+      
+      // Update UI state immediately with a temporary value
+      if (dateString) {
         setState(prev => ({
           ...prev,
-          currentTask: prev.currentTask ? { 
+          currentTask: prev.currentTask && prev.currentTask.id === taskId ? { 
             ...prev.currentTask, 
-            due: state.currentTask!.due 
-          } : null
+            due: { 
+              date: dateString, 
+              string: dateString,
+              recurring: false 
+            }
+          } : prev.currentTask
+        }))
+      } else {
+        // Clear the do date
+        setState(prev => ({
+          ...prev,
+          currentTask: prev.currentTask && prev.currentTask.id === taskId ? { 
+            ...prev.currentTask, 
+            due: undefined 
+          } : prev.currentTask
         }))
       }
+      
+      // Then update the API
+      // Note: The API will parse the dateString and return the proper date format
+      // autoSaveTask will update all task arrays with the response
+      const updates: any = { dueString: dateString }
+      
+      // For immediate UI update, we need to provide the due object structure
+      if (dateString) {
+        updates.due = { 
+          date: dateString, // The API will return the proper ISO date
+          string: dateString,
+          recurring: false 
+        }
+      } else {
+        updates.due = undefined
+      }
+      
+      await autoSaveTask(taskId, updates)
+      
+      // Clear loading state after success
+      setDateLoadingStates(prev => ({ ...prev, [taskId]: null }))
+    } catch (error) {
+      console.error('Error updating scheduled date:', error)
+      // Clear loading state on error
+      setDateLoadingStates(prev => ({ ...prev, [taskId]: null }))
+      // Revert the UI state on error
+      setState(prev => ({
+        ...prev,
+        currentTask: prev.currentTask && prev.currentTask.id === taskId ? { 
+          ...prev.currentTask, 
+          due: originalDue 
+        } : prev.currentTask
+      }))
     }
   }, [state.currentTask, autoSaveTask])
 
   const handleDeadlineChange = useCallback(async (dateString: string) => {
-    if (state.currentTask) {
-      try {
-        // Update UI state immediately
-        if (dateString) {
-          setState(prev => ({
-            ...prev,
-            currentTask: prev.currentTask ? { 
-              ...prev.currentTask, 
-              deadline: { 
-                date: dateString, 
-                string: dateString 
-              }
-            } : null
-          }))
-        } else {
-          // Clear the deadline
-          setState(prev => ({
-            ...prev,
-            currentTask: prev.currentTask ? { 
-              ...prev.currentTask, 
-              deadline: undefined 
-            } : null
-          }))
-        }
-        
-        // Then update the API
-        const updates = { deadline: dateString }
-        await autoSaveTask(state.currentTask.id, updates)
-      } catch (error) {
-        console.error('Error updating deadline:', error)
-        // Revert the UI state on error
+    if (!state.currentTask) return;
+    
+    // Capture the current task ID and deadline immediately
+    const taskId = state.currentTask.id;
+    const originalDeadline = state.currentTask.deadline;
+    
+    try {
+      // Set loading state
+      setDateLoadingStates(prev => ({ ...prev, [taskId]: 'deadline' }))
+      
+      // Update UI state immediately
+      if (dateString) {
         setState(prev => ({
           ...prev,
-          currentTask: prev.currentTask ? { 
+          currentTask: prev.currentTask && prev.currentTask.id === taskId ? { 
             ...prev.currentTask, 
-            deadline: state.currentTask!.deadline 
-          } : null
+            deadline: { 
+              date: dateString, 
+              string: dateString 
+            }
+          } : prev.currentTask
+        }))
+      } else {
+        // Clear the deadline
+        setState(prev => ({
+          ...prev,
+          currentTask: prev.currentTask && prev.currentTask.id === taskId ? { 
+            ...prev.currentTask, 
+            deadline: undefined 
+          } : prev.currentTask
         }))
       }
+      
+      // Then update the API
+      // Note: The API will parse the dateString and return the proper date format
+      // autoSaveTask will update all task arrays with the response
+      const updates: any = { deadline: dateString || undefined }
+      
+      await autoSaveTask(taskId, updates)
+      
+      // Clear loading state after success
+      setDateLoadingStates(prev => ({ ...prev, [taskId]: null }))
+    } catch (error) {
+      console.error('Error updating deadline:', error)
+      // Clear loading state on error
+      setDateLoadingStates(prev => ({ ...prev, [taskId]: null }))
+      // Revert the UI state on error
+      setState(prev => ({
+        ...prev,
+        currentTask: prev.currentTask && prev.currentTask.id === taskId ? { 
+          ...prev.currentTask, 
+          deadline: originalDeadline 
+        } : prev.currentTask
+      }))
     }
   }, [state.currentTask, autoSaveTask])
 
@@ -1204,6 +1408,7 @@ export default function TaskProcessor() {
               labels={labels} 
               assignee={currentTaskAssignee}
               hasCollaborators={hasCollaboratorsForCurrentProject()}
+              dateLoadingState={dateLoadingStates[state.currentTask.id] || null}
               onContentChange={handleContentChange}
               onDescriptionChange={handleDescriptionChange}
               onProjectClick={() => setShowProjectOverlay(true)}

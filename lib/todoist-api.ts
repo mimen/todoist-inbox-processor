@@ -335,7 +335,7 @@ export class TodoistApiClient {
                     content: item.content,
                     description: item.description || '',
                     projectId: String(item.project_id), // Ensure string type for consistency
-                    priority: item.priority as 1 | 2 | 3 | 4, // Sync API uses 1-4 where 1 is natural (p4), 4 is urgent (p1)
+                    priority: item.priority as 1 | 2 | 3 | 4, // Sync API and Internal format are the same: 1=P4, 2=P3, 3=P2, 4=P1
                     labels: item.labels || [],
                     due: item.due
                         ? {
@@ -477,10 +477,11 @@ export class TodoistApiClient {
         }
     }
 
-    // Update a task
-    static async updateTask(taskId: string, updates: TaskUpdateRequest): Promise<boolean> {
+    // Update a task - returns updated date information if dates were updated
+    static async updateTask(taskId: string, updates: TaskUpdateRequest): Promise<{ success: boolean; dates?: { due?: any; deadline?: any } }> {
         try {
             console.log('TodoistApiClient.updateTask called with:', { taskId, updates })
+            let updatedDates: { due?: any; deadline?: any } = {}
 
             // Handle project move separately using Sync API
             if (updates.projectId && updates.projectId !== '') {
@@ -531,6 +532,11 @@ export class TodoistApiClient {
                             })
                             if (parseResponse.due) {
                                 deadlineDate = { date: parseResponse.due.date }
+                                // Store the parsed deadline to return
+                                updatedDates.deadline = {
+                                    date: parseResponse.due.date,
+                                    string: updates.deadline
+                                }
                             }
                             // Delete the temporary task
                             await api.deleteTask(parseResponse.id)
@@ -538,6 +544,9 @@ export class TodoistApiClient {
                             console.error('Failed to parse deadline date:', parseError)
                             throw new Error('Invalid deadline date format')
                         }
+                    } else {
+                        // Clearing the deadline
+                        updatedDates.deadline = undefined
                     }
 
                     const response = await fetch('https://api.todoist.com/sync/v9/sync', {
@@ -603,7 +612,7 @@ export class TodoistApiClient {
                 hasUpdates = true
             }
             if (updates.priority !== undefined) {
-                // Both use same format: 1=p4 (normal), 2=p3, 3=p2, 4=p1 (urgent)
+                // Internal format matches Sync API format: both use 1=P4, 2=P3, 3=P2, 4=P1
                 syncArgs.priority = updates.priority
                 hasUpdates = true
             }
@@ -631,6 +640,13 @@ export class TodoistApiClient {
                                 string: updates.dueString,
                                 datetime: parseResponse.due.datetime,
                             }
+                            // Store the parsed date to return
+                            updatedDates.due = {
+                                date: parseResponse.due.date,
+                                string: updates.dueString,
+                                datetime: parseResponse.due.datetime,
+                                recurring: false
+                            }
                         }
                         // Delete the temporary task
                         await api.deleteTask(parseResponse.id)
@@ -642,6 +658,7 @@ export class TodoistApiClient {
                 } else {
                     // Remove do date
                     syncArgs.due = null
+                    updatedDates.due = undefined
                     hasUpdates = true
                 }
             }
@@ -690,7 +707,7 @@ export class TodoistApiClient {
                 console.log('ℹ️  No additional fields to update')
             }
 
-            return true
+            return { success: true, dates: Object.keys(updatedDates).length > 0 ? updatedDates : undefined }
         } catch (error) {
             console.error('Error updating task:', error)
             console.error('Full error details:', JSON.stringify(error, null, 2))

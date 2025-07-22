@@ -14,7 +14,21 @@ export async function PUT(
     const result = await TodoistApiClient.updateTask(taskId, updates)
     console.log('API Route: Update result:', result)
     
-    return NextResponse.json({ success: true })
+    // If dates were updated, return the parsed dates from the API
+    if (result.dates) {
+      console.log('Returning parsed dates:', result.dates)
+      return NextResponse.json({ 
+        success: true,
+        dates: result.dates 
+      })
+    }
+    
+    // Return success with the updates that were applied
+    // The client will merge these updates with the existing task
+    return NextResponse.json({ 
+      success: true,
+      updates: updates 
+    })
   } catch (error) {
     console.error('API Route Error:', error)
     return NextResponse.json(
