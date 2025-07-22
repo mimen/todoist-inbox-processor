@@ -84,9 +84,7 @@ export class TodoistApiClient {
     static async getProjects(): Promise<TodoistProjectApi[]> {
         try {
             const response = await api.getProjects()
-            console.log('Projects response:', response)
-            console.log('Projects response type:', typeof response)
-            console.log('Projects response keys:', Object.keys(response || {}))
+            // API response received
 
             // Handle different response formats
             let projects: any[]
@@ -104,8 +102,7 @@ export class TodoistApiClient {
                 projects = []
             }
 
-            console.log('Extracted projects:', projects)
-            console.log('Projects array length:', projects.length)
+            console.log(`📁 Loaded ${projects.length} projects`)
 
             // Filter out null/undefined items
             const validProjects = projects.filter((project) => project && project.id)
@@ -127,8 +124,7 @@ export class TodoistApiClient {
     static async getLabels(): Promise<TodoistLabelApi[]> {
         try {
             const response = await api.getLabels()
-            console.log('Labels response:', response)
-            console.log('Labels response keys:', Object.keys(response || {}))
+            // API response received
 
             // Handle different response formats
             let labels: any[]
@@ -146,7 +142,7 @@ export class TodoistApiClient {
                 labels = []
             }
 
-            console.log('Extracted labels:', labels)
+            console.log(`🏷️  Loaded ${labels.length} labels`)
 
             // Filter out null/undefined items
             const validLabels = labels.filter((label) => label && label.id)
@@ -171,7 +167,7 @@ export class TodoistApiClient {
             }
             
             // Use REST API v2 directly with filter parameter
-            console.log('Fetching tasks with filter:', filter)
+            // Fetching filtered tasks
             const apiKey = process.env.TODOIST_API_KEY
             if (!apiKey) {
                 throw new Error('TODOIST_API_KEY is not configured')
@@ -190,7 +186,7 @@ export class TodoistApiClient {
             
             const tasks = await response.json()
             
-            console.log(`Filter query returned ${tasks.length} tasks`)
+            console.log(`📋 Found ${tasks.length} tasks matching filter`)
             
             // Convert to our format
             return tasks.map((task: any) => ({
@@ -709,8 +705,7 @@ export class TodoistApiClient {
 
             return { success: true, dates: Object.keys(updatedDates).length > 0 ? updatedDates : undefined }
         } catch (error) {
-            console.error('Error updating task:', error)
-            console.error('Full error details:', JSON.stringify(error, null, 2))
+            console.error('Error updating task:', error.message || error)
             throw new Error('Failed to update task')
         }
     }

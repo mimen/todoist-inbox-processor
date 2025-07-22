@@ -84,7 +84,6 @@ export default function TaskProcessor() {
   const [showLabelOverlay, setShowLabelOverlay] = useState(false)
   const [showScheduledOverlay, setShowScheduledOverlay] = useState(false)
   const [showDeadlineOverlay, setShowDeadlineOverlay] = useState(false)
-  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false)
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
   const [currentTaskSuggestions, setCurrentTaskSuggestions] = useState<any[]>([])
@@ -110,61 +109,28 @@ export default function TaskProcessor() {
   const currentUserId = collaboratorsData?.currentUser?.id || '13801296' // Use dynamic user ID
   
   // DERIVED STATE from queue architecture
+  // Active queue - only unprocessed tasks
+  const activeQueue = useMemo(() => {
+    return taskQueue.filter(taskId => !processedTaskIds.includes(taskId))
+  }, [taskQueue, processedTaskIds])
+  
+  // Current position in active queue
+  const [activeQueuePosition, setActiveQueuePosition] = useState(0)
+  
   const currentTask = useMemo((): TodoistTask | null => {
-    if (queuePosition >= taskQueue.length) return null
-    const taskId = taskQueue[queuePosition]
+    if (activeQueuePosition >= activeQueue.length) return null
+    const taskId = activeQueue[activeQueuePosition]
     return masterTasks[taskId] || null
-  }, [taskQueue, queuePosition, masterTasks])
+  }, [activeQueue, activeQueuePosition, masterTasks])
   
   const queuedTasks = useMemo((): TodoistTask[] => {
-    return taskQueue.slice(queuePosition + 1)
+    return activeQueue.slice(activeQueuePosition + 1)
       .map(id => masterTasks[id])
       .filter(Boolean)
-  }, [taskQueue, queuePosition, masterTasks])
+  }, [activeQueue, activeQueuePosition, masterTasks])
   
   const totalTasks = taskQueue.length
-  const completedTasks = processedTaskIds.length + skippedTaskIds.length
-  
-  // NEW QUEUE ARCHITECTURE: Navigation functions
-  const moveToNextTask = useCallback(() => {
-    if (queuePosition >= taskQueue.length - 1) return // At end of queue
-    
-    // Add current task to processed
-    const currentTaskId = taskQueue[queuePosition]
-    if (currentTaskId) {
-      setProcessedTaskIds(prev => [...prev, currentTaskId])
-    }
-    
-    // Move to next position
-    setQueuePosition(prev => prev + 1)
-    setTaskKey(prev => prev + 1) // Force re-render
-  }, [queuePosition, taskQueue])
-  
-  const moveToPrevTask = useCallback(() => {
-    if (queuePosition <= 0) return // At start of queue
-    if (processedTaskIds.length === 0) return // No processed tasks
-    
-    // Move back one position
-    setQueuePosition(prev => prev - 1)
-    
-    // Remove last processed task
-    setProcessedTaskIds(prev => prev.slice(0, -1))
-    setTaskKey(prev => prev + 1) // Force re-render
-  }, [queuePosition, processedTaskIds.length])
-  
-  const skipCurrentTask = useCallback(() => {
-    if (queuePosition >= taskQueue.length) return
-    
-    // Add current task to skipped
-    const currentTaskId = taskQueue[queuePosition]
-    if (currentTaskId) {
-      setSkippedTaskIds(prev => [...prev, currentTaskId])
-    }
-    
-    // Move to next position
-    setQueuePosition(prev => prev + 1)
-    setTaskKey(prev => prev + 1)
-  }, [queuePosition, taskQueue])
+  const completedTasks = processedTaskIds.length
   
   // Helper function to check if current project has collaborators
   const hasCollaboratorsForCurrentProject = useCallback(() => {
@@ -191,6 +157,7 @@ export default function TaskProcessor() {
   useEffect(() => {
     async function loadInitialData() {
       try {
+        console.log('🚀 Todoist Inbox Processor starting...')
         setLoading(true)
         setError(null)
 
@@ -224,11 +191,7 @@ export default function TaskProcessor() {
         // Set collaborators data and pre-populate project collaborators
         if (collaboratorsData) {
           setCollaboratorsData(collaboratorsData)
-          console.log(`Loaded collaborators data:`, {
-            currentUser: collaboratorsData.currentUser,
-            totalUsers: collaboratorsData.allUsers?.length || 0,
-            projectsWithCollaborators: Object.keys(collaboratorsData.projectCollaborators || {}).length
-          })
+          console.log(`👥 Loaded ${collaboratorsData.allUsers?.length || 0} users`)
           
           // Pre-populate projectCollaborators using the actual mapping from collaborator_states
           const initialProjectCollaborators: Record<string, TodoistUser[]> = {}
@@ -241,9 +204,7 @@ export default function TaskProcessor() {
               .filter(Boolean) as TodoistUser[]
             
             initialProjectCollaborators[projectId] = projectUsers
-            console.log(`Project ${projectId} has ${projectUsers.length} collaborators:`, 
-              projectUsers.map(u => ({ id: u.id, name: u.name }))
-            )
+            // Store project collaborators
           })
           
           // For projects with no collaborators, set empty array
@@ -254,10 +215,10 @@ export default function TaskProcessor() {
           })
           
           setProjectCollaborators(initialProjectCollaborators)
-          console.log(`Pre-populated collaborators for ${Object.keys(initialProjectCollaborators).length} projects`)
+          // Collaborators initialized
         }
         
-        console.log(`Loaded ${projectsData.length} projects`)
+        console.log(`📁 Loaded ${projectsData.length} projects, 🏷️  ${labelsData.length} labels`)
         
         // Set default to actual inbox project if it exists
         const inboxProject = projectsData.find((p: any) => p.isInboxProject)
@@ -274,19 +235,19 @@ export default function TaskProcessor() {
         
         if (allTasksRes.ok) {
           const data = await allTasksRes.json()
-          console.log(`Loaded ${data.total} total tasks via ${data.message}`)
+          console.log(`📋 Loaded ${data.total} tasks`)
           setAllTasksGlobal(data.tasks)
           
           // Extract project metadata from special tasks
           metadata = extractProjectMetadata(data.tasks)
           setProjectMetadata(metadata)
-          console.log('Extracted project metadata:', metadata)
+          // Project metadata extracted
           
           // Debug: Log projects with P1 priority
           const p1Projects = Object.entries(metadata)
             .filter(([_, meta]) => meta.priority === 4)
             .map(([projectId, meta]) => ({ projectId, ...meta }))
-          console.log('Projects with P1 priority:', p1Projects)
+          // P1 projects identified
           
           // Filter and display inbox tasks immediately
           if (inboxProject) {
@@ -311,7 +272,7 @@ export default function TaskProcessor() {
               setTaskKey(prev => prev + 1)
             }
             
-            console.log(`Displayed ${inboxTasks.length} inbox tasks from sync data`)
+            console.log(`📥 ${inboxTasks.length} inbox tasks ready`)
           }
           
           // Build project hierarchy from already-loaded data
@@ -343,7 +304,7 @@ export default function TaskProcessor() {
               }
             }
             
-            console.log('Project hierarchy built:', hierarchyData)
+            console.log(`📊 Built hierarchy for ${hierarchyData.summary.totalProjects} projects`)
             setProjectHierarchy(hierarchyData)
           }
           
@@ -377,7 +338,7 @@ export default function TaskProcessor() {
           const response = await fetch(`/api/todoist/filter-tasks?filter=${encodeURIComponent(filterQuery)}`)
           if (response.ok) {
             filteredTasks = await response.json()
-            console.log(`Filter "${mode.displayName}": Fetched ${filteredTasks.length} tasks from API`)
+            console.log(`🔍 ${mode.displayName}: ${filteredTasks.length} tasks`)
           } else {
             console.error('Failed to fetch filtered tasks')
             setToast({ message: 'Failed to fetch filtered tasks', type: 'error' })
@@ -390,7 +351,7 @@ export default function TaskProcessor() {
           return
         }
         filteredTasks = filterTasksByMode(allTasksGlobal, mode, projectMetadata, assigneeFilter, currentUserId)
-        console.log(`${mode.type} ${mode.displayName}: Found ${filteredTasks.length} tasks from ${allTasksGlobal.length} total tasks`)
+        console.log(`📋 ${mode.displayName}: ${filteredTasks.length} tasks`)
       }
       
       // NEW QUEUE ARCHITECTURE: Update master store and reset queue
@@ -409,6 +370,7 @@ export default function TaskProcessor() {
         
         // 3. Reset position tracking
         setQueuePosition(0)
+        setActiveQueuePosition(0) // Reset active queue position
         setProcessedTaskIds([])
         setSkippedTaskIds([])
         
@@ -417,6 +379,7 @@ export default function TaskProcessor() {
         // Empty state
         setTaskQueue([])
         setQueuePosition(0)
+        setActiveQueuePosition(0) // Reset active queue position
         setProcessedTaskIds([])
         setSkippedTaskIds([])
       }
@@ -455,13 +418,7 @@ export default function TaskProcessor() {
       const currentProject = projects.find(p => p.id === currentTask?.projectId)
       const isInboxTask = currentProject?.isInboxProject || false
       
-      console.log('Loading suggestions for task:', {
-        hasTask: !!currentTask,
-        taskId: currentTask?.id,
-        projectId: currentTask?.projectId,
-        isInboxTask,
-        hasHierarchy: !!projectHierarchy
-      })
+      // Loading suggestions for current task
       
       // Only generate suggestions for inbox tasks
       if (!currentTask || !projectHierarchy || !isInboxTask) {
@@ -478,20 +435,16 @@ export default function TaskProcessor() {
           currentTask.projectId
         )
         
-        console.log('Raw suggestions from cache:', suggestions)
-        console.log('Available projects:', projects.map(p => ({ id: p.id, name: p.name })))
+        // Suggestions loaded from cache
         
         // Filter out inbox suggestions
         const filteredSuggestions = suggestions.filter(s => {
           const project = projects.find(p => p.id === s.projectId)
-          console.log(`Checking suggestion ${s.projectName} (${s.projectId}):`, {
-            found: !!project,
-            isInbox: project?.isInboxProject
-          })
+          // Check suggestion validity
           return project && !project.isInboxProject
         })
         
-        console.log(`TaskProcessor: Setting suggestions for task ${currentTask.id}:`, filteredSuggestions)
+        // Suggestions filtered and set
         setCurrentTaskSuggestions(filteredSuggestions)
       } catch (error) {
         console.error('Error loading suggestions:', error)
@@ -517,11 +470,11 @@ export default function TaskProcessor() {
         )
         
         if (assignee) {
-          console.log('Found assignee from sync data:', assignee)
+          // Assignee found
           setCurrentTaskAssignee(assignee)
         } else {
           // If we can't find the assignee in collaborators, create a placeholder
-          console.log('Assignee not found in collaborators, creating placeholder')
+          // Created placeholder assignee
           setCurrentTaskAssignee({
             id: currentTask.assigneeId,
             name: `User ${currentTask.assigneeId}`,
@@ -539,37 +492,12 @@ export default function TaskProcessor() {
     loadAssigneeData()
   }, [currentTask?.id, currentTask?.assigneeId, collaboratorsData])
   
-  // Update task key when current task changes to force form re-render
-  const moveToNext = useCallback(() => {
-    // Simply advance the queue position
-    setQueuePosition(prev => prev + 1)
-    
-    // Force form re-render when task changes
-    setTaskKey(prevKey => prevKey + 1)
-    
-    // Prefetch suggestions for the next few tasks if we have project hierarchy and in inbox
-    if (projectHierarchy && queuedTasks.length > queuePosition + 1) {
-      const nextTaskId = queuedTasks[queuePosition + 1]
-      const nextTask = masterTasks[nextTaskId]
-      
-      if (nextTask) {
-        const inboxProject = projects.find(p => p.isInboxProject)
-        const currentProject = projects.find(p => p.id === nextTask?.projectId)
-        if (inboxProject && currentProject?.isInboxProject) {
-          const upcomingTaskIds = queuedTasks.slice(queuePosition + 1, queuePosition + 4) // Preload next 3 tasks
-          const upcomingTasks = upcomingTaskIds.map(id => masterTasks[id]).filter(Boolean)
-          suggestionsCache.prefetchSuggestions(upcomingTasks, projectHierarchy).catch(error => {
-            console.warn('Failed to prefetch suggestions for upcoming tasks:', error)
-          })
-        }
-      }
-    }
-  }, [projectHierarchy, queuedTasks, queuePosition, masterTasks, projects])
+  
 
   // NEW QUEUE ARCHITECTURE: Only update master store, queue unchanged
   const autoSaveTask = useCallback(async (taskId: string, updates: TaskUpdate) => {
     try {
-      console.log('TaskProcessor.autoSaveTask called with:', { taskId, updates })
+      // Auto-saving task
       
       // Update the task via API
       const response = await fetch(`/api/todoist/tasks/${taskId}`, {
@@ -580,16 +508,16 @@ export default function TaskProcessor() {
         body: JSON.stringify(updates),
       })
 
-      console.log('API Response status:', response.status)
+      // API response received
       
       if (!response.ok) {
         const errorData = await response.json()
-        console.error('API Response error:', errorData)
+        // API error occurred
         throw new Error(`Failed to update task: ${errorData.error || response.statusText}`)
       }
 
       const responseData = await response.json()
-      console.log('API Response data:', responseData)
+      // Response data processed
       
       // NEW ARCHITECTURE: Only update master task store
       setMasterTasks(prev => {
@@ -707,10 +635,6 @@ export default function TaskProcessor() {
     }
   }, [currentTask, autoSaveTask])
 
-  const handleNext = useCallback(() => {
-    // Use new architecture navigation
-    moveToNextTask()
-  }, [moveToNextTask])
 
   const handlePrioritySelect = useCallback(async (priority: 1 | 2 | 3 | 4) => {
     setShowPriorityOverlay(false) // Close immediately
@@ -829,23 +753,25 @@ export default function TaskProcessor() {
   }, [currentTask, handleLabelsChange])
 
   const navigateToNextTask = useCallback(() => {
-    if (!currentTask) return
+    if (activeQueue.length === 0) return
+    if (activeQueuePosition >= activeQueue.length - 1) return // Already at the end
     
-    setProcessedTaskIds(prev => [...prev, currentTask.id])
-    moveToNext()
-  }, [currentTask, moveToNext])
+    setActiveQueuePosition(prev => prev + 1)
+    setTaskKey(prev => prev + 1) // Force re-render
+  }, [activeQueue.length, activeQueuePosition])
 
   const navigateToPrevTask = useCallback(() => {
-    if (processedTaskIds.length === 0) return
+    if (activeQueue.length === 0) return
+    if (activeQueuePosition <= 0) return // Already at the beginning
     
-    // Simply move back one position in the queue
-    setQueuePosition(prev => Math.max(0, prev - 1))
-    
-    // Remove the last processed task ID
-    setProcessedTaskIds(prev => prev.slice(0, -1))
-    
+    setActiveQueuePosition(prev => prev - 1)
     setTaskKey(prev => prev + 1) // Force re-render
-  }, [processedTaskIds])
+  }, [activeQueue.length, activeQueuePosition])
+
+  const handleNext = useCallback(() => {
+    // Use new architecture navigation
+    navigateToNextTask()
+  }, [navigateToNextTask])
 
   const handleScheduledDateChange = useCallback(async (dateString: string) => {
     if (!currentTask) return;
@@ -1062,39 +988,28 @@ export default function TaskProcessor() {
     }
   }, [currentTask, autoSaveTask, projectCollaborators])
 
-  const handleArchiveTask = useCallback(async () => {
+  const handleProcessTask = useCallback(() => {
     if (!currentTask) return
     
-    // Close the overlay immediately to prevent UI issues
-    setShowArchiveConfirm(false)
-    
-    // Store the current task ID before moving to next
+    // Store the current task ID
     const taskId = currentTask.id
     
-    // Move to next task immediately for better UX
+    // Mark as processed (local state only)
     setProcessedTaskIds(prev => [...prev, taskId])
-    moveToNext()
     
-    // Show optimistic success message
-    setToast({ message: 'Task archived', type: 'success' })
+    // Show success message
+    setToast({ message: 'Task processed', type: 'success' })
     
-    // Handle the API request in the background
-    try {
-      const response = await fetch(`/api/todoist/tasks/${taskId}`, {
-        method: 'DELETE',
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to archive task')
-      }
-    } catch (err) {
-      console.error('Error archiving task:', err)
-      setToast({ 
-        message: err instanceof Error ? err.message : 'Failed to archive task', 
-        type: 'error' 
-      })
+    // The activeQueue will automatically update due to the processedTaskIds change
+    // Keep position the same (next task will slide into current position)
+    // Unless we're at the end of the queue
+    if (activeQueuePosition >= activeQueue.length - 1 && activeQueue.length > 1) {
+      // If we're at the last task and there are other tasks, go back one
+      setActiveQueuePosition(prev => Math.max(0, prev - 1))
     }
-  }, [currentTask, moveToNext])
+    
+    setTaskKey(prev => prev + 1) // Force re-render
+  }, [currentTask, activeQueuePosition, activeQueue.length])
 
   const handleCompleteTask = useCallback(async () => {
     if (!currentTask) return
@@ -1102,15 +1017,21 @@ export default function TaskProcessor() {
     // Close the overlay immediately to prevent UI issues
     setShowCompleteConfirm(false)
     
-    // Store the current task ID before moving to next
+    // Store the current task ID
     const taskId = currentTask.id
     
-    // Move to next task immediately for better UX
+    // Mark as processed
     setProcessedTaskIds(prev => [...prev, taskId])
-    moveToNext()
     
     // Show optimistic success message
     setToast({ message: 'Task completed', type: 'success' })
+    
+    // Handle position adjustment like in handleProcessTask
+    if (activeQueuePosition >= activeQueue.length - 1 && activeQueue.length > 1) {
+      setActiveQueuePosition(prev => Math.max(0, prev - 1))
+    }
+    
+    setTaskKey(prev => prev + 1)
     
     // Handle the API request in the background
     try {
@@ -1128,14 +1049,8 @@ export default function TaskProcessor() {
         type: 'error' 
       })
     }
-  }, [currentTask, moveToNext])
+  }, [currentTask, activeQueue.length])
 
-  const skipTask = useCallback(() => {
-    if (!currentTask) return
-    
-    setSkippedTaskIds(prev => [...prev, currentTask.id])
-    moveToNext()
-  }, [currentTask, moveToNext])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -1199,7 +1114,7 @@ export default function TaskProcessor() {
         case 'e':
         case 'E':
           e.preventDefault()
-          setShowArchiveConfirm(true)
+          handleProcessTask()
           break
         case 'c':
         case 'C':
@@ -1218,7 +1133,6 @@ export default function TaskProcessor() {
           setShowLabelOverlay(false)
           setShowScheduledOverlay(false)
           setShowDeadlineOverlay(false)
-          setShowArchiveConfirm(false)
           setShowCompleteConfirm(false)
           break
       }
@@ -1226,27 +1140,22 @@ export default function TaskProcessor() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [navigateToNextTask, navigateToPrevTask, showShortcuts, showPriorityOverlay, showProjectOverlay, showLabelOverlay, showScheduledOverlay, showDeadlineOverlay, showAssigneeOverlay, hasCollaboratorsForCurrentProject])
+  }, [navigateToNextTask, navigateToPrevTask, showShortcuts, showPriorityOverlay, showProjectOverlay, showLabelOverlay, showScheduledOverlay, showDeadlineOverlay, showAssigneeOverlay, hasCollaboratorsForCurrentProject, handleProcessTask])
 
   // Handle Enter key for confirmation dialogs
   useEffect(() => {
     const handleConfirmationKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        if (showArchiveConfirm) {
-          e.preventDefault()
-          handleArchiveTask()
-        } else if (showCompleteConfirm) {
-          e.preventDefault()
-          handleCompleteTask()
-        }
+      if (e.key === 'Enter' && showCompleteConfirm) {
+        e.preventDefault()
+        handleCompleteTask()
       }
     }
 
-    if (showArchiveConfirm || showCompleteConfirm) {
+    if (showCompleteConfirm) {
       window.addEventListener('keydown', handleConfirmationKeyDown)
       return () => window.removeEventListener('keydown', handleConfirmationKeyDown)
     }
-  }, [showArchiveConfirm, showCompleteConfirm, handleArchiveTask, handleCompleteTask])
+  }, [showCompleteConfirm, handleCompleteTask])
 
   const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
 
@@ -1356,7 +1265,7 @@ export default function TaskProcessor() {
                 </p>
                 {totalTasks > 0 && (
                   <div className="text-sm text-gray-500">
-                    Processed: {state.processedTasks.length} • Skipped: {state.skippedTasks.length}
+                    Processed: {processedTaskIds.length} • Skipped: {skippedTaskIds.length}
                   </div>
                 )}
                 <button
@@ -1434,7 +1343,7 @@ export default function TaskProcessor() {
           
           {totalTasks > 0 && (
             <ProgressIndicator
-              current={completedTasks + 1}
+              current={completedTasks}
               total={totalTasks}
               progress={progress}
             />
@@ -1444,6 +1353,27 @@ export default function TaskProcessor() {
         {/* Main Processing Area */}
         {currentTask && !loadingTasks && (
           <div className="space-y-6">
+            {/* Show if all tasks are processed */}
+            {processedTaskIds.length === taskQueue.length && taskQueue.length > 0 && (
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-6 text-center">
+                <svg className="w-12 h-12 text-green-600 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h3 className="text-lg font-bold text-green-800 mb-2">All Tasks Processed! 🎉</h3>
+                <p className="text-green-700">Great job! You&apos;ve processed all {taskQueue.length} tasks in this queue.</p>
+              </div>
+            )}
+            
+            {/* Show if task is already processed */}
+            {processedTaskIds.includes(currentTask.id) && processedTaskIds.length < taskQueue.length && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
+                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-green-700 font-medium">This task has been processed</span>
+              </div>
+            )}
+            
             {/* Full-width Task Card */}
             <TaskCard 
               task={currentTask} 
@@ -1491,9 +1421,9 @@ export default function TaskProcessor() {
               suggestions={generateMockSuggestions(currentTask.content)}
               onAutoSave={(updates) => autoSaveTask(currentTask!.id, updates)}
               onNext={handleNext}
-              onPrevious={moveToPrevTask}
-              canGoNext={queuedTasks.length > 0}
-              canGoPrevious={processedTaskIds.length > 0}
+              onPrevious={navigateToPrevTask}
+              canGoNext={activeQueuePosition < activeQueue.length - 1}
+              canGoPrevious={activeQueuePosition > 0}
             />
           </div>
         )}
@@ -1601,41 +1531,6 @@ export default function TaskProcessor() {
         />
       )}
 
-      {/* Archive Confirmation Dialog */}
-      {showArchiveConfirm && currentTask && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
-          onClick={() => setShowArchiveConfirm(false)}
-        >
-          <div 
-            className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Archive Task?</h3>
-            <p className="text-gray-600 mb-4">
-              This will remove the task from your active list. You can still find it in your completed tasks.
-            </p>
-            <p className="text-sm font-medium text-gray-800 mb-6 p-3 bg-gray-50 rounded">
-              "{currentTask.content}"
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowArchiveConfirm(false)}
-                className="flex-1 py-2 px-4 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleArchiveTask}
-                className="flex-1 py-2 px-4 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 transition-colors"
-              >
-                Archive
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Complete Confirmation Dialog */}
       {showCompleteConfirm && currentTask && (
         <div 
@@ -1651,7 +1546,7 @@ export default function TaskProcessor() {
               Mark this task as completed. This action can be undone from your completed tasks.
             </p>
             <p className="text-sm font-medium text-gray-800 mb-6 p-3 bg-gray-50 rounded">
-              "{currentTask.content}"
+              &ldquo;{currentTask.content}&rdquo;
             </p>
             <div className="flex gap-3">
               <button
@@ -1702,12 +1597,13 @@ export default function TaskProcessor() {
               <h3 className="text-xs text-green-400 font-mono mb-2">Current Queue:</h3>
               <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap overflow-x-auto">
                 {JSON.stringify({
-                  position: queuePosition,
+                  activePosition: activeQueuePosition,
+                  activeQueue: activeQueue,
                   currentTaskId: currentTask?.id,
-                  queue: taskQueue,
+                  fullQueue: taskQueue,
                   processedIds: processedTaskIds,
-                  skippedIds: skippedTaskIds,
-                  totalInQueue: taskQueue.length
+                  totalInQueue: taskQueue.length,
+                  totalInActiveQueue: activeQueue.length
                 }, null, 2)}
               </pre>
             </div>

@@ -59,7 +59,7 @@ export default function ProjectsPage() {
     deadline?: string
   }) => {
     try {
-      console.log('Updating project metadata:', { projectId, metadata })
+      // Updating project metadata
       
       // Update the project metadata via API
       const response = await fetch(`/api/projects/${projectId}/metadata`, {
@@ -89,7 +89,7 @@ export default function ProjectsPage() {
           : project
       ))
 
-      console.log('Project metadata updated successfully')
+      // Project metadata updated successfully
     } catch (err) {
       console.error('Error updating project metadata:', err)
       setError(err instanceof Error ? err.message : 'Failed to update project metadata')

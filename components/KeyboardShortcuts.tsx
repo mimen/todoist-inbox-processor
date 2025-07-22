@@ -12,8 +12,8 @@ interface ShortcutItem {
 export default function KeyboardShortcuts({ onClose }: KeyboardShortcutsProps) {
   const shortcuts = [
     { category: 'Navigation', items: [
-      { key: ['j', '→'], description: 'Go to next task' },
-      { key: ['k', '←'], description: 'Go to previous task' },
+      { key: ['j', '→'], description: 'Browse next task (wraps around)' },
+      { key: ['k', '←'], description: 'Browse previous task (wraps around)' },
       { key: '?', description: 'Show/hide keyboard shortcuts' },
       { key: ['Esc', '`'], description: 'Close any open dialog' },
     ]},
@@ -24,8 +24,8 @@ export default function KeyboardShortcuts({ onClose }: KeyboardShortcutsProps) {
       { key: '+', description: 'Assign task to someone (if collaborators exist)' },
       { key: 's', description: 'Schedule when to work on task' },
       { key: 'd', description: 'Set task deadline' },
-      { key: 'e', description: 'Archive task (removes from inbox)' },
-      { key: 'c', description: 'Mark task as complete' },
+      { key: 'e', description: 'Process task (archive immediately)' },
+      { key: 'c', description: 'Complete task' },
     ]},
     { category: 'Selection Dialogs', items: [
       { key: ['1', '2', '3', '4'], description: 'Set priority directly (P1-P4)' },

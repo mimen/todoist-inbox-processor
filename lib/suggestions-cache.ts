@@ -94,12 +94,7 @@ class SuggestionsCache {
     }
 
     try {
-      // Debug: Log what we're sending to the API
-      console.log('Generating suggestions with hierarchy:', {
-        projectCount: projectHierarchy?.projects?.length || 0,
-        firstProject: projectHierarchy?.projects?.[0],
-        currentProjectId
-      })
+      // Generating suggestions via API
 
       const response = await fetch('/api/llm/generate-project-suggestions', {
         method: 'POST',
@@ -118,7 +113,7 @@ class SuggestionsCache {
         const data = await response.json()
         const suggestions = data.suggestions || []
         
-        console.log('API returned suggestions:', suggestions)
+        // Suggestions received
         
         // Cache the result
         this.setSuggestions(taskId, content, description, suggestions)

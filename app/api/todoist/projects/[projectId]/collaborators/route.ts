@@ -90,7 +90,7 @@ export async function GET(
             
             // Transform collaborator data to a simpler format
             users = collaborators.map(collab => {
-                console.log('Processing collaborator:', JSON.stringify(collab, null, 2))
+                // Process collaborator data
                 
                 // Extract user ID - could be in different fields depending on API version
                 const userId = collab.userId || collab.user_id || collab.id

@@ -4,14 +4,15 @@
   "description": "A sleek Next.js interface for processing Todoist inbox tasks",
   "main": "index.js",
   "scripts": {
-    "dev": "node scripts/dev-with-auto-clean.js",
-    "dev:next": "next dev --turbo",
+    "dev": "next dev --turbo",
+    "dev:auto": "node scripts/dev-with-auto-clean.js",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "test": "echo \"Error: no test specified\" && exit 1",
     "clean": "rm -rf .next",
-    "dev:clean": "npm run clean && npm run dev:next"
+    "dev:clean": "npm run clean && npm run dev",
+    "restart": "pkill -f 'next dev' || true && npm run dev:clean"
   },
   "keywords": [
     "todoist",

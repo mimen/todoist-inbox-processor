@@ -6,6 +6,8 @@ const path = require('path');
 
 let devProcess = null;
 let shouldRestart = false;
+let restartCount = 0;
+let lastRestartTime = Date.now();
 
 function cleanNextCache() {
   console.log('🧹 Cleaning .next cache...');
@@ -57,10 +59,26 @@ function startDevServer() {
   devProcess.on('close', (code) => {
     if (shouldRestart) {
       shouldRestart = false;
+      
+      // Check for rapid restarts
+      const now = Date.now();
+      if (now - lastRestartTime < 5000) {
+        restartCount++;
+        if (restartCount > 3) {
+          console.log('\n❌ Too many rapid restarts. Please run "npm run clean" manually and restart.');
+          process.exit(1);
+        }
+      } else {
+        restartCount = 0;
+      }
+      lastRestartTime = now;
+      
       cleanNextCache();
-      setTimeout(() => startDevServer(), 1000);
+      console.log('⏳ Waiting for cleanup...');
+      setTimeout(() => startDevServer(), 2000);
     } else if (code !== 0 && code !== null) {
       console.log(`\n❌ Dev server exited with code ${code}`);
+      process.exit(code);
     }
   });
 }

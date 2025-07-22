@@ -3,12 +3,12 @@ import { TodoistApiClient } from '@/lib/todoist-api'
 
 export async function GET() {
     try {
-        console.log('API: Fetching projects using Sync API')
+        // Fetching projects using Sync API
 
         // Use the Sync API to get projects with consistent IDs
         const projects = await TodoistApiClient.getProjectsSync()
 
-        console.log('API: Total projects fetched via Sync API:', projects.length)
+        // Projects fetched successfully
 
         return NextResponse.json({
             projects,

@@ -11,7 +11,7 @@ export default function ProgressIndicator({ current, total, progress }: Progress
     <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm font-medium text-gray-700">
-          Task {current} of {total}
+          {current} of {total} tasks processed
         </span>
         <span className="text-sm font-medium text-gray-700">
           {Math.round(progress)}% complete
@@ -27,10 +27,10 @@ export default function ProgressIndicator({ current, total, progress }: Progress
       
       <div className="flex items-center justify-between mt-2">
         <span className="text-xs text-gray-500">
-          {total - current + 1} remaining
+          {total - current} remaining
         </span>
         <span className="text-xs text-gray-500">
-          {current - 1} completed
+          {current} processed
         </span>
       </div>
     </div>

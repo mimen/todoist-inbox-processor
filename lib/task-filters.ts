@@ -165,21 +165,14 @@ export function filterTasksByMode(
         return filtered;
       }
       
-      console.log(`Applying preset filter: ${presetId}`, {
-        totalTasks: filtered.length,
-        projectMetadataKeys: Object.keys(projectMetadata || {})
-      });
+      // Applying preset filter
       
       const result = filtered.filter(task => {
         try {
           const matches = preset.filter(task, projectMetadata || {});
           if (presetId === 'priority-projects' && matches) {
             const meta = projectMetadata?.[task.projectId];
-            console.log(`Task "${task.content}" matches priority-projects:`, {
-              projectId: task.projectId,
-              projectMetadata: meta,
-              taskPriority: task.priority
-            });
+            // Task matches priority-projects filter
           }
           return matches;
         } catch (error) {

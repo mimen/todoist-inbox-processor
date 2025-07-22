@@ -33,13 +33,7 @@ export async function GET(request: NextRequest) {
     }
 
     const result = await response.json()
-    console.log('Sync API collaborators response:', {
-      user: result.user ? { id: result.user.id, email: result.user.email } : null,
-      collaborators: result.collaborators?.length || 0,
-      collaborator_states: result.collaborator_states?.length || 0,
-    })
-
-    console.log(result.collaborator_states);
+    console.log(`👥 Sync API: ${result.collaborators?.length || 0} collaborators, ${result.collaborator_states?.length || 0} states`)
     
     // Build a map of all users (including current user)
     const usersMap = new Map()
@@ -157,20 +151,8 @@ export async function GET(request: NextRequest) {
     // Convert users map to array
     const allUsers = Array.from(usersMap.values())
 
-    // Log final results for debugging
-    console.log('Final collaborator data:', {
-      totalUsers: allUsers.length,
-      totalProjects: Object.keys(projectCollaborators).length,
-      usersWithNames: allUsers.filter(u => u.name && !u.name.startsWith('User ')).length,
-      sampleUsers: allUsers.map(u => ({ id: u.id, name: u.name })),
-      sampleProjectMapping: Object.entries(projectCollaborators)
-        .slice(0, 5)
-        .map(([projectId, userIds]) => ({
-          projectId,
-          userIds,
-          userNames: userIds.map(id => allUsers.find(u => u.id === id)?.name || 'Unknown')
-        }))
-    })
+    // Log summary
+    console.log(`✅ Loaded ${allUsers.length} users across ${Object.keys(projectCollaborators).length} projects`)
 
     return NextResponse.json({
       currentUser: result.user ? {
