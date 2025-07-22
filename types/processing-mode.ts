@@ -1,4 +1,4 @@
-export type ProcessingModeType = 'project' | 'priority' | 'label' | 'date' | 'preset' | 'all';
+export type ProcessingModeType = 'project' | 'priority' | 'label' | 'date' | 'deadline' | 'preset' | 'all';
 
 export interface ProcessingMode {
   type: ProcessingModeType;
@@ -34,9 +34,15 @@ export const PROCESSING_MODE_OPTIONS: ProcessingModeOption[] = [
   },
   {
     type: 'date',
-    label: 'Date',
+    label: 'Due Date',
     icon: '',
     description: 'Process tasks by due date'
+  },
+  {
+    type: 'deadline',
+    label: 'Deadline',
+    icon: '',
+    description: 'Process tasks by deadline'
   },
   {
     type: 'preset',
@@ -65,7 +71,15 @@ export const DATE_OPTIONS = [
   { value: 'next_7_days', label: 'Next 7 Days', icon: '📆', color: 'text-green-500' },
   { value: 'scheduled', label: 'Scheduled (One-time)', icon: '🗓️', color: 'text-purple-500' },
   { value: 'recurring', label: 'Scheduled (Recurring)', icon: '🔄', color: 'text-indigo-500' },
-  { value: 'no_date', label: 'No Date', icon: '📭', color: 'text-gray-500' }
+  { value: 'no_date', label: 'No Due Date', icon: '📭', color: 'text-gray-500' }
+];
+
+export const DEADLINE_OPTIONS = [
+  { value: 'overdue', label: 'Overdue', icon: '⚠️', color: 'text-red-500' },
+  { value: 'today', label: 'Today', icon: '🎯', color: 'text-red-600' },
+  { value: 'next_7_days', label: 'Next 7 Days', icon: '📍', color: 'text-orange-500' },
+  { value: 'upcoming', label: 'Upcoming', icon: '🔥', color: 'text-yellow-500' },
+  { value: 'no_deadline', label: 'No Deadline', icon: '📋', color: 'text-gray-500' }
 ];
 
 export interface PresetFilter {

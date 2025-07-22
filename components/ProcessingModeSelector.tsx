@@ -8,6 +8,7 @@ import ProjectDropdown from './ProjectDropdown';
 import PriorityDropdown from './PriorityDropdown';
 import LabelDropdown from './LabelDropdown';
 import DateDropdown from './DateDropdown';
+import DeadlineDropdown from './DeadlineDropdown';
 import PresetDropdown from './PresetDropdown';
 import AllTasksDropdown from './AllTasksDropdown';
 import { AssigneeFilterType } from './AssigneeFilter';
@@ -63,6 +64,10 @@ export default function ProcessingModeSelector({
       case 'date':
         defaultValue = 'today';
         defaultDisplayName = 'Today';
+        break;
+      case 'deadline':
+        defaultValue = 'no_deadline';
+        defaultDisplayName = 'No Deadline';
         break;
       case 'preset':
         defaultValue = 'daily-planning';
@@ -177,6 +182,16 @@ export default function ProcessingModeSelector({
               selectedDate={mode.value as string}
               onDateChange={(date, displayName) => {
                 handleValueChange(date, displayName);
+              }}
+              allTasks={filteredTasks}
+            />
+          )}
+
+          {mode.type === 'deadline' && (
+            <DeadlineDropdown
+              selectedDeadline={mode.value as string}
+              onDeadlineChange={(deadline, displayName) => {
+                handleValueChange(deadline, displayName);
               }}
               allTasks={filteredTasks}
             />

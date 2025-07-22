@@ -114,6 +114,42 @@ export function filterTasksByMode(
         }
       });
 
+    case 'deadline':
+      const deadlineOption = mode.value as string;
+      const currentDate = new Date();
+      const todayDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
+      const weekFromToday = new Date(todayDate);
+      weekFromToday.setDate(todayDate.getDate() + 7);
+
+      return filtered.filter(task => {
+        switch (deadlineOption) {
+          case 'overdue':
+            if (!task.deadline) return false;
+            const deadlineDate = new Date(task.deadline.date);
+            return deadlineDate < todayDate;
+          
+          case 'today':
+            if (!task.deadline) return false;
+            return task.deadline.date === todayDate.toISOString().split('T')[0];
+          
+          case 'next_7_days':
+            if (!task.deadline) return false;
+            const taskDeadline = new Date(task.deadline.date);
+            return taskDeadline >= todayDate && taskDeadline <= weekFromToday;
+          
+          case 'upcoming':
+            if (!task.deadline) return false;
+            const upcomingDeadline = new Date(task.deadline.date);
+            return upcomingDeadline > weekFromToday;
+          
+          case 'no_deadline':
+            return !task.deadline;
+          
+          default:
+            return false;
+        }
+      });
+
     case 'preset':
       const presetId = mode.value as string;
       const preset = PRESET_FILTERS.find(p => p.id === presetId);
