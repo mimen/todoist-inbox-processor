@@ -166,10 +166,28 @@ export function getDateLabel(dateString: string | undefined): string {
     return dayNames[date.getDay()];
   }
   
-  // Next week
-  if (diffDays > 7 && diffDays <= 14) {
+  // Calculate if it's in the next calendar week (not just 7-14 days)
+  const todayDayOfWeek = today.getDay();
+  const daysUntilNextSunday = todayDayOfWeek === 0 ? 7 : 7 - todayDayOfWeek;
+  const nextSunday = new Date(today);
+  nextSunday.setDate(today.getDate() + daysUntilNextSunday);
+  const endOfNextWeek = new Date(nextSunday);
+  endOfNextWeek.setDate(nextSunday.getDate() + 6);
+  
+  // Check if date is in next calendar week
+  if (date >= nextSunday && date <= endOfNextWeek) {
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     return `Next ${dayNames[date.getDay()]}`;
+  }
+  
+  // For dates beyond next week but within 30 days, show "in X days" or "in X weeks"
+  if (diffDays > 7 && diffDays <= 30) {
+    if (diffDays <= 13) {
+      return `In ${diffDays} days`;
+    } else {
+      const weeks = Math.round(diffDays / 7);
+      return `In ${weeks} weeks`;
+    }
   }
   
   // Within current year - show month and day

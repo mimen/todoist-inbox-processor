@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { TodoistTask, TodoistProject, TodoistLabel, ProcessingState, TaskUpdate, TodoistUser, CollaboratorsData } from '@/lib/types'
 import { generateMockSuggestions } from '@/lib/mock-data'
 import { suggestionsCache } from '@/lib/suggestions-cache'
@@ -57,6 +58,10 @@ import ProjectMetadataDisplay from './ProjectMetadataDisplay'
 import AssigneeFilter, { AssigneeFilterType } from './AssigneeFilter'
 
 export default function TaskProcessor() {
+  const searchParams = useSearchParams()
+  const isDebugMode = searchParams.get('debug') === 'true'
+  const [showDebug, setShowDebug] = useState(false)
+  
   // MAIN STATE
   const [projects, setProjects] = useState<TodoistProject[]>([])
   const [labels, setLabels] = useState<TodoistLabel[]>([])
@@ -711,11 +716,29 @@ export default function TaskProcessor() {
     setShowPriorityOverlay(false) // Close immediately
     
     if (currentTask) {
+      const originalPriority = currentTask.priority
+      
+      // Update the task immediately in the master store for optimistic UI
+      setMasterTasks(prev => ({
+        ...prev,
+        [currentTask.id]: {
+          ...prev[currentTask.id],
+          priority
+        }
+      }))
+      
       try {
-        // Update master store directly - no need for UI state manipulation
+        // Then update via API
         await autoSaveTask(currentTask.id, { priority })
       } catch (err) {
-        // Error handled in autoSaveTask
+        // Revert on error
+        setMasterTasks(prev => ({
+          ...prev,
+          [currentTask.id]: {
+            ...prev[currentTask.id],
+            priority: originalPriority
+          }
+        }))
       }
     }
   }, [currentTask, autoSaveTask])
@@ -1655,6 +1678,51 @@ export default function TaskProcessor() {
           type={toast.type}
           onClose={() => setToast(null)}
         />
+      )}
+      
+      {/* Debug Mode */}
+      {isDebugMode && (
+        <div className="fixed top-20 right-4 z-50">
+          <button
+            onClick={() => setShowDebug(!showDebug)}
+            className="text-xs px-2 py-1 bg-gray-900 hover:bg-gray-800 rounded text-gray-100 font-mono"
+            title="Toggle debug view"
+          >
+            {showDebug ? 'Hide' : 'Show'} Debug
+          </button>
+        </div>
+      )}
+      
+      {/* Debug JSON View */}
+      {showDebug && isDebugMode && (
+        <div className="fixed top-32 right-4 max-w-2xl max-h-[80vh] overflow-auto z-50">
+          <div className="bg-gray-900 rounded-lg p-4 space-y-4">
+            {/* Current Queue */}
+            <div>
+              <h3 className="text-xs text-green-400 font-mono mb-2">Current Queue:</h3>
+              <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap overflow-x-auto">
+                {JSON.stringify({
+                  position: queuePosition,
+                  currentTaskId: currentTask?.id,
+                  queue: taskQueue,
+                  processedIds: processedTaskIds,
+                  skippedIds: skippedTaskIds,
+                  totalInQueue: taskQueue.length
+                }, null, 2)}
+              </pre>
+            </div>
+            
+            {/* Suggested Projects */}
+            {currentTaskSuggestions.length > 0 && (
+              <div>
+                <h3 className="text-xs text-green-400 font-mono mb-2">Suggested Projects:</h3>
+                <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap overflow-x-auto">
+                  {JSON.stringify(currentTaskSuggestions, null, 2)}
+                </pre>
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   )

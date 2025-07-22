@@ -93,7 +93,20 @@ export default function ProjectMetadataDisplay({
 
 
   return (
-    <div className={`bg-white border border-gray-200 rounded-lg p-4 ${className}`}>
+    <div className={`bg-white border border-gray-200 rounded-lg p-4 relative ${className}`}>
+      {/* Debug Mode Button - Top Right */}
+      {isDebugMode && (
+        <div className="absolute top-2 right-2">
+          <button
+            onClick={() => setShowDebug(!showDebug)}
+            className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-600 font-mono"
+            title="Toggle JSON debug view"
+          >
+            {showDebug ? 'Hide' : 'Show'} JSON
+          </button>
+        </div>
+      )}
+      
       <div className="space-y-2">
         {/* Compact Header with inline badges */}
         <div className="flex items-center flex-wrap gap-2">
@@ -220,19 +233,6 @@ export default function ProjectMetadataDisplay({
                 </div>
               </div>
             )}
-          </div>
-        )}
-        
-        {/* Debug Mode */}
-        {isDebugMode && (
-          <div className="mt-3">
-            <button
-              onClick={() => setShowDebug(!showDebug)}
-              className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-600 font-mono"
-              title="Toggle JSON debug view"
-            >
-              {showDebug ? 'Hide' : 'Show'} Project JSON
-            </button>
           </div>
         )}
         
