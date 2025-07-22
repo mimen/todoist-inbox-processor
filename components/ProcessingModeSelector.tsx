@@ -214,7 +214,22 @@ export default function ProcessingModeSelector({
               onSortChange={(sortBy, displayName) => {
                 handleValueChange(sortBy, displayName);
               }}
-              allTasks={allTasksGlobal.length > 0 ? allTasksGlobal : allTasks}
+              allTasks={allTasksGlobal.length > 0 ? allTasksGlobal.filter(task => {
+                if (assigneeFilter === 'all') return true;
+                
+                switch (assigneeFilter) {
+                  case 'unassigned':
+                    return !task.assigneeId;
+                  case 'assigned-to-me':
+                    return task.assigneeId === currentUserId;
+                  case 'assigned-to-others':
+                    return task.assigneeId && task.assigneeId !== currentUserId;
+                  case 'not-assigned-to-others':
+                    return !task.assigneeId || task.assigneeId === currentUserId;
+                  default:
+                    return true;
+                }
+              }) : filteredTasks}
             />
           )}
         </div>
