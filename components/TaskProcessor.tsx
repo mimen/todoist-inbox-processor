@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { TodoistTask, TodoistProject, TodoistLabel, ProcessingState, TaskUpdate, TodoistUser, CollaboratorsData } from '@/lib/types'
@@ -27,7 +27,7 @@ function extractProjectMetadata(tasks: TodoistTask[]): Record<string, any> {
         metadata[projectId].priority = task.priority
       }
       
-      // The task's do date IS the project's do date
+      // The task's scheduled date IS the project's scheduled date
       if (task.due) {
         metadata[projectId].due = task.due
       }
@@ -45,7 +45,7 @@ import TaskCard from './TaskCard'
 import TaskForm from './TaskForm'
 import KeyboardShortcuts from './KeyboardShortcuts'
 import ProgressIndicator from './ProgressIndicator'
-import ProcessingModeSelector from './ProcessingModeSelector'
+import ProcessingModeSelector, { ProcessingModeSelectorRef } from './ProcessingModeSelector'
 import PriorityOverlay from './PriorityOverlay'
 import ProjectSelectionOverlay from './ProjectSelectionOverlay'
 import LabelSelectionOverlay from './LabelSelectionOverlay'
@@ -61,6 +61,9 @@ export default function TaskProcessor() {
   const searchParams = useSearchParams()
   const isDebugMode = searchParams.get('debug') === 'true'
   const [showDebug, setShowDebug] = useState(false)
+  
+  // Ref for ProcessingModeSelector
+  const processingModeSelectorRef = useRef<ProcessingModeSelectorRef>(null)
   
   // MAIN STATE
   const [projects, setProjects] = useState<TodoistProject[]>([])
@@ -804,7 +807,7 @@ export default function TaskProcessor() {
           return prev
         })
       } else {
-        // Clear the do date
+        // Clear the scheduled date
         setMasterTasks(prev => {
           const task = prev[taskId]
           if (task) {
@@ -1125,6 +1128,34 @@ export default function TaskProcessor() {
           e.preventDefault()
           setShowShortcuts(!showShortcuts)
           break
+        case '1':
+          e.preventDefault()
+          processingModeSelectorRef.current?.switchToMode('project')
+          break
+        case '2':
+          e.preventDefault()
+          processingModeSelectorRef.current?.switchToMode('priority')
+          break
+        case '3':
+          e.preventDefault()
+          processingModeSelectorRef.current?.switchToMode('label')
+          break
+        case '4':
+          e.preventDefault()
+          processingModeSelectorRef.current?.switchToMode('date')
+          break
+        case '5':
+          e.preventDefault()
+          processingModeSelectorRef.current?.switchToMode('deadline')
+          break
+        case '6':
+          e.preventDefault()
+          processingModeSelectorRef.current?.switchToMode('preset')
+          break
+        case '7':
+          e.preventDefault()
+          processingModeSelectorRef.current?.switchToMode('all')
+          break
         case 'Escape':
         case '`':
           setShowShortcuts(false)
@@ -1224,6 +1255,7 @@ export default function TaskProcessor() {
             
             {/* Processing Mode Selector */}
             <ProcessingModeSelector
+              ref={processingModeSelectorRef}
               mode={processingMode}
               onModeChange={setProcessingMode}
               projects={projects}
@@ -1319,6 +1351,7 @@ export default function TaskProcessor() {
           
           {/* Processing Mode Selector */}
           <ProcessingModeSelector
+            ref={processingModeSelectorRef}
             mode={processingMode}
             onModeChange={setProcessingMode}
             projects={projects}

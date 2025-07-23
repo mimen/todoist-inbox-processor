@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { TodoistTask } from '@/lib/types'
-import SmartDoDateInput from './SmartDoDateInput'
+import SmartScheduleDateInput from './SmartScheduleDateInput'
 import { getDateColor, getDateTimeLabel } from '@/lib/date-colors'
 
 interface DeadlineSelectorProps {
@@ -345,7 +345,7 @@ export default function DeadlineSelector({
 
         {/* Search Input */}
         <div className="p-6 border-b border-gray-200">
-          <SmartDoDateInput
+          <SmartScheduleDateInput
             ref={searchInputRef}
             value={searchTerm}
             onChange={setSearchTerm}

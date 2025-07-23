@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { TodoistTask } from '@/lib/types';
 
 export interface TodoistFilter {
@@ -18,14 +18,21 @@ interface FilterDropdownProps {
   filters: TodoistFilter[];
 }
 
-export default function FilterDropdown({
+const FilterDropdown = forwardRef<any, FilterDropdownProps>(({
   selectedFilter,
   onFilterChange,
   allTasks,
   filters
-}: FilterDropdownProps) {
+}: FilterDropdownProps, ref) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Expose openDropdown method via ref
+  useImperativeHandle(ref, () => ({
+    openDropdown: () => {
+      setIsOpen(true);
+    }
+  }));
 
   // Get current filter display
   const currentFilter = filters.find(f => f.id === selectedFilter);
@@ -113,4 +120,8 @@ export default function FilterDropdown({
       )}
     </div>
   );
-}
+})
+
+FilterDropdown.displayName = 'FilterDropdown';
+
+export default FilterDropdown;

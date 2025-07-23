@@ -520,7 +520,7 @@ export class TodoistApiClient {
                     // Parse natural language date to ISO format
                     let deadlineDate = null
                     if (updates.deadline) {
-                        // First try to parse natural language using Todoist's do date parser
+                        // First try to parse natural language using Todoist's scheduled date parser
                         try {
                             const parseResponse = await api.addTask({
                                 content: 'temp',
@@ -622,10 +622,10 @@ export class TodoistApiClient {
                 hasUpdates = true
             }
             if (updates.dueString !== undefined) {
-                // Parse do date string
+                // Parse scheduled date string
                 if (updates.dueString) {
                     try {
-                        // First try to parse natural language using Todoist's do date parser
+                        // First try to parse natural language using Todoist's scheduled date parser
                         const parseResponse = await api.addTask({
                             content: 'temp',
                             dueString: updates.dueString,
@@ -648,11 +648,11 @@ export class TodoistApiClient {
                         await api.deleteTask(parseResponse.id)
                         hasUpdates = true
                     } catch (parseError) {
-                        console.error('Failed to parse do date:', parseError)
-                        throw new Error('Invalid do date format')
+                        console.error('Failed to parse scheduled date:', parseError)
+                        throw new Error('Invalid scheduled date format')
                     }
                 } else {
-                    // Remove do date
+                    // Remove scheduled date
                     syncArgs.due = null
                     updatedDates.due = undefined
                     hasUpdates = true
@@ -804,7 +804,7 @@ export class TodoistApiClient {
                 args.labels = options.labels
             }
             if (options?.dueString) {
-                // Parse do date - for now, use a simple date format
+                // Parse scheduled date - for now, use a simple date format
                 // In production, you'd want more sophisticated parsing
                 args.due = { string: options.dueString }
             }
@@ -992,7 +992,7 @@ export class TodoistApiClient {
                     updateData.priority = metadata.priority
                 }
 
-                // Only update do date if provided
+                // Only update scheduled date if provided
                 if (metadata.dueString !== undefined) {
                     updateData.dueString = metadata.dueString
                 }

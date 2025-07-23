@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { ChevronDown, Check, X } from 'lucide-react';
 import { TodoistTask, TodoistLabel } from '@/lib/types';
 import LabelIcon from './LabelIcon';
@@ -14,16 +14,27 @@ interface LabelDropdownProps {
   labelObjects?: TodoistLabel[];
 }
 
-export default function LabelDropdown({
+const LabelDropdown = forwardRef<any, LabelDropdownProps>(({
   selectedLabels,
   onLabelsChange,
   availableLabels,
   allTasks,
   labelObjects = []
-}: LabelDropdownProps) {
+}: LabelDropdownProps, ref) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // Expose openDropdown method via ref
+  useImperativeHandle(ref, () => ({
+    openDropdown: () => {
+      setIsOpen(true);
+      setSelectedIndex(0);
+    }
+  }));
 
   // Count tasks for each label
   const labelCounts = availableLabels.reduce((counts, label) => {
@@ -59,6 +70,46 @@ export default function LabelDropdown({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isOpen]);
+
+  // Focus search input when dropdown opens
+  useEffect(() => {
+    if (isOpen && searchInputRef.current) {
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 0);
+    }
+  }, [isOpen]);
+
+  // Reset selected index when filtered labels change
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [filteredLabels]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!isOpen) return;
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev + 1) % filteredLabels.length);
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev - 1 + filteredLabels.length) % filteredLabels.length);
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (filteredLabels[selectedIndex]) {
+          toggleLabel(filteredLabels[selectedIndex]);
+        }
+        break;
+      case 'Escape':
+        e.preventDefault();
+        setIsOpen(false);
+        setSearchTerm('');
+        break;
+    }
+  };
 
   const toggleLabel = (label: string) => {
     const newLabels = selectedLabels.includes(label)
@@ -122,9 +173,11 @@ export default function LabelDropdown({
         <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50">
           <div className="p-3 border-b border-gray-200">
             <input
+              ref={searchInputRef}
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={handleKeyDown}
               placeholder="Search labels..."
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-todoist-blue focus:border-transparent text-sm"
               autoFocus
@@ -143,25 +196,28 @@ export default function LabelDropdown({
             </div>
           )}
 
-          <div className="max-h-60 overflow-y-auto">
+          <div ref={listRef} className="max-h-60 overflow-y-auto" tabIndex={-1}>
             {filteredLabels.length === 0 ? (
               <div className="px-4 py-3 text-sm text-gray-500">
                 No labels found
               </div>
             ) : (
               <div className="py-1">
-                {filteredLabels.map((label) => {
+                {filteredLabels.map((label, index) => {
                   const isSelected = selectedLabels.includes(label);
+                  const isHighlighted = index === selectedIndex;
                   const count = labelCounts[label] || 0;
 
                   return (
                     <button
                       key={label}
                       onClick={() => toggleLabel(label)}
+                      onMouseEnter={() => setSelectedIndex(index)}
                       className={`
                         w-full p-3 text-left hover:bg-gray-50 transition-colors
                         flex items-center justify-between
                         ${isSelected ? 'bg-blue-50 text-blue-900' : 'text-gray-900'}
+                        ${isHighlighted ? 'bg-gray-100' : ''}
                       `}
                     >
                       <div className="flex items-center gap-2">
@@ -197,4 +253,8 @@ export default function LabelDropdown({
       )}
     </div>
   );
-}
+})
+
+LabelDropdown.displayName = 'LabelDropdown';
+
+export default LabelDropdown;

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { DEADLINE_OPTIONS } from '@/types/processing-mode';
 import { TodoistTask } from '@/lib/types';
 
@@ -11,15 +11,24 @@ interface DeadlineDropdownProps {
   selectedIndex?: number;
 }
 
-export default function DeadlineDropdown({
+const DeadlineDropdown = forwardRef<any, DeadlineDropdownProps>(({
   selectedDeadline,
   onDeadlineChange,
   allTasks,
   selectedIndex = 0
-}: DeadlineDropdownProps) {
+}: DeadlineDropdownProps, ref) => {
   const [isOpen, setIsOpen] = useState(false);
   const [keyboardSelectedIndex, setKeyboardSelectedIndex] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // Expose openDropdown method via ref
+  useImperativeHandle(ref, () => ({
+    openDropdown: () => {
+      setIsOpen(true);
+      setKeyboardSelectedIndex(0);
+    }
+  }));
 
   // Count tasks for each deadline option
   const deadlineCounts = DEADLINE_OPTIONS.reduce((counts, option) => {
@@ -80,37 +89,15 @@ export default function DeadlineDropdown({
     };
   }, [isOpen]);
 
-  // Handle keyboard navigation
+  // Focus dropdown list when it opens
   useEffect(() => {
-    if (!isOpen) return
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      switch (e.key) {
-        case 'ArrowDown':
-          e.preventDefault()
-          setKeyboardSelectedIndex(prev => Math.min(prev + 1, DEADLINE_OPTIONS.length - 1))
-          break
-        case 'ArrowUp':
-          e.preventDefault()
-          setKeyboardSelectedIndex(prev => Math.max(prev - 1, 0))
-          break
-        case 'Enter':
-          e.preventDefault()
-          const selected = DEADLINE_OPTIONS[keyboardSelectedIndex]
-          if (selected) {
-            handleSelect(selected)
-          }
-          break
-        case 'Escape':
-          e.preventDefault()
-          setIsOpen(false)
-          break
-      }
+    if (isOpen && listRef.current) {
+      setTimeout(() => {
+        listRef.current?.focus();
+      }, 0);
     }
+  }, [isOpen]);
 
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, keyboardSelectedIndex])
 
   const handleSelect = (option: typeof DEADLINE_OPTIONS[0]) => {
     onDeadlineChange(option.value, option.label);
@@ -145,7 +132,29 @@ export default function DeadlineDropdown({
 
       {isOpen && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50">
-          <div className="max-h-64 overflow-y-auto">
+          <div ref={listRef} className="max-h-64 overflow-y-auto" tabIndex={-1} onKeyDown={(e) => {
+            switch (e.key) {
+              case 'ArrowDown':
+                e.preventDefault();
+                setKeyboardSelectedIndex(prev => Math.min(prev + 1, DEADLINE_OPTIONS.length - 1));
+                break;
+              case 'ArrowUp':
+                e.preventDefault();
+                setKeyboardSelectedIndex(prev => Math.max(prev - 1, 0));
+                break;
+              case 'Enter':
+                e.preventDefault();
+                const selected = DEADLINE_OPTIONS[keyboardSelectedIndex];
+                if (selected) {
+                  handleSelect(selected);
+                }
+                break;
+              case 'Escape':
+                e.preventDefault();
+                setIsOpen(false);
+                break;
+            }
+          }}>
             {DEADLINE_OPTIONS.map((option, index) => {
               const count = deadlineCounts[option.value] || 0;
               const isCurrentDeadline = selectedDeadline === option.value;
@@ -155,6 +164,7 @@ export default function DeadlineDropdown({
                 <button
                   key={option.value}
                   onClick={() => handleSelect(option)}
+                  onMouseEnter={() => setKeyboardSelectedIndex(index)}
                   className={`
                     w-full p-3 text-left transition-colors
                     flex items-center justify-between
@@ -184,4 +194,8 @@ export default function DeadlineDropdown({
       )}
     </div>
   );
-}
+})
+
+DeadlineDropdown.displayName = 'DeadlineDropdown';
+
+export default DeadlineDropdown;

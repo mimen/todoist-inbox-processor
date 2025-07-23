@@ -136,7 +136,7 @@ export default function ProjectMetadataDisplay({
                 {metadata?.type || (project.name.startsWith('🏛') || project.name.includes('AoR') ? 'AoR' : 'Project')}
               </span>
 
-              {/* Do Date Badge */}
+              {/* Scheduled Date Badge */}
               {metadata?.due && (
                 <span className="inline-flex items-center space-x-1.5 bg-blue-50 px-2 py-1 rounded text-xs">
                   <svg className="w-3 h-3 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">

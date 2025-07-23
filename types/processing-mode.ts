@@ -34,9 +34,9 @@ export const PROCESSING_MODE_OPTIONS: ProcessingModeOption[] = [
   },
   {
     type: 'date',
-    label: 'Do Date',
+    label: 'Scheduled Date',
     icon: '',
-    description: 'Process tasks by do date'
+    description: 'Process tasks by scheduled date'
   },
   {
     type: 'deadline',
@@ -72,7 +72,7 @@ export const DATE_OPTIONS = [
   { value: 'next_7_days', label: 'Next 7 Days', icon: '📆', color: 'text-purple-600' },
   { value: 'scheduled', label: 'Scheduled', icon: '🗓️', color: 'text-gray-600' },
   { value: 'recurring', label: 'Recurring', icon: '🔄', color: 'text-indigo-600' },
-  { value: 'no_date', label: 'No Do Date', icon: '📭', color: 'text-gray-400' }
+  { value: 'no_date', label: 'No Scheduled Date', icon: '📭', color: 'text-gray-400' }
 ];
 
 export const DEADLINE_OPTIONS = [
@@ -147,5 +147,5 @@ export const SORT_OPTIONS = [
   { value: 'oldest', label: 'Oldest First', description: 'Show the oldest tasks first' },
   { value: 'newest', label: 'Newest First', description: 'Show the newest tasks first' },
   { value: 'priority', label: 'Priority', description: 'Sort by priority (P1 first)' },
-  { value: 'due_date', label: 'Do Date', description: 'Sort by do date (overdue first)' }
+  { value: 'due_date', label: 'Scheduled Date', description: 'Sort by scheduled date (overdue first)' }
 ];

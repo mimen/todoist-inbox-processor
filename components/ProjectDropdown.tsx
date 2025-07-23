@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react'
 import { TodoistProject } from '@/lib/types'
 
 interface ProjectDropdownProps {
@@ -13,7 +13,7 @@ interface ProjectDropdownProps {
   allTasks?: any[] // Optional: all tasks for client-side counting
 }
 
-export default function ProjectDropdown({ 
+const ProjectDropdown = forwardRef<any, ProjectDropdownProps>(({ 
   projects, 
   selectedProjectId, 
   onProjectChange,
@@ -21,7 +21,7 @@ export default function ProjectDropdown({
   includeInbox = true,
   className = "",
   allTasks = []
-}: ProjectDropdownProps) {
+}: ProjectDropdownProps, ref) => {
   const [isOpen, setIsOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
@@ -29,6 +29,15 @@ export default function ProjectDropdown({
   const loadingCounts = allTasks.length === 0 // Show loading state until we have data
   const dropdownRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
+
+  // Expose openDropdown method via ref
+  useImperativeHandle(ref, () => ({
+    openDropdown: () => {
+      setIsOpen(true);
+      setSelectedIndex(0);
+      // Focus will be handled by useEffect when isOpen changes
+    }
+  }));
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -45,8 +54,13 @@ export default function ProjectDropdown({
 
   // Focus search input when dropdown opens
   useEffect(() => {
-    if (isOpen && searchInputRef.current) {
-      searchInputRef.current.focus()
+    if (isOpen) {
+      // Small delay to ensure dropdown is rendered
+      setTimeout(() => {
+        if (searchInputRef.current) {
+          searchInputRef.current.focus();
+        }
+      }, 50);
     }
   }, [isOpen])
 
@@ -321,4 +335,8 @@ export default function ProjectDropdown({
       )}
     </div>
   )
-}
+})
+
+ProjectDropdown.displayName = 'ProjectDropdown';
+
+export default ProjectDropdown;

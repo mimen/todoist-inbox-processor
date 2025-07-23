@@ -17,6 +17,15 @@ export default function KeyboardShortcuts({ onClose }: KeyboardShortcutsProps) {
       { key: '?', description: 'Show/hide keyboard shortcuts' },
       { key: ['Esc', '`'], description: 'Close any open dialog' },
     ]},
+    { category: 'Processing Mode', items: [
+      { key: '1', description: 'Switch to Project mode' },
+      { key: '2', description: 'Switch to Priority mode' },
+      { key: '3', description: 'Switch to Label mode' },
+      { key: '4', description: 'Switch to Date (scheduled) mode' },
+      { key: '5', description: 'Switch to Deadline mode' },
+      { key: '6', description: 'Switch to Preset (smart filter) mode' },
+      { key: '7', description: 'Switch to All Tasks mode' },
+    ]},
     { category: 'Task Management', items: [
       { key: 'p', description: 'Change task priority' },
       { key: '#', description: 'Move to different project' },

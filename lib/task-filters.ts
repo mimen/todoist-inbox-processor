@@ -220,7 +220,7 @@ export function filterTasksByMode(
           
         case 'due_date':
           sorted.sort((a, b) => {
-            // Tasks without do dates go last
+            // Tasks without scheduled dates go last
             if (!a.due && !b.due) return 0;
             if (!a.due) return 1;
             if (!b.due) return -1;

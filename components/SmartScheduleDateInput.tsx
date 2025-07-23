@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect, forwardRef } from 'react'
 
-interface SmartDoDateInputProps {
+interface SmartScheduleDateInputProps {
   value: string
   onChange: (value: string) => void
   placeholder?: string
@@ -34,7 +34,7 @@ const RECOGNIZED_PATTERNS = [
   /\b(every\s+(day|week|month|year)|daily|weekly|monthly|yearly)\b/gi,
 ]
 
-const SmartDoDateInput = forwardRef<HTMLInputElement, SmartDoDateInputProps>(function SmartDoDateInput({ value, onChange, placeholder = "e.g., tomorrow, next friday, in 2 weeks..." }, ref) {
+const SmartScheduleDateInput = forwardRef<HTMLInputElement, SmartScheduleDateInputProps>(function SmartScheduleDateInput({ value, onChange, placeholder = "e.g., tomorrow, next friday, in 2 weeks..." }, ref) {
   const [highlightedText, setHighlightedText] = useState<JSX.Element[]>([])
   const internalRef = useRef<HTMLInputElement>(null)
   const inputRef = ref || internalRef
@@ -168,4 +168,4 @@ const SmartDoDateInput = forwardRef<HTMLInputElement, SmartDoDateInputProps>(fun
   )
 })
 
-export default SmartDoDateInput
+export default SmartScheduleDateInput

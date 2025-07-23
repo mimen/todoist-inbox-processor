@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { DATE_OPTIONS } from '@/types/processing-mode';
 import { TodoistTask } from '@/lib/types';
 
@@ -29,14 +29,23 @@ interface DateDropdownProps {
   allTasks: TodoistTask[];
 }
 
-export default function DateDropdown({
+const DateDropdown = forwardRef<any, DateDropdownProps>(({
   selectedDate,
   onDateChange,
   allTasks
-}: DateDropdownProps) {
+}: DateDropdownProps, ref) => {
   const [isOpen, setIsOpen] = useState(false);
   const [keyboardSelectedIndex, setKeyboardSelectedIndex] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // Expose openDropdown method via ref
+  useImperativeHandle(ref, () => ({
+    openDropdown: () => {
+      setIsOpen(true);
+      setKeyboardSelectedIndex(0);
+    }
+  }));
 
   // Count tasks for each date option
   const dateCounts = DATE_OPTIONS.reduce((counts, option) => {
@@ -104,37 +113,15 @@ export default function DateDropdown({
     };
   }, [isOpen]);
 
-  // Handle keyboard navigation
+  // Focus dropdown list when it opens
   useEffect(() => {
-    if (!isOpen) return
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      switch (e.key) {
-        case 'ArrowDown':
-          e.preventDefault()
-          setKeyboardSelectedIndex(prev => Math.min(prev + 1, DATE_OPTIONS.length - 1))
-          break
-        case 'ArrowUp':
-          e.preventDefault()
-          setKeyboardSelectedIndex(prev => Math.max(prev - 1, 0))
-          break
-        case 'Enter':
-          e.preventDefault()
-          const selected = DATE_OPTIONS[keyboardSelectedIndex]
-          if (selected) {
-            handleSelect(selected)
-          }
-          break
-        case 'Escape':
-          e.preventDefault()
-          setIsOpen(false)
-          break
-      }
+    if (isOpen && listRef.current) {
+      setTimeout(() => {
+        listRef.current?.focus();
+      }, 0);
     }
+  }, [isOpen]);
 
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, keyboardSelectedIndex])
 
   const handleSelect = (option: typeof DATE_OPTIONS[0]) => {
     onDateChange(option.value, option.label);
@@ -169,7 +156,29 @@ export default function DateDropdown({
 
       {isOpen && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50">
-          <div className="max-h-64 overflow-y-auto">
+          <div ref={listRef} className="max-h-64 overflow-y-auto" tabIndex={-1} onKeyDown={(e) => {
+            switch (e.key) {
+              case 'ArrowDown':
+                e.preventDefault();
+                setKeyboardSelectedIndex(prev => Math.min(prev + 1, DATE_OPTIONS.length - 1));
+                break;
+              case 'ArrowUp':
+                e.preventDefault();
+                setKeyboardSelectedIndex(prev => Math.max(prev - 1, 0));
+                break;
+              case 'Enter':
+                e.preventDefault();
+                const selected = DATE_OPTIONS[keyboardSelectedIndex];
+                if (selected) {
+                  handleSelect(selected);
+                }
+                break;
+              case 'Escape':
+                e.preventDefault();
+                setIsOpen(false);
+                break;
+            }
+          }}>
             {DATE_OPTIONS.map((option, index) => {
               const count = dateCounts[option.value] || 0;
               const isSelected = selectedDate === option.value;
@@ -179,6 +188,7 @@ export default function DateDropdown({
                 <button
                   key={option.value}
                   onClick={() => handleSelect(option)}
+                  onMouseEnter={() => setKeyboardSelectedIndex(index)}
                   className={`
                     w-full p-3 text-left transition-colors
                     flex items-center justify-between
@@ -208,4 +218,8 @@ export default function DateDropdown({
       )}
     </div>
   );
-}
+})
+
+DateDropdown.displayName = 'DateDropdown';
+
+export default DateDropdown;

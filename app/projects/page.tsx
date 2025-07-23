@@ -442,7 +442,7 @@ export default function ProjectsPage() {
             <li>• These tasks use the project name as content and have the "project-metadata" label</li>
             <li>• The description field contains the actual project description</li>
             <li>• Project type (Area/Project) is stored using additional labels</li>
-            <li>• Priority, do dates, and deadlines are stored in the task fields</li>
+            <li>• Priority, scheduled dates, and deadlines are stored in the task fields</li>
             <li>• All metadata auto-saves after 1 second of inactivity</li>
           </ul>
         </div>

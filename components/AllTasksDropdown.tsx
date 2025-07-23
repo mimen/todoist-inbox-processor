@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, useRef, useEffect } from 'react';
+import React, { useMemo, useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { TodoistTask } from '@/lib/types';
 import { SORT_OPTIONS } from '@/types/processing-mode';
 
@@ -10,15 +10,24 @@ interface AllTasksDropdownProps {
   allTasks: TodoistTask[];
 }
 
-export default function AllTasksDropdown({
+const AllTasksDropdown = forwardRef<any, AllTasksDropdownProps>(({
   selectedSort,
   onSortChange,
   allTasks
-}: AllTasksDropdownProps) {
+}: AllTasksDropdownProps, ref) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const taskCount = allTasks.length;
+
+  // Expose openDropdown method via ref
+  useImperativeHandle(ref, () => ({
+    openDropdown: () => {
+      setIsOpen(true);
+      setSelectedIndex(0);
+    }
+  }));
 
   // Get current sort option display
   const currentOption = SORT_OPTIONS.find(s => s.value === selectedSort) || SORT_OPTIONS[0];
@@ -40,37 +49,15 @@ export default function AllTasksDropdown({
     };
   }, [isOpen]);
 
-  // Handle keyboard navigation
+  // Focus dropdown list when it opens
   useEffect(() => {
-    if (!isOpen) return
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      switch (e.key) {
-        case 'ArrowDown':
-          e.preventDefault()
-          setSelectedIndex(prev => Math.min(prev + 1, SORT_OPTIONS.length - 1))
-          break
-        case 'ArrowUp':
-          e.preventDefault()
-          setSelectedIndex(prev => Math.max(prev - 1, 0))
-          break
-        case 'Enter':
-          e.preventDefault()
-          const selected = SORT_OPTIONS[selectedIndex]
-          if (selected) {
-            handleSelect(selected)
-          }
-          break
-        case 'Escape':
-          e.preventDefault()
-          setIsOpen(false)
-          break
-      }
+    if (isOpen && listRef.current) {
+      setTimeout(() => {
+        listRef.current?.focus();
+      }, 0);
     }
+  }, [isOpen]);
 
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, selectedIndex])
 
   const handleSelect = (option: typeof SORT_OPTIONS[0]) => {
     onSortChange(option.value, option.label);
@@ -103,7 +90,29 @@ export default function AllTasksDropdown({
 
       {isOpen && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50">
-          <div className="max-h-64 overflow-y-auto">
+          <div ref={listRef} className="max-h-64 overflow-y-auto" tabIndex={-1} onKeyDown={(e) => {
+            switch (e.key) {
+              case 'ArrowDown':
+                e.preventDefault();
+                setSelectedIndex(prev => Math.min(prev + 1, SORT_OPTIONS.length - 1));
+                break;
+              case 'ArrowUp':
+                e.preventDefault();
+                setSelectedIndex(prev => Math.max(prev - 1, 0));
+                break;
+              case 'Enter':
+                e.preventDefault();
+                const selected = SORT_OPTIONS[selectedIndex];
+                if (selected) {
+                  handleSelect(selected);
+                }
+                break;
+              case 'Escape':
+                e.preventDefault();
+                setIsOpen(false);
+                break;
+            }
+          }}>
             {SORT_OPTIONS.map((option, index) => {
               const isCurrentSort = selectedSort === option.value;
               const isKeyboardSelected = index === selectedIndex;
@@ -112,6 +121,7 @@ export default function AllTasksDropdown({
                 <button
                   key={option.value}
                   onClick={() => handleSelect(option)}
+                  onMouseEnter={() => setSelectedIndex(index)}
                   className={`
                     w-full p-3 text-left transition-colors
                     flex items-center justify-between
@@ -141,4 +151,8 @@ export default function AllTasksDropdown({
       )}
     </div>
   );
-}
+})
+
+AllTasksDropdown.displayName = 'AllTasksDropdown';
+
+export default AllTasksDropdown;

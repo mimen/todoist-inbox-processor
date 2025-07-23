@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useImperativeHandle, forwardRef, useRef, useEffect } from 'react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { ProcessingMode, ProcessingModeType, PROCESSING_MODE_OPTIONS } from '@/types/processing-mode';
@@ -13,6 +13,11 @@ import PresetDropdown from './PresetDropdown';
 import AllTasksDropdown from './AllTasksDropdown';
 import { AssigneeFilterType } from './AssigneeFilter';
 import { TodoistTask, TodoistLabel, TodoistProject } from '@/lib/types';
+
+export interface ProcessingModeSelectorRef {
+  switchToMode: (type: ProcessingModeType) => void;
+  openCurrentDropdown: () => void;
+}
 
 interface ProcessingModeSelectorProps {
   mode: ProcessingMode;
@@ -27,7 +32,7 @@ interface ProcessingModeSelectorProps {
   assigneeFilter?: AssigneeFilterType;
 }
 
-export default function ProcessingModeSelector({
+const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingModeSelectorProps>(({
   mode,
   onModeChange,
   projects,
@@ -38,7 +43,16 @@ export default function ProcessingModeSelector({
   projectMetadata = {},
   currentUserId,
   assigneeFilter = 'all'
-}: ProcessingModeSelectorProps) {
+}: ProcessingModeSelectorProps, ref) => {
+  // Refs for each dropdown
+  const projectDropdownRef = useRef<any>(null);
+  const priorityDropdownRef = useRef<any>(null);
+  const labelDropdownRef = useRef<any>(null);
+  const dateDropdownRef = useRef<any>(null);
+  const deadlineDropdownRef = useRef<any>(null);
+  const presetDropdownRef = useRef<any>(null);
+  const allTasksDropdownRef = useRef<any>(null);
+
   const handleModeTypeChange = (newType: ProcessingModeType) => {
     // Reset value when changing mode type
     let defaultValue: string | string[] = '';
@@ -85,6 +99,50 @@ export default function ProcessingModeSelector({
       displayName: defaultDisplayName
     });
   };
+
+  // Helper function to open dropdown by type
+  const openDropdownByType = (type: ProcessingModeType) => {
+    switch (type) {
+      case 'project':
+        projectDropdownRef.current?.openDropdown();
+        break;
+      case 'priority':
+        priorityDropdownRef.current?.openDropdown();
+        break;
+      case 'label':
+        labelDropdownRef.current?.openDropdown();
+        break;
+      case 'date':
+        dateDropdownRef.current?.openDropdown();
+        break;
+      case 'deadline':
+        deadlineDropdownRef.current?.openDropdown();
+        break;
+      case 'preset':
+        presetDropdownRef.current?.openDropdown();
+        break;
+      case 'all':
+        allTasksDropdownRef.current?.openDropdown();
+        break;
+    }
+  };
+
+  // Helper function to open current dropdown
+  const openCurrentDropdown = () => {
+    openDropdownByType(mode.type);
+  };
+
+  // Expose methods to parent via ref
+  useImperativeHandle(ref, () => ({
+    switchToMode: (type: ProcessingModeType) => {
+      handleModeTypeChange(type);
+      // Longer delay to ensure the dropdown is rendered and state is updated
+      setTimeout(() => {
+        openDropdownByType(type);
+      }, 150);
+    },
+    openCurrentDropdown
+  }), [mode.type, handleModeTypeChange]);
 
   const handleValueChange = (value: string | string[], displayName: string) => {
     onModeChange({
@@ -145,6 +203,7 @@ export default function ProcessingModeSelector({
         <div className="flex-1">
           {mode.type === 'project' && (
             <ProjectDropdown
+              ref={projectDropdownRef}
               projects={projects}
               selectedProjectId={mode.value as string}
               onProjectChange={(projectId) => {
@@ -157,6 +216,7 @@ export default function ProcessingModeSelector({
 
           {mode.type === 'priority' && (
             <PriorityDropdown
+              ref={priorityDropdownRef}
               selectedPriority={mode.value as string}
               onPriorityChange={(priority, displayName) => {
                 handleValueChange(priority, displayName);
@@ -167,6 +227,7 @@ export default function ProcessingModeSelector({
 
           {mode.type === 'label' && (
             <LabelDropdown
+              ref={labelDropdownRef}
               selectedLabels={mode.value as string[]}
               onLabelsChange={(labels, displayName) => {
                 handleValueChange(labels, displayName);
@@ -179,6 +240,7 @@ export default function ProcessingModeSelector({
 
           {mode.type === 'date' && (
             <DateDropdown
+              ref={dateDropdownRef}
               selectedDate={mode.value as string}
               onDateChange={(date, displayName) => {
                 handleValueChange(date, displayName);
@@ -189,6 +251,7 @@ export default function ProcessingModeSelector({
 
           {mode.type === 'deadline' && (
             <DeadlineDropdown
+              ref={deadlineDropdownRef}
               selectedDeadline={mode.value as string}
               onDeadlineChange={(deadline, displayName) => {
                 handleValueChange(deadline, displayName);
@@ -199,6 +262,7 @@ export default function ProcessingModeSelector({
 
           {mode.type === 'preset' && (
             <PresetDropdown
+              ref={presetDropdownRef}
               selectedPreset={mode.value as string}
               onPresetChange={(presetId, displayName) => {
                 handleValueChange(presetId, displayName);
@@ -225,6 +289,7 @@ export default function ProcessingModeSelector({
 
           {mode.type === 'all' && (
             <AllTasksDropdown
+              ref={allTasksDropdownRef}
               selectedSort={mode.value as string}
               onSortChange={(sortBy, displayName) => {
                 handleValueChange(sortBy, displayName);
@@ -253,4 +318,8 @@ export default function ProcessingModeSelector({
       </div>
     </div>
   );
-}
+});
+
+ProcessingModeSelector.displayName = 'ProcessingModeSelector';
+
+export default ProcessingModeSelector;

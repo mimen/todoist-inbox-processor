@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { PRIORITY_LEVELS } from '@/types/processing-mode';
 import { TodoistTask } from '@/lib/types';
@@ -12,14 +12,23 @@ interface PriorityDropdownProps {
   allTasks: TodoistTask[];
 }
 
-export default function PriorityDropdown({
+const PriorityDropdown = forwardRef<any, PriorityDropdownProps>(({
   selectedPriority,
   onPriorityChange,
   allTasks
-}: PriorityDropdownProps) {
+}: PriorityDropdownProps, ref) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // Expose openDropdown method via ref
+  useImperativeHandle(ref, () => ({
+    openDropdown: () => {
+      setIsOpen(true);
+      setSelectedIndex(0);
+    }
+  }));
 
   // Count tasks for each priority
   const priorityCounts = PRIORITY_LEVELS.reduce((counts, level) => {
@@ -48,6 +57,15 @@ export default function PriorityDropdown({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
+  }, [isOpen]);
+
+  // Focus dropdown when it opens
+  useEffect(() => {
+    if (isOpen && listRef.current) {
+      setTimeout(() => {
+        listRef.current?.focus();
+      }, 50);
+    }
   }, [isOpen]);
 
   // Handle keyboard navigation
@@ -113,7 +131,11 @@ export default function PriorityDropdown({
 
       {isOpen && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50">
-          <div className="max-h-64 overflow-y-auto">
+          <div 
+            ref={listRef}
+            className="max-h-64 overflow-y-auto"
+            tabIndex={-1}
+          >
             {PRIORITY_LEVELS.map((priority, index) => {
               const count = priorityCounts[priority.value] || 0;
               const isCurrentPriority = selectedPriority === priority.value;
@@ -150,4 +172,8 @@ export default function PriorityDropdown({
       )}
     </div>
   );
-}
+})
+
+PriorityDropdown.displayName = 'PriorityDropdown';
+
+export default PriorityDropdown;

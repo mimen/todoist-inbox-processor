@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react'
 import { PRESET_FILTERS, PresetFilter } from '@/types/processing-mode'
 import { TodoistTask } from '@/lib/types'
 
@@ -11,14 +11,24 @@ interface PresetDropdownProps {
   projectMetadata?: Record<string, any>
 }
 
-export default function PresetDropdown({
+const PresetDropdown = forwardRef<any, PresetDropdownProps>(({
   selectedPreset,
   onPresetChange,
   allTasks = [],
   projectMetadata = {}
-}: PresetDropdownProps) {
+}: PresetDropdownProps, ref) => {
   const [isOpen, setIsOpen] = useState(false)
+  const [keyboardSelectedIndex, setKeyboardSelectedIndex] = useState(0)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+
+  // Expose openDropdown method via ref
+  useImperativeHandle(ref, () => ({
+    openDropdown: () => {
+      setIsOpen(true);
+      setKeyboardSelectedIndex(0);
+    }
+  }));
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -28,9 +38,23 @@ export default function PresetDropdown({
       }
     }
 
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  // Focus dropdown list when it opens
+  useEffect(() => {
+    if (isOpen && listRef.current) {
+      setTimeout(() => {
+        listRef.current?.focus();
+      }, 0);
+    }
+  }, [isOpen])
 
   const selectedFilter = PRESET_FILTERS.find(f => f.id === selectedPreset)
 
@@ -88,16 +112,41 @@ export default function PresetDropdown({
 
       {isOpen && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50">
-          <div className="max-h-64 overflow-y-auto">
-            {PRESET_FILTERS.map((preset) => {
+          <div ref={listRef} className="max-h-64 overflow-y-auto" tabIndex={-1} onKeyDown={(e) => {
+            switch (e.key) {
+              case 'ArrowDown':
+                e.preventDefault();
+                setKeyboardSelectedIndex(prev => Math.min(prev + 1, PRESET_FILTERS.length - 1));
+                break;
+              case 'ArrowUp':
+                e.preventDefault();
+                setKeyboardSelectedIndex(prev => Math.max(prev - 1, 0));
+                break;
+              case 'Enter':
+                e.preventDefault();
+                const selected = PRESET_FILTERS[keyboardSelectedIndex];
+                if (selected) {
+                  handlePresetSelect(selected);
+                }
+                break;
+              case 'Escape':
+                e.preventDefault();
+                setIsOpen(false);
+                break;
+            }
+          }}>
+            {PRESET_FILTERS.map((preset, index) => {
               const taskCount = getTaskCount(preset)
               return (
                 <button
                   key={preset.id}
                   type="button"
                   onClick={() => handlePresetSelect(preset)}
+                  onMouseEnter={() => setKeyboardSelectedIndex(index)}
                   className={`w-full flex items-start space-x-3 p-3 text-left hover:bg-gray-50 transition-colors ${
                     selectedPreset === preset.id ? 'bg-blue-50' : ''
+                  } ${
+                    index === keyboardSelectedIndex ? 'bg-gray-100' : ''
                   }`}
                 >
                   <span className="text-lg mt-0.5">{preset.icon}</span>
@@ -127,4 +176,8 @@ export default function PresetDropdown({
       )}
     </div>
   )
-}
+})
+
+PresetDropdown.displayName = 'PresetDropdown';
+
+export default PresetDropdown;
