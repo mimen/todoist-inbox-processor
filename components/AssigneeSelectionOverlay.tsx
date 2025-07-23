@@ -94,6 +94,14 @@ export default function AssigneeSelectionOverlay({
           onAssigneeSelect(options[selectedIndex].id)
         }
         break
+      case 'Delete':
+      case 'Backspace':
+        if (e.shiftKey) {
+          e.preventDefault()
+          // Clear assignee (unassign)
+          onAssigneeSelect(null)
+        }
+        break
       case 'Escape':
         e.preventDefault()
         onClose()

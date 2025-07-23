@@ -109,6 +109,15 @@ export default function LabelSelectionOverlay({
             toggleLabel(filteredLabels[selectedIndex].name)
           }
           break
+        case 'Delete':
+        case 'Backspace':
+          if (e.shiftKey) {
+            e.preventDefault()
+            // Clear all labels
+            setSelectedLabels([])
+            onLabelsChange([])
+          }
+          break
         case 'Escape':
         case '`':
           e.preventDefault()

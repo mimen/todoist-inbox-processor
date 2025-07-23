@@ -56,6 +56,12 @@ export default function PriorityOverlay({ currentPriority, onPrioritySelect, onC
         case '4':
           onPrioritySelect(1) // P4 = API priority 1
           break
+        case 'Delete':
+        case 'Backspace':
+          if (e.shiftKey) {
+            onPrioritySelect(1) // Clear to P4 (lowest priority)
+          }
+          break
         case 'Escape':
         case '`':
         case 'p':

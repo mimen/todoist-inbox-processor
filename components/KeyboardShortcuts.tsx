@@ -24,7 +24,7 @@ export default function KeyboardShortcuts({ onClose }: KeyboardShortcutsProps) {
       { key: '+', description: 'Assign task to someone (if collaborators exist)' },
       { key: 's', description: 'Schedule when to work on task' },
       { key: 'd', description: 'Set task deadline' },
-      { key: 'e', description: 'Process task (archive immediately)' },
+      { key: 'e', description: 'Mark task as processed' },
       { key: 'c', description: 'Complete task' },
     ]},
     { category: 'Selection Dialogs', items: [
@@ -32,6 +32,15 @@ export default function KeyboardShortcuts({ onClose }: KeyboardShortcutsProps) {
       { key: ['↑', '↓'], description: 'Navigate through options' },
       { key: 'Enter', description: 'Select highlighted option' },
       { key: 'Type', description: 'Filter options or enter custom date' },
+      { key: ['Shift+Delete', 'Shift+Backspace'], description: 'Clear/reset field value' },
+    ]},
+    { category: 'Clear Actions in Overlays', items: [
+      { key: ['Shift+Delete', 'Shift+Backspace'], description: 'Priority → Set to P4 (lowest)' },
+      { key: ['Shift+Delete', 'Shift+Backspace'], description: 'Project → Move to Inbox' },
+      { key: ['Shift+Delete', 'Shift+Backspace'], description: 'Labels → Remove all labels' },
+      { key: ['Shift+Delete', 'Shift+Backspace'], description: 'Assignee → Unassign' },
+      { key: ['Shift+Delete', 'Shift+Backspace'], description: 'Due date → Clear date' },
+      { key: ['Shift+Delete', 'Shift+Backspace'], description: 'Deadline → Clear deadline' },
     ]},
     { category: 'Confirmation Dialogs', items: [
       { key: 'Enter', description: 'Confirm action (complete/archive)' },

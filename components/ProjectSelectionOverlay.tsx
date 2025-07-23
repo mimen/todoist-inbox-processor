@@ -219,6 +219,17 @@ export default function ProjectSelectionOverlay({
             handleProjectSelect(selected.id)
           }
           break
+        case 'Delete':
+        case 'Backspace':
+          if (e.shiftKey) {
+            e.preventDefault()
+            // Set to inbox project
+            const inboxProject = projects.find(p => p.isInboxProject)
+            if (inboxProject) {
+              handleProjectSelect(inboxProject.id)
+            }
+          }
+          break
         case 'Escape':
         case '`':
           e.preventDefault()

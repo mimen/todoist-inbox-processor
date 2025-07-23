@@ -274,6 +274,13 @@ export default function ScheduledDateSelector({
             handleApply(filteredSuggestions[selectedIndex].dateString)
           }
           return
+        case 'Delete':
+        case 'Backspace':
+          if (e.shiftKey) {
+            e.preventDefault()
+            handleClearDate()
+          }
+          return
         case 'Escape':
         case '`':
           e.preventDefault()
