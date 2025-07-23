@@ -34,14 +34,6 @@ export default function KeyboardShortcuts({ onClose }: KeyboardShortcutsProps) {
       { key: 'Type', description: 'Filter options or enter custom date' },
       { key: ['Shift+Delete', 'Shift+Backspace'], description: 'Clear/reset field value' },
     ]},
-    { category: 'Clear Actions in Overlays', items: [
-      { key: ['Shift+Delete', 'Shift+Backspace'], description: 'Priority → Set to P4 (lowest)' },
-      { key: ['Shift+Delete', 'Shift+Backspace'], description: 'Project → Move to Inbox' },
-      { key: ['Shift+Delete', 'Shift+Backspace'], description: 'Labels → Remove all labels' },
-      { key: ['Shift+Delete', 'Shift+Backspace'], description: 'Assignee → Unassign' },
-      { key: ['Shift+Delete', 'Shift+Backspace'], description: 'Due date → Clear date' },
-      { key: ['Shift+Delete', 'Shift+Backspace'], description: 'Deadline → Clear deadline' },
-    ]},
     { category: 'Confirmation Dialogs', items: [
       { key: 'Enter', description: 'Confirm action (complete/archive)' },
       { key: 'Esc', description: 'Cancel action' },
