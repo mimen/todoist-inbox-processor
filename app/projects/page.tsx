@@ -439,7 +439,7 @@ export default function ProjectsPage() {
           <h3 className="text-lg font-medium text-blue-900 mb-2">How Project Metadata Works</h3>
           <ul className="text-sm text-blue-800 space-y-1">
             <li>• Project metadata is stored as special tasks within each project</li>
-            <li>• These tasks use the project name as content and have the "project-metadata" label</li>
+            <li>• These tasks use the project name as content and have the &quot;project-metadata&quot; label</li>
             <li>• The description field contains the actual project description</li>
             <li>• Project type (Area/Project) is stored using additional labels</li>
             <li>• Priority, scheduled dates, and deadlines are stored in the task fields</li>

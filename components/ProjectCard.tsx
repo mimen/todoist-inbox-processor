@@ -194,7 +194,7 @@ export default function ProjectCard({ project, nestingDepth = 0, onDescriptionCh
         )}
         
         <p className="mt-2 text-xs text-gray-500">
-          Descriptions are stored as special tasks with "*" prefix and auto-save after 1 second.
+          Descriptions are stored as special tasks with &quot;*&quot; prefix and auto-save after 1 second.
         </p>
       </div>
 

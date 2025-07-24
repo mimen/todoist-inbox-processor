@@ -152,7 +152,7 @@ const SmartScheduleDateInput = forwardRef<HTMLInputElement, SmartScheduleDateInp
       {/* Status indicator */}
       <div className="mt-1 flex items-center justify-between text-xs">
         <span className="text-gray-500">
-          Use natural language like "tomorrow", "next Friday", "in 2 weeks"
+          Use natural language like &quot;tomorrow&quot;, &quot;next Friday&quot;, &quot;in 2 weeks&quot;
         </span>
         {value && (
           <span className={`px-2 py-1 rounded-full text-xs font-medium ${

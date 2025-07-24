@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { DropdownOption, SortOption } from '@/types/dropdown'
 import { TodoistTask } from '@/lib/types'
+import { isExcludedLabel } from '@/lib/excluded-labels'
 
 /**
  * Base hook for dropdown options with common functionality
@@ -23,6 +24,10 @@ export function calculateTaskCount(
   return tasks.filter(task => {
     // Always exclude archived tasks (those starting with "* ")
     if (excludeArchived && task.content.startsWith('* ')) {
+      return false
+    }
+    // Exclude tasks with excluded labels (matching filterTasksByMode behavior)
+    if (task.labels.some(label => isExcludedLabel(label))) {
       return false
     }
     return filterFn(task)

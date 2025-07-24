@@ -6,74 +6,131 @@ import { DEADLINE_OPTIONS } from '@/constants/deadline-options'
 import { useDropdownOptions } from './useDropdownOptions'
 
 /**
+ * Get local date string in YYYY-MM-DD format
+ */
+function getLocalDateString(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+/**
  * Check if a deadline is overdue
  */
 function isOverdue(dateString: string): boolean {
-  const date = new Date(dateString)
+  const dateOnly = dateString.split('T')[0]
   const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  date.setHours(0, 0, 0, 0)
-  return date < today
+  const todayStr = getLocalDateString(today)
+  return dateOnly < todayStr
 }
 
 /**
  * Check if a deadline is today
  */
 function isToday(dateString: string): boolean {
-  const date = new Date(dateString)
+  const dateOnly = dateString.split('T')[0]
   const today = new Date()
-  return date.toDateString() === today.toDateString()
+  const todayStr = getLocalDateString(today)
+  return dateOnly === todayStr
 }
 
 /**
  * Check if a deadline is tomorrow
  */
 function isTomorrow(dateString: string): boolean {
-  const date = new Date(dateString)
+  const dateOnly = dateString.split('T')[0]
   const tomorrow = new Date()
   tomorrow.setDate(tomorrow.getDate() + 1)
-  return date.toDateString() === tomorrow.toDateString()
+  const tomorrowStr = getLocalDateString(tomorrow)
+  return dateOnly === tomorrowStr
 }
 
 /**
  * Check if a deadline is this week (excluding today and tomorrow)
  */
 function isThisWeek(dateString: string): boolean {
-  const date = new Date(dateString)
+  const dateOnly = dateString.split('T')[0]
   const today = new Date()
+  
+  // Get day after tomorrow
   const dayAfterTomorrow = new Date()
   dayAfterTomorrow.setDate(today.getDate() + 2)
+  const dayAfterTomorrowStr = getLocalDateString(dayAfterTomorrow)
   
   // Get end of current week (Sunday)
   const endOfWeek = new Date(today)
   const daysUntilSunday = 7 - today.getDay()
   endOfWeek.setDate(today.getDate() + daysUntilSunday)
-  endOfWeek.setHours(23, 59, 59, 999)
+  const endOfWeekStr = getLocalDateString(endOfWeek)
   
-  date.setHours(0, 0, 0, 0)
-  dayAfterTomorrow.setHours(0, 0, 0, 0)
-  
-  return date >= dayAfterTomorrow && date <= endOfWeek
+  return dateOnly >= dayAfterTomorrowStr && dateOnly <= endOfWeekStr
 }
 
 /**
  * Check if a deadline is this month (excluding this week)
  */
 function isThisMonth(dateString: string): boolean {
-  const date = new Date(dateString)
+  const dateOnly = dateString.split('T')[0]
   const today = new Date()
   
   // Get start of next week
   const startOfNextWeek = new Date(today)
   const daysUntilSunday = 7 - today.getDay()
   startOfNextWeek.setDate(today.getDate() + daysUntilSunday + 1)
-  startOfNextWeek.setHours(0, 0, 0, 0)
+  const startOfNextWeekStr = getLocalDateString(startOfNextWeek)
   
   // Get end of current month
   const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0)
-  endOfMonth.setHours(23, 59, 59, 999)
+  const endOfMonthStr = getLocalDateString(endOfMonth)
   
-  return date >= startOfNextWeek && date <= endOfMonth
+  return dateOnly >= startOfNextWeekStr && dateOnly <= endOfMonthStr
+}
+
+/**
+ * Filter tasks by deadline option
+ * Note: Expects tasks to already have exclusions applied (archived/excluded labels)
+ */
+export function filterTasksByDeadlineOption(tasks: TodoistTask[], optionId: string): TodoistTask[] {
+  switch (optionId) {
+    case 'overdue':
+      return tasks.filter(task => {
+        if (!task.deadline) return false
+        const dateStr = task.deadline.date
+        return isOverdue(dateStr)
+      })
+    
+    case 'today':
+      return tasks.filter(task => {
+        if (!task.deadline) return false
+        const dateStr = task.deadline.date
+        return isToday(dateStr)
+      })
+    
+    case 'tomorrow':
+      return tasks.filter(task => {
+        if (!task.deadline) return false
+        const dateStr = task.deadline.date
+        return isTomorrow(dateStr)
+      })
+    
+    case 'this_week':
+      return tasks.filter(task => {
+        if (!task.deadline) return false
+        const dateStr = task.deadline.date
+        return isThisWeek(dateStr)
+      })
+    
+    case 'this_month':
+      return tasks.filter(task => {
+        if (!task.deadline) return false
+        const dateStr = task.deadline.date
+        return isThisMonth(dateStr)
+      })
+    
+    default:
+      return []
+  }
 }
 
 /**
@@ -88,25 +145,9 @@ export function useDeadlineOptions(
   return useMemo(() => {
     // Calculate counts for each deadline range
     const optionsWithCounts = DEADLINE_OPTIONS.map(deadlineOption => {
-      let count = 0
-
-      switch (deadlineOption.id) {
-        case 'overdue':
-          count = calculateCount(task => !!task.deadline && isOverdue(task.deadline.date))
-          break
-        case 'today':
-          count = calculateCount(task => !!task.deadline && isToday(task.deadline.date))
-          break
-        case 'tomorrow':
-          count = calculateCount(task => !!task.deadline && isTomorrow(task.deadline.date))
-          break
-        case 'this_week':
-          count = calculateCount(task => !!task.deadline && isThisWeek(task.deadline.date))
-          break
-        case 'this_month':
-          count = calculateCount(task => !!task.deadline && isThisMonth(task.deadline.date))
-          break
-      }
+      // Use the same filtering function for consistency
+      const matchingTasks = filterTasksByDeadlineOption(tasks, deadlineOption.id)
+      const count = matchingTasks.length
 
       return {
         ...deadlineOption,

@@ -2,6 +2,8 @@ import { TodoistTask } from '@/lib/types';
 import { ProcessingMode, PRESET_FILTERS } from '@/types/processing-mode';
 import { AssigneeFilterType } from '@/components/AssigneeFilter';
 import { isExcludedLabel } from '@/lib/excluded-labels';
+import { filterTasksByDeadlineOption } from '@/hooks/useDeadlineOptions';
+import { filterTasksByDateOption } from '@/hooks/useDateOptions';
 
 // Helper function to detect recurring tasks
 function isRecurringTask(task: TodoistTask): boolean {
@@ -79,82 +81,28 @@ export function filterTasksByMode(
 
     case 'date':
       const dateOption = mode.value as string;
-      const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const nextWeek = new Date(today);
-      nextWeek.setDate(today.getDate() + 7);
-
-      return filtered.filter(task => {
-        switch (dateOption) {
-          case 'overdue':
-            if (!task.due) return false;
-            const dueDate = new Date(task.due.date);
-            return dueDate < today;
-          
-          case 'today':
-            if (!task.due) return false;
-            return task.due.date === today.toISOString().split('T')[0];
-          
-          case 'tomorrow':
-            if (!task.due) return false;
-            const tomorrow = new Date(today);
-            tomorrow.setDate(today.getDate() + 1);
-            return task.due.date === tomorrow.toISOString().split('T')[0];
-          
-          case 'next_7_days':
-            if (!task.due) return false;
-            const taskDate = new Date(task.due.date);
-            return taskDate >= today && taskDate <= nextWeek;
-          
-          case 'scheduled':
-            return !!task.due && !isRecurringTask(task);
-          
-          case 'recurring':
-            return !!task.due && isRecurringTask(task);
-          
-          case 'no_date':
-            return !task.due;
-          
-          default:
-            return false;
-        }
-      });
+      
+      // Special cases not in the filtering function
+      if (dateOption === 'scheduled') {
+        return filtered.filter(task => !!task.due && !isRecurringTask(task));
+      }
+      if (dateOption === 'no_date') {
+        return filtered.filter(task => !task.due);
+      }
+      
+      // Use the same filtering function as the counting logic
+      return filterTasksByDateOption(filtered, dateOption);
 
     case 'deadline':
       const deadlineOption = mode.value as string;
-      const currentDate = new Date();
-      const todayDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
-      const weekFromToday = new Date(todayDate);
-      weekFromToday.setDate(todayDate.getDate() + 7);
-
-      return filtered.filter(task => {
-        switch (deadlineOption) {
-          case 'overdue':
-            if (!task.deadline) return false;
-            const deadlineDate = new Date(task.deadline.date);
-            return deadlineDate < todayDate;
-          
-          case 'today':
-            if (!task.deadline) return false;
-            return task.deadline.date === todayDate.toISOString().split('T')[0];
-          
-          case 'next_7_days':
-            if (!task.deadline) return false;
-            const taskDeadline = new Date(task.deadline.date);
-            return taskDeadline >= todayDate && taskDeadline <= weekFromToday;
-          
-          case 'upcoming':
-            if (!task.deadline) return false;
-            const upcomingDeadline = new Date(task.deadline.date);
-            return upcomingDeadline > weekFromToday;
-          
-          case 'no_deadline':
-            return !task.deadline;
-          
-          default:
-            return false;
-        }
-      });
+      
+      // Special case for no_deadline which isn't in the filtering function
+      if (deadlineOption === 'no_deadline') {
+        return filtered.filter(task => !task.deadline);
+      }
+      
+      // Use the same filtering function as the counting logic
+      return filterTasksByDeadlineOption(filtered, deadlineOption);
 
     case 'preset':
       const presetId = mode.value as string;

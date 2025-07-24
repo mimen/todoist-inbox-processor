@@ -6,62 +6,118 @@ import { DATE_OPTIONS } from '@/constants/date-options'
 import { useDropdownOptions } from './useDropdownOptions'
 
 /**
+ * Get local date string in YYYY-MM-DD format
+ */
+function getLocalDateString(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+/**
  * Check if a date is overdue
  */
 function isOverdue(dateString: string): boolean {
-  const date = new Date(dateString)
+  const dateOnly = dateString.split('T')[0]
   const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  date.setHours(0, 0, 0, 0)
-  return date < today
+  const todayStr = getLocalDateString(today)
+  return dateOnly < todayStr
 }
 
 /**
  * Check if a date is today
  */
 function isToday(dateString: string): boolean {
-  const date = new Date(dateString)
+  const dateOnly = dateString.split('T')[0]
   const today = new Date()
-  return date.toDateString() === today.toDateString()
+  const todayStr = getLocalDateString(today)
+  return dateOnly === todayStr
 }
 
 /**
  * Check if a date is tomorrow
  */
 function isTomorrow(dateString: string): boolean {
-  const date = new Date(dateString)
+  const dateOnly = dateString.split('T')[0]
   const tomorrow = new Date()
   tomorrow.setDate(tomorrow.getDate() + 1)
-  return date.toDateString() === tomorrow.toDateString()
+  const tomorrowStr = getLocalDateString(tomorrow)
+  return dateOnly === tomorrowStr
 }
 
 /**
- * Check if a date is within next 7 days (excluding today and tomorrow)
+ * Check if a date is within next 7 days (including today)
  */
 function isNext7Days(dateString: string): boolean {
-  const date = new Date(dateString)
+  const dateOnly = dateString.split('T')[0]
   const today = new Date()
-  const dayAfterTomorrow = new Date()
-  dayAfterTomorrow.setDate(today.getDate() + 2)
-  const nextWeek = new Date()
+  const todayStr = getLocalDateString(today)
+  const nextWeek = new Date(today)
   nextWeek.setDate(today.getDate() + 7)
+  const nextWeekStr = getLocalDateString(nextWeek)
   
-  date.setHours(0, 0, 0, 0)
-  dayAfterTomorrow.setHours(0, 0, 0, 0)
-  nextWeek.setHours(23, 59, 59, 999)
-  
-  return date >= dayAfterTomorrow && date <= nextWeek
+  return dateOnly >= todayStr && dateOnly <= nextWeekStr
 }
 
 /**
  * Check if a date is future (beyond 7 days)
  */
 function isFuture(dateString: string): boolean {
-  const date = new Date(dateString)
+  const dateOnly = dateString.split('T')[0]
   const nextWeek = new Date()
   nextWeek.setDate(nextWeek.getDate() + 7)
-  nextWeek.setHours(23, 59, 59, 999)
-  return date > nextWeek
+  const nextWeekStr = getLocalDateString(nextWeek)
+  return dateOnly > nextWeekStr
+}
+
+/**
+ * Filter tasks by date option
+ * Note: Expects tasks to already have exclusions applied (archived/excluded labels)
+ */
+export function filterTasksByDateOption(tasks: TodoistTask[], optionId: string): TodoistTask[] {
+  switch (optionId) {
+    case 'overdue':
+      return tasks.filter(task => {
+        if (!task.due) return false
+        const dateStr = task.due.date
+        return isOverdue(dateStr)
+      })
+    
+    case 'today':
+      return tasks.filter(task => {
+        if (!task.due) return false
+        const dateStr = task.due.date
+        return isToday(dateStr)
+      })
+    
+    case 'tomorrow':
+      return tasks.filter(task => {
+        if (!task.due) return false
+        const dateStr = task.due.date
+        return isTomorrow(dateStr)
+      })
+    
+    case 'next_7_days':
+      return tasks.filter(task => {
+        if (!task.due) return false
+        const dateStr = task.due.date
+        return isNext7Days(dateStr)
+      })
+    
+    case 'future':
+      return tasks.filter(task => {
+        if (!task.due) return false
+        const dateStr = task.due.date
+        return isFuture(dateStr)
+      })
+    
+    case 'recurring':
+      return tasks.filter(task => task.due?.recurring === true)
+    
+    default:
+      return []
+  }
 }
 
 /**
@@ -76,28 +132,9 @@ export function useDateOptions(
   return useMemo(() => {
     // Calculate counts for each date range
     const optionsWithCounts = DATE_OPTIONS.map(dateOption => {
-      let count = 0
-
-      switch (dateOption.id) {
-        case 'overdue':
-          count = calculateCount(task => !!task.due && isOverdue(task.due.date))
-          break
-        case 'today':
-          count = calculateCount(task => !!task.due && isToday(task.due.date))
-          break
-        case 'tomorrow':
-          count = calculateCount(task => !!task.due && isTomorrow(task.due.date))
-          break
-        case 'next_7_days':
-          count = calculateCount(task => !!task.due && isNext7Days(task.due.date))
-          break
-        case 'future':
-          count = calculateCount(task => !!task.due && isFuture(task.due.date))
-          break
-        case 'recurring':
-          count = calculateCount(task => task.due?.recurring === true)
-          break
-      }
+      // Use the same filtering function for consistency
+      const matchingTasks = filterTasksByDateOption(tasks, dateOption.id)
+      const count = matchingTasks.length
 
       return {
         ...dateOption,

@@ -167,7 +167,7 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
               <RadioGroupItem value={option.type} id={option.type} />
               <Label 
                 htmlFor={option.type} 
-                className="cursor-pointer font-normal flex items-center gap-1"
+                className="cursor-pointer font-normal flex items-center gap-1 text-gray-700"
               >
                 <span>{option.label}</span>
               </Label>
