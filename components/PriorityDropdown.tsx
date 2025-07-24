@@ -1,11 +1,12 @@
 'use client';
 
-import React, { forwardRef, useImperativeHandle, useRef, useMemo } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef } from 'react';
 import { TodoistTask } from '@/lib/types';
 import UnifiedDropdown from './UnifiedDropdown';
 import { UnifiedDropdownRef } from '@/types/dropdown';
 import { usePriorityOptions } from '@/hooks/usePriorityOptions';
 import { useQueueConfig } from '@/hooks/useQueueConfig';
+import { getDropdownConfig } from '@/utils/dropdown-config';
 
 interface PriorityDropdownProps {
   selectedPriority: string;
@@ -20,41 +21,21 @@ const PriorityDropdown = forwardRef<any, PriorityDropdownProps>(({
 }: PriorityDropdownProps, ref) => {
   const dropdownRef = useRef<UnifiedDropdownRef>(null);
   const queueConfig = useQueueConfig();
+  
+  const priorityOptions = usePriorityOptions(allTasks, queueConfig.standardModes.priority);
+  const config = getDropdownConfig('priority', queueConfig);
 
-  // Get priority options using the hook
-  const priorityOptions = usePriorityOptions(
-    allTasks,
-    queueConfig.standardModes.priority
-  );
-
-  // Expose openDropdown method via ref
   useImperativeHandle(ref, () => ({
-    openDropdown: () => {
-      dropdownRef.current?.openDropdown();
-    }
+    openDropdown: () => dropdownRef.current?.openDropdown()
   }));
-
-  // Calculate display name for consistency
-  const getDisplayName = (value: string) => {
-    const option = priorityOptions.find(opt => opt.id === value);
-    return option?.label || 'Select priority...';
-  };
 
   return (
     <UnifiedDropdown
       ref={dropdownRef}
       options={priorityOptions}
-      config={{
-        selectionMode: queueConfig.standardModes.priority.multiSelect ? 'multi' : 'single',
-        showSearch: false,
-        showCounts: true,
-        hierarchical: false,
-        placeholder: 'Select priority...'
-      }}
+      config={config}
       value={selectedPriority}
-      onChange={(value, displayName) => {
-        onPriorityChange(value as string, displayName);
-      }}
+      onChange={(value, displayName) => onPriorityChange(value as string, displayName)}
     />
   );
 });

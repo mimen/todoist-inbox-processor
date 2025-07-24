@@ -1,15 +1,12 @@
 'use client';
 
-import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef } from 'react';
 import { TodoistTask } from '@/lib/types';
-
-export interface TodoistFilter {
-  id: string;
-  name: string;
-  query: string;
-  color?: string;
-  is_favorite?: boolean;
-}
+import UnifiedDropdown from './UnifiedDropdown';
+import { UnifiedDropdownRef } from '@/types/dropdown';
+import { useFilterOptions, TodoistFilter } from '@/hooks/useFilterOptions';
+import { useQueueConfig } from '@/hooks/useQueueConfig';
+import { getDropdownConfig } from '@/utils/dropdown-config';
 
 interface FilterDropdownProps {
   selectedFilter: string;
@@ -24,101 +21,32 @@ const FilterDropdown = forwardRef<any, FilterDropdownProps>(({
   allTasks,
   filters
 }: FilterDropdownProps, ref) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<UnifiedDropdownRef>(null);
+  const queueConfig = useQueueConfig();
+  
+  const filterOptions = useFilterOptions(filters, allTasks, queueConfig.standardModes.preset);
+  const config = getDropdownConfig('preset', queueConfig, { placeholder: 'Select filter...' });
 
-  // Expose openDropdown method via ref
   useImperativeHandle(ref, () => ({
-    openDropdown: () => {
-      setIsOpen(true);
-    }
+    openDropdown: () => dropdownRef.current?.openDropdown()
   }));
 
-  // Get current filter display
-  const currentFilter = filters.find(f => f.id === selectedFilter);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+  const handleFilterChange = (value: string | string[], displayName: string) => {
+    const filterId = Array.isArray(value) ? value[0] : value;
+    const filter = filters.find(f => f.id === filterId);
+    if (filter) {
+      onFilterChange(filter.id, filter.name, filter.query);
     }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isOpen]);
-
-  const handleSelect = (filter: TodoistFilter) => {
-    onFilterChange(filter.id, filter.name, filter.query);
-    setIsOpen(false);
   };
 
   return (
-    <div className="relative" ref={dropdownRef}>
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-md transition-colors"
-      >
-        <div className="flex items-center space-x-3">
-          <span>✨</span>
-          <span className="font-medium text-gray-900">
-            {currentFilter ? currentFilter.name : 'Select filter...'}
-          </span>
-        </div>
-        <svg 
-          className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-          fill="none" 
-          stroke="currentColor" 
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-
-      {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50">
-          <div className="max-h-64 overflow-y-auto">
-            {filters.length === 0 ? (
-              <div className="p-3 text-center text-gray-500 text-sm">
-                No saved filters found
-              </div>
-            ) : (
-              filters.map((filter) => {
-                const isSelected = selectedFilter === filter.id;
-
-                return (
-                  <button
-                    key={filter.id}
-                    onClick={() => handleSelect(filter)}
-                    className={`
-                      w-full p-3 text-left hover:bg-gray-50 transition-colors
-                      flex items-center justify-between
-                      ${isSelected ? 'bg-blue-50 text-blue-900' : 'text-gray-900'}
-                    `}
-                  >
-                    <div className="flex items-center gap-2">
-                      {filter.is_favorite && <span>⭐</span>}
-                      <span className={isSelected ? 'font-medium' : ''}>
-                        {filter.name}
-                      </span>
-                    </div>
-                    <span className="text-xs text-gray-500 max-w-xs truncate">
-                      {filter.query}
-                    </span>
-                  </button>
-                );
-              })
-            )}
-          </div>
-        </div>
-      )}
-    </div>
+    <UnifiedDropdown
+      ref={dropdownRef}
+      options={filterOptions}
+      config={config}
+      value={selectedFilter}
+      onChange={handleFilterChange}
+    />
   );
 })
 

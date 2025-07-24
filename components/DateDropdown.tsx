@@ -6,6 +6,7 @@ import UnifiedDropdown from './UnifiedDropdown';
 import { UnifiedDropdownRef } from '@/types/dropdown';
 import { useDateOptions } from '@/hooks/useDateOptions';
 import { useQueueConfig } from '@/hooks/useQueueConfig';
+import { getDropdownConfig } from '@/utils/dropdown-config';
 
 interface DateDropdownProps {
   selectedDate: string;
@@ -20,31 +21,19 @@ const DateDropdown = forwardRef<any, DateDropdownProps>(({
 }: DateDropdownProps, ref) => {
   const dropdownRef = useRef<UnifiedDropdownRef>(null);
   const queueConfig = useQueueConfig();
+  
+  const dateOptions = useDateOptions(allTasks, queueConfig.standardModes.date);
+  const config = getDropdownConfig('date', queueConfig);
 
-  // Get date options using the hook
-  const dateOptions = useDateOptions(
-    allTasks,
-    queueConfig.standardModes.date
-  );
-
-  // Expose openDropdown method via ref
   useImperativeHandle(ref, () => ({
-    openDropdown: () => {
-      dropdownRef.current?.openDropdown();
-    }
+    openDropdown: () => dropdownRef.current?.openDropdown()
   }));
 
   return (
     <UnifiedDropdown
       ref={dropdownRef}
       options={dateOptions}
-      config={{
-        selectionMode: queueConfig.standardModes.date.multiSelect ? 'multi' : 'single',
-        showSearch: false,
-        showCounts: true,
-        hierarchical: false,
-        placeholder: 'Select date range...'
-      }}
+      config={config}
       value={selectedDate}
       onChange={(value, displayName) => {
         onDateChange(value as string, displayName);

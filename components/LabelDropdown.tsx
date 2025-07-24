@@ -7,6 +7,7 @@ import { UnifiedDropdownRef } from '@/types/dropdown';
 import { useLabelOptions } from '@/hooks/useLabelOptions';
 import { useQueueConfig } from '@/hooks/useQueueConfig';
 import { useDropdownAdapter } from '@/hooks/useDropdownAdapter';
+import { getDropdownConfig } from '@/utils/dropdown-config';
 
 interface LabelDropdownProps {
   selectedLabels: string[];
@@ -60,17 +61,13 @@ const LabelDropdown = forwardRef<any, LabelDropdownProps>(({
     }
   );
 
+  const config = getDropdownConfig('label', queueConfig);
+
   return (
     <UnifiedDropdown
       ref={dropdownRef}
       options={labelOptions}
-      config={{
-        selectionMode: queueConfig.standardModes.label?.multiSelect ? 'multi' : 'single',
-        showSearch: true,
-        showCounts: true,
-        hierarchical: false,
-        placeholder: 'Select labels...'
-      }}
+      config={config}
       value={dropdownValue}
       onChange={handleDropdownChange}
     />

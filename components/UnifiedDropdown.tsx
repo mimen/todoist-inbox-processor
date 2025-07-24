@@ -7,7 +7,16 @@ import {
   DropdownConfig, 
   UnifiedDropdownRef 
 } from '@/types/dropdown'
+import { ProcessingModeType } from '@/types/processing-mode'
 import OptionIcon from './OptionIcon'
+import { useQueueConfig } from '@/hooks/useQueueConfig'
+import { useProjectOptions } from '@/hooks/useProjectOptions'
+import { usePriorityOptions } from '@/hooks/usePriorityOptions'
+import { useLabelOptions } from '@/hooks/useLabelOptions'
+import { useDateOptions } from '@/hooks/useDateOptions'
+import { useDeadlineOptions } from '@/hooks/useDeadlineOptions'
+import { usePresetOptions } from '@/hooks/usePresetOptions'
+import { useAllOptions } from '@/hooks/useAllOptions'
 
 interface UnifiedDropdownProps {
   options: DropdownOption[]
