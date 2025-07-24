@@ -176,6 +176,12 @@ const ProjectDropdown = forwardRef<any, ProjectDropdownProps>(({
   )
 
   const selectedProject = projectHierarchy.find(p => p.id === selectedProjectId)
+  
+  // Calculate total tasks when no specific project is selected
+  const totalTasks = Object.values(taskCounts).reduce((sum, count) => sum + count, 0);
+  const displayCount = selectedProject && taskCounts[selectedProjectId] !== undefined 
+    ? taskCounts[selectedProjectId] 
+    : totalTasks;
 
   // Handle keyboard navigation
   useEffect(() => {
@@ -252,11 +258,17 @@ const ProjectDropdown = forwardRef<any, ProjectDropdownProps>(({
               ></div>
               <span className="font-medium text-gray-900">{selectedProject.name}</span>
               <span className="text-gray-500">
-                ({taskCounts[selectedProjectId] || 0})
+                ({displayCount})
               </span>
             </>
           ) : (
-            <span className="text-gray-500">{placeholder}</span>
+            <>
+              <div className="w-4 h-4 rounded-full flex-shrink-0 bg-gray-400"></div>
+              <span className="text-gray-500">{placeholder}</span>
+              <span className="text-gray-500">
+                ({displayCount})
+              </span>
+            </>
           )}
         </div>
         <svg 

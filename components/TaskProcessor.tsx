@@ -407,9 +407,28 @@ export default function TaskProcessor() {
   }, [projectHierarchy, setToast, assigneeFilter, currentUserId, projectMetadata])
 
 
+  // Helper function to check if processing mode has a meaningful value to filter by
+  const hasMeaningfulValue = (mode: ProcessingMode): boolean => {
+    if (!mode.value) return false;
+    
+    // Handle different value types
+    if (Array.isArray(mode.value)) {
+      return mode.value.length > 0;
+    }
+    
+    // Check for placeholder/empty values
+    const placeholderValues = [
+      'Select project...', 'Select priority...', 'Select labels...',
+      'Select date...', 'Select deadline...', 'Select preset...', 'Select all...',
+      ''
+    ];
+    
+    return !placeholderValues.includes(mode.value as string);
+  };
+
   // Load tasks when processing mode or assignee filter changes
   useEffect(() => {
-    if (processingMode.value && (processingMode.type === 'filter' || allTasksGlobal.length > 0)) {
+    if (hasMeaningfulValue(processingMode) && (processingMode.type === 'filter' || allTasksGlobal.length > 0)) {
       loadTasksForMode(processingMode)
     }
   }, [processingMode, loadTasksForMode, assigneeFilter])

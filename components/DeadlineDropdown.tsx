@@ -71,7 +71,11 @@ const DeadlineDropdown = forwardRef<any, DeadlineDropdownProps>(({
   }, {} as Record<string, number>);
 
   // Get current deadline option display
-  const currentOption = DEADLINE_OPTIONS.find(d => d.value === selectedDeadline) || DEADLINE_OPTIONS[0];
+  const currentOption = DEADLINE_OPTIONS.find(d => d.value === selectedDeadline);
+  
+  // Calculate total tasks across all deadline options when no specific deadline is selected
+  const totalTasks = Object.values(deadlineCounts).reduce((sum, count) => sum + count, 0);
+  const displayCount = currentOption ? deadlineCounts[selectedDeadline] || 0 : totalTasks;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -89,20 +93,42 @@ const DeadlineDropdown = forwardRef<any, DeadlineDropdownProps>(({
     };
   }, [isOpen]);
 
-  // Focus dropdown list when it opens
-  useEffect(() => {
-    if (isOpen && listRef.current) {
-      setTimeout(() => {
-        listRef.current?.focus();
-      }, 0);
-    }
-  }, [isOpen]);
-
-
   const handleSelect = (option: typeof DEADLINE_OPTIONS[0]) => {
     onDeadlineChange(option.value, option.label);
     setIsOpen(false);
   };
+
+  // Handle keyboard navigation
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          setKeyboardSelectedIndex(prev => Math.min(prev + 1, DEADLINE_OPTIONS.length - 1));
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          setKeyboardSelectedIndex(prev => Math.max(prev - 1, 0));
+          break;
+        case 'Enter':
+          e.preventDefault();
+          const selected = DEADLINE_OPTIONS[keyboardSelectedIndex];
+          if (selected) {
+            handleSelect(selected);
+          }
+          break;
+        case 'Escape':
+          e.preventDefault();
+          setIsOpen(false);
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, keyboardSelectedIndex, handleSelect]);
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -112,12 +138,14 @@ const DeadlineDropdown = forwardRef<any, DeadlineDropdownProps>(({
         className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-md transition-colors"
       >
         <div className="flex items-center space-x-3">
-          <span className={currentOption.color}>
-            {currentOption.icon}
+          <span className={currentOption ? currentOption.color : 'text-gray-500'}>
+            {currentOption ? currentOption.icon : '⏰'}
           </span>
-          <span className="font-medium text-gray-900">{currentOption.label}</span>
+          <span className="font-medium text-gray-900">
+            {currentOption ? currentOption.label : 'Select deadline...'}
+          </span>
           <span className="text-gray-500">
-            ({deadlineCounts[selectedDeadline] || 0})
+            ({displayCount})
           </span>
         </div>
         <svg 
@@ -132,29 +160,7 @@ const DeadlineDropdown = forwardRef<any, DeadlineDropdownProps>(({
 
       {isOpen && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50">
-          <div ref={listRef} className="max-h-64 overflow-y-auto" tabIndex={-1} onKeyDown={(e) => {
-            switch (e.key) {
-              case 'ArrowDown':
-                e.preventDefault();
-                setKeyboardSelectedIndex(prev => Math.min(prev + 1, DEADLINE_OPTIONS.length - 1));
-                break;
-              case 'ArrowUp':
-                e.preventDefault();
-                setKeyboardSelectedIndex(prev => Math.max(prev - 1, 0));
-                break;
-              case 'Enter':
-                e.preventDefault();
-                const selected = DEADLINE_OPTIONS[keyboardSelectedIndex];
-                if (selected) {
-                  handleSelect(selected);
-                }
-                break;
-              case 'Escape':
-                e.preventDefault();
-                setIsOpen(false);
-                break;
-            }
-          }}>
+          <div ref={listRef} className="max-h-64 overflow-y-auto">
             {DEADLINE_OPTIONS.map((option, index) => {
               const count = deadlineCounts[option.value] || 0;
               const isCurrentDeadline = selectedDeadline === option.value;

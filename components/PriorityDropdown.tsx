@@ -42,6 +42,12 @@ const PriorityDropdown = forwardRef<any, PriorityDropdownProps>(({
 
   // Get current priority display
   const currentPriority = PRIORITY_LEVELS.find(p => p.value === selectedPriority) || PRIORITY_LEVELS[0];
+  
+  // Calculate total tasks when no specific priority is selected
+  const totalTasks = Object.values(priorityCounts).reduce((sum, count) => sum + count, 0);
+  const displayCount = selectedPriority && priorityCounts[selectedPriority] !== undefined 
+    ? priorityCounts[selectedPriority] 
+    : totalTasks;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -114,9 +120,11 @@ const PriorityDropdown = forwardRef<any, PriorityDropdownProps>(({
       >
         <div className="flex items-center space-x-3">
           <PriorityFlag priority={parseInt(currentPriority.value) as 1 | 2 | 3 | 4} />
-          <span className="font-medium text-gray-900">{currentPriority.label}</span>
+          <span className="font-medium text-gray-900">
+            {selectedPriority ? currentPriority.label : 'Select priority...'}
+          </span>
           <span className="text-gray-500">
-            ({priorityCounts[selectedPriority] || 0})
+            ({displayCount})
           </span>
         </div>
         <svg 

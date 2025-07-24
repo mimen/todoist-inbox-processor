@@ -95,7 +95,11 @@ const DateDropdown = forwardRef<any, DateDropdownProps>(({
   }, {} as Record<string, number>);
 
   // Get current date option display
-  const currentOption = DATE_OPTIONS.find(d => d.value === selectedDate) || DATE_OPTIONS[0];
+  const currentOption = DATE_OPTIONS.find(d => d.value === selectedDate);
+  
+  // Calculate total tasks across all date options when no specific date is selected
+  const totalTasks = Object.values(dateCounts).reduce((sum, count) => sum + count, 0);
+  const displayCount = currentOption ? dateCounts[selectedDate] || 0 : totalTasks;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -113,20 +117,42 @@ const DateDropdown = forwardRef<any, DateDropdownProps>(({
     };
   }, [isOpen]);
 
-  // Focus dropdown list when it opens
-  useEffect(() => {
-    if (isOpen && listRef.current) {
-      setTimeout(() => {
-        listRef.current?.focus();
-      }, 0);
-    }
-  }, [isOpen]);
-
-
   const handleSelect = (option: typeof DATE_OPTIONS[0]) => {
     onDateChange(option.value, option.label);
     setIsOpen(false);
   };
+
+  // Handle keyboard navigation
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          setKeyboardSelectedIndex(prev => Math.min(prev + 1, DATE_OPTIONS.length - 1));
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          setKeyboardSelectedIndex(prev => Math.max(prev - 1, 0));
+          break;
+        case 'Enter':
+          e.preventDefault();
+          const selected = DATE_OPTIONS[keyboardSelectedIndex];
+          if (selected) {
+            handleSelect(selected);
+          }
+          break;
+        case 'Escape':
+          e.preventDefault();
+          setIsOpen(false);
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, keyboardSelectedIndex, handleSelect]);
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -136,12 +162,14 @@ const DateDropdown = forwardRef<any, DateDropdownProps>(({
         className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-md transition-colors"
       >
         <div className="flex items-center space-x-3">
-          <span className={currentOption.color}>
-            {currentOption.icon}
+          <span className={currentOption ? currentOption.color : 'text-gray-500'}>
+            {currentOption ? currentOption.icon : '📅'}
           </span>
-          <span className="font-medium text-gray-900">{currentOption.label}</span>
+          <span className="font-medium text-gray-900">
+            {currentOption ? currentOption.label : 'Select date...'}
+          </span>
           <span className="text-gray-500">
-            ({dateCounts[selectedDate] || 0})
+            ({displayCount})
           </span>
         </div>
         <svg 
@@ -156,29 +184,7 @@ const DateDropdown = forwardRef<any, DateDropdownProps>(({
 
       {isOpen && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50">
-          <div ref={listRef} className="max-h-64 overflow-y-auto" tabIndex={-1} onKeyDown={(e) => {
-            switch (e.key) {
-              case 'ArrowDown':
-                e.preventDefault();
-                setKeyboardSelectedIndex(prev => Math.min(prev + 1, DATE_OPTIONS.length - 1));
-                break;
-              case 'ArrowUp':
-                e.preventDefault();
-                setKeyboardSelectedIndex(prev => Math.max(prev - 1, 0));
-                break;
-              case 'Enter':
-                e.preventDefault();
-                const selected = DATE_OPTIONS[keyboardSelectedIndex];
-                if (selected) {
-                  handleSelect(selected);
-                }
-                break;
-              case 'Escape':
-                e.preventDefault();
-                setIsOpen(false);
-                break;
-            }
-          }}>
+          <div ref={listRef} className="max-h-64 overflow-y-auto">
             {DATE_OPTIONS.map((option, index) => {
               const count = dateCounts[option.value] || 0;
               const isSelected = selectedDate === option.value;

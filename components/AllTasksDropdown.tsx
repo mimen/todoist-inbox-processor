@@ -49,20 +49,42 @@ const AllTasksDropdown = forwardRef<any, AllTasksDropdownProps>(({
     };
   }, [isOpen]);
 
-  // Focus dropdown list when it opens
-  useEffect(() => {
-    if (isOpen && listRef.current) {
-      setTimeout(() => {
-        listRef.current?.focus();
-      }, 0);
-    }
-  }, [isOpen]);
-
-
   const handleSelect = (option: typeof SORT_OPTIONS[0]) => {
     onSortChange(option.value, option.label);
     setIsOpen(false);
   };
+
+  // Handle keyboard navigation
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          setSelectedIndex(prev => Math.min(prev + 1, SORT_OPTIONS.length - 1));
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          setSelectedIndex(prev => Math.max(prev - 1, 0));
+          break;
+        case 'Enter':
+          e.preventDefault();
+          const selected = SORT_OPTIONS[selectedIndex];
+          if (selected) {
+            handleSelect(selected);
+          }
+          break;
+        case 'Escape':
+          e.preventDefault();
+          setIsOpen(false);
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, selectedIndex, handleSelect]);
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -90,29 +112,7 @@ const AllTasksDropdown = forwardRef<any, AllTasksDropdownProps>(({
 
       {isOpen && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50">
-          <div ref={listRef} className="max-h-64 overflow-y-auto" tabIndex={-1} onKeyDown={(e) => {
-            switch (e.key) {
-              case 'ArrowDown':
-                e.preventDefault();
-                setSelectedIndex(prev => Math.min(prev + 1, SORT_OPTIONS.length - 1));
-                break;
-              case 'ArrowUp':
-                e.preventDefault();
-                setSelectedIndex(prev => Math.max(prev - 1, 0));
-                break;
-              case 'Enter':
-                e.preventDefault();
-                const selected = SORT_OPTIONS[selectedIndex];
-                if (selected) {
-                  handleSelect(selected);
-                }
-                break;
-              case 'Escape':
-                e.preventDefault();
-                setIsOpen(false);
-                break;
-            }
-          }}>
+          <div ref={listRef} className="max-h-64 overflow-y-auto">
             {SORT_OPTIONS.map((option, index) => {
               const isCurrentSort = selectedSort === option.value;
               const isKeyboardSelected = index === selectedIndex;

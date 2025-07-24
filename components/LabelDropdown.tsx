@@ -85,31 +85,37 @@ const LabelDropdown = forwardRef<any, LabelDropdownProps>(({
     setSelectedIndex(0);
   }, [filteredLabels]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  // Handle keyboard navigation
+  useEffect(() => {
     if (!isOpen) return;
 
-    switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault();
-        setSelectedIndex((prev) => (prev + 1) % filteredLabels.length);
-        break;
-      case 'ArrowUp':
-        e.preventDefault();
-        setSelectedIndex((prev) => (prev - 1 + filteredLabels.length) % filteredLabels.length);
-        break;
-      case 'Enter':
-        e.preventDefault();
-        if (filteredLabels[selectedIndex]) {
-          toggleLabel(filteredLabels[selectedIndex]);
-        }
-        break;
-      case 'Escape':
-        e.preventDefault();
-        setIsOpen(false);
-        setSearchTerm('');
-        break;
-    }
-  };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          setSelectedIndex((prev) => (prev + 1) % filteredLabels.length);
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          setSelectedIndex((prev) => (prev - 1 + filteredLabels.length) % filteredLabels.length);
+          break;
+        case 'Enter':
+          e.preventDefault();
+          if (filteredLabels[selectedIndex]) {
+            toggleLabel(filteredLabels[selectedIndex]);
+          }
+          break;
+        case 'Escape':
+          e.preventDefault();
+          setIsOpen(false);
+          setSearchTerm('');
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, selectedIndex, filteredLabels]);
 
   const toggleLabel = (label: string) => {
     const newLabels = selectedLabels.includes(label)
@@ -137,6 +143,10 @@ const LabelDropdown = forwardRef<any, LabelDropdownProps>(({
     ).length;
   };
 
+  // Calculate total tasks across all labels when no specific labels are selected
+  const totalTasks = Object.values(labelCounts).reduce((sum, count) => sum + count, 0);
+  const displayCount = selectedLabels.length > 0 ? getSelectedCount() : totalTasks;
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
@@ -153,11 +163,9 @@ const LabelDropdown = forwardRef<any, LabelDropdownProps>(({
               ? `@${selectedLabels[0]}`
               : `${selectedLabels.length} labels`}
           </span>
-          {selectedLabels.length > 0 && (
-            <span className="text-gray-500">
-              ({getSelectedCount()})
-            </span>
-          )}
+          <span className="text-gray-500">
+            ({displayCount})
+          </span>
         </div>
         <svg 
           className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
@@ -177,7 +185,6 @@ const LabelDropdown = forwardRef<any, LabelDropdownProps>(({
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyDown={handleKeyDown}
               placeholder="Search labels..."
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-todoist-blue focus:border-transparent text-sm"
               autoFocus

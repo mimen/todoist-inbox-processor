@@ -47,22 +47,6 @@ const PresetDropdown = forwardRef<any, PresetDropdownProps>(({
     }
   }, [isOpen])
 
-  // Focus dropdown list when it opens
-  useEffect(() => {
-    if (isOpen && listRef.current) {
-      setTimeout(() => {
-        listRef.current?.focus();
-      }, 0);
-    }
-  }, [isOpen])
-
-  const selectedFilter = PRESET_FILTERS.find(f => f.id === selectedPreset)
-
-  const handlePresetSelect = (preset: PresetFilter) => {
-    onPresetChange(preset.id, preset.name)
-    setIsOpen(false)
-  }
-
   // Calculate task counts for each preset
   const getTaskCount = (preset: PresetFilter) => {
     // Filter out archived tasks first (those starting with "* ")
@@ -80,6 +64,51 @@ const PresetDropdown = forwardRef<any, PresetDropdownProps>(({
     return count
   }
 
+  const selectedFilter = PRESET_FILTERS.find(f => f.id === selectedPreset)
+  
+  // Calculate total tasks across all presets when no specific preset is selected
+  const totalTasks = PRESET_FILTERS.reduce((sum, preset) => {
+    return sum + getTaskCount(preset)
+  }, 0)
+  const displayCount = selectedFilter ? getTaskCount(selectedFilter) : totalTasks
+
+  const handlePresetSelect = (preset: PresetFilter) => {
+    onPresetChange(preset.id, preset.name)
+    setIsOpen(false)
+  }
+
+  // Handle keyboard navigation
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          setKeyboardSelectedIndex(prev => Math.min(prev + 1, PRESET_FILTERS.length - 1));
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          setKeyboardSelectedIndex(prev => Math.max(prev - 1, 0));
+          break;
+        case 'Enter':
+          e.preventDefault();
+          const selected = PRESET_FILTERS[keyboardSelectedIndex];
+          if (selected) {
+            handlePresetSelect(selected);
+          }
+          break;
+        case 'Escape':
+          e.preventDefault();
+          setIsOpen(false);
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, keyboardSelectedIndex, handlePresetSelect])
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
@@ -88,17 +117,15 @@ const PresetDropdown = forwardRef<any, PresetDropdownProps>(({
         className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-md transition-colors"
       >
         <div className="flex items-center space-x-3">
-          {selectedFilter ? (
-            <>
-              <span className="text-lg">{selectedFilter.icon}</span>
-              <span className="font-medium text-gray-900">{selectedFilter.name}</span>
-              <span className="text-gray-500">
-                ({getTaskCount(selectedFilter)})
-              </span>
-            </>
-          ) : (
-            <span className="text-gray-500">Select preset filter...</span>
-          )}
+          <span className="text-lg">
+            {selectedFilter ? selectedFilter.icon : '📋'}
+          </span>
+          <span className="font-medium text-gray-900">
+            {selectedFilter ? selectedFilter.name : 'Select preset filter...'}
+          </span>
+          <span className="text-gray-500">
+            ({displayCount})
+          </span>
         </div>
         <svg 
           className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
@@ -112,29 +139,7 @@ const PresetDropdown = forwardRef<any, PresetDropdownProps>(({
 
       {isOpen && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50">
-          <div ref={listRef} className="max-h-64 overflow-y-auto" tabIndex={-1} onKeyDown={(e) => {
-            switch (e.key) {
-              case 'ArrowDown':
-                e.preventDefault();
-                setKeyboardSelectedIndex(prev => Math.min(prev + 1, PRESET_FILTERS.length - 1));
-                break;
-              case 'ArrowUp':
-                e.preventDefault();
-                setKeyboardSelectedIndex(prev => Math.max(prev - 1, 0));
-                break;
-              case 'Enter':
-                e.preventDefault();
-                const selected = PRESET_FILTERS[keyboardSelectedIndex];
-                if (selected) {
-                  handlePresetSelect(selected);
-                }
-                break;
-              case 'Escape':
-                e.preventDefault();
-                setIsOpen(false);
-                break;
-            }
-          }}>
+          <div ref={listRef} className="max-h-64 overflow-y-auto">
             {PRESET_FILTERS.map((preset, index) => {
               const taskCount = getTaskCount(preset)
               return (

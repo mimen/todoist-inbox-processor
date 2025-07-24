@@ -54,49 +54,25 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
   const allTasksDropdownRef = useRef<any>(null);
 
   const handleModeTypeChange = (newType: ProcessingModeType) => {
-    // Reset value when changing mode type
-    let defaultValue: string | string[] = '';
-    let defaultDisplayName = '';
-
-    // Always default to inbox for project mode
-    const inboxProject = projects.find(p => p.isInboxProject);
-    const inboxId = inboxProject?.id || '2339440032';
+    // Change mode type and clear the value so tasks don't reload until user selects something
+    let emptyValue: string | string[];
+    let placeholderDisplayName: string;
     
     switch (newType) {
-      case 'project':
-        defaultValue = inboxId;
-        defaultDisplayName = inboxProject?.name || 'Inbox';
-        break;
-      case 'priority':
-        defaultValue = '4';
-        defaultDisplayName = 'Priority 1';
-        break;
       case 'label':
-        defaultValue = [];
-        defaultDisplayName = 'Select labels...';
+        emptyValue = [];
+        placeholderDisplayName = 'Select labels...';
         break;
-      case 'date':
-        defaultValue = 'today';
-        defaultDisplayName = 'Today';
-        break;
-      case 'deadline':
-        defaultValue = 'no_deadline';
-        defaultDisplayName = 'No Deadline';
-        break;
-      case 'preset':
-        defaultValue = 'daily-planning';
-        defaultDisplayName = 'Daily Planning';
-        break;
-      case 'all':
-        defaultValue = 'oldest';
-        defaultDisplayName = 'Oldest First';
+      default:
+        emptyValue = '';
+        placeholderDisplayName = `Select ${newType}...`;
         break;
     }
-
+    
     onModeChange({
       type: newType,
-      value: defaultValue,
-      displayName: defaultDisplayName
+      value: emptyValue,
+      displayName: placeholderDisplayName
     });
   };
 
@@ -135,6 +111,7 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
   // Expose methods to parent via ref
   useImperativeHandle(ref, () => ({
     switchToMode: (type: ProcessingModeType) => {
+      // Switch mode type
       handleModeTypeChange(type);
       // Longer delay to ensure the dropdown is rendered and state is updated
       setTimeout(() => {
