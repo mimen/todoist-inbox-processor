@@ -13,10 +13,15 @@ import PresetDropdown from './PresetDropdown';
 import AllTasksDropdown from './AllTasksDropdown';
 import { AssigneeFilterType } from './AssigneeFilter';
 import { TodoistTask, TodoistLabel, TodoistProject } from '@/lib/types';
+import { useQueueProgression } from '@/hooks/useQueueProgression';
+import { useCurrentModeOptions } from '@/hooks/useCurrentModeOptions';
+import { DEFAULT_QUEUE_CONFIG } from '@/constants/queue-config';
+import { QueueProgressionState } from '@/types/queue';
 
 export interface ProcessingModeSelectorRef {
   switchToMode: (type: ProcessingModeType) => void;
   openCurrentDropdown: () => void;
+  queueState: QueueProgressionState;
 }
 
 interface ProcessingModeSelectorProps {
@@ -53,6 +58,40 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
   const presetDropdownRef = useRef<any>(null);
   const allTasksDropdownRef = useRef<any>(null);
 
+  // Filter tasks based on assignee filter for accurate counts
+  const filteredTasks = allTasks.filter(task => {
+    if (assigneeFilter === 'all') return true;
+    
+    switch (assigneeFilter) {
+      case 'unassigned':
+        return !task.assigneeId;
+      case 'assigned-to-me':
+        return task.assigneeId === currentUserId;
+      case 'assigned-to-others':
+        return task.assigneeId && task.assigneeId !== currentUserId;
+      case 'not-assigned-to-others':
+        return !task.assigneeId || task.assigneeId === currentUserId;
+      default:
+        return true;
+    }
+  });
+
+  // Get current mode options
+  const currentModeOptions = useCurrentModeOptions({
+    mode: mode.type,
+    projects,
+    allTasks: filteredTasks,
+    labels,
+    projectMetadata
+  });
+
+  // Use queue progression
+  const queueState = useQueueProgression({
+    mode: mode.type,
+    dropdownOptions: currentModeOptions,
+    config: DEFAULT_QUEUE_CONFIG
+  });
+
   const handleModeTypeChange = (newType: ProcessingModeType) => {
     // Change mode type and clear the value so tasks don't reload until user selects something
     let emptyValue: string | string[];
@@ -67,6 +106,12 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
         emptyValue = '';
         placeholderDisplayName = `Select ${newType}...`;
         break;
+    }
+    
+    // Reset queue progression when changing modes
+    // @ts-ignore - Accessing internal method
+    if (queueState.resetQueueProgress) {
+      queueState.resetQueueProgress();
     }
     
     onModeChange({
@@ -118,10 +163,30 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
         openDropdownByType(type);
       }, 150);
     },
-    openCurrentDropdown
-  }), [mode.type, handleModeTypeChange]);
+    openCurrentDropdown,
+    queueState
+  }), [mode.type, handleModeTypeChange, queueState]);
 
   const handleValueChange = (value: string | string[], displayName: string) => {
+    // Find the index of the selected option in the current queue
+    const selectedIndex = currentModeOptions.findIndex(option => {
+      if (Array.isArray(value)) {
+        // For multi-select (labels), match if the arrays are equal
+        return Array.isArray(option.id) && 
+          value.length === option.id.length && 
+          value.every(v => option.id.includes(v));
+      }
+      return option.id === value;
+    });
+
+    // Jump to the selected queue if found
+    if (selectedIndex !== -1) {
+      // @ts-ignore - Accessing internal method
+      if (queueState.jumpToQueue) {
+        queueState.jumpToQueue(selectedIndex);
+      }
+    }
+
     onModeChange({
       ...mode,
       value,
@@ -133,24 +198,6 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
   const allLabelNames = Array.from(
     new Set(allTasks.flatMap(task => task.labels))
   ).sort();
-  
-  // Filter tasks based on assignee filter for accurate counts
-  const filteredTasks = allTasks.filter(task => {
-    if (assigneeFilter === 'all') return true;
-    
-    switch (assigneeFilter) {
-      case 'unassigned':
-        return !task.assigneeId;
-      case 'assigned-to-me':
-        return task.assigneeId === currentUserId;
-      case 'assigned-to-others':
-        return task.assigneeId && task.assigneeId !== currentUserId;
-      case 'not-assigned-to-others':
-        return !task.assigneeId || task.assigneeId === currentUserId;
-      default:
-        return true;
-    }
-  });
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">

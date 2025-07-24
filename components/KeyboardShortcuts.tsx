@@ -17,6 +17,10 @@ export default function KeyboardShortcuts({ onClose }: KeyboardShortcutsProps) {
       { key: '?', description: 'Show/hide keyboard shortcuts' },
       { key: ['Esc', '`'], description: 'Close any open dialog' },
     ]},
+    { category: 'Queue Management (Empty State)', items: [
+      { key: ['→', 'Enter'], description: 'Continue to next queue' },
+      { key: 'r', description: 'Refresh current queue' },
+    ]},
     { category: 'Processing Mode', items: [
       { key: '1', description: 'Switch to Project mode' },
       { key: '2', description: 'Switch to Priority mode' },

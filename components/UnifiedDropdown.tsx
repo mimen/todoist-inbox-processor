@@ -390,9 +390,16 @@ const OptionItem: React.FC<OptionItemProps> = ({
         ${isKeyboardSelected ? 'bg-gray-100' : ''}
         ${!isSelected && !isKeyboardSelected ? 'hover:bg-gray-50' : ''}
       `}
-      style={{ paddingLeft: `${16 + indent * 20}px` }}
+      style={{ paddingLeft: `${16 + indent * 24}px` }}
     >
       <div className="flex items-center space-x-3">
+        {/* Hierarchy indicator for child items */}
+        {indent > 0 && (
+          <span className="text-gray-400 mr-1">
+            └
+          </span>
+        )}
+        
         {/* Multi-select checkbox */}
         {config.selectionMode === 'multi' && (
           <div className={`

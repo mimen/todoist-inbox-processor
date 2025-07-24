@@ -94,37 +94,29 @@ export function useProjectOptions(
     if (config?.sortBy === 'default' || !config?.sortBy) {
       // Build hierarchy with parent-child relationships
       const rootProjects = regularProjects.filter(p => !p.parentId)
-      const childProjectsMap = new Map<string, TodoistProject[]>()
       
-      // Group children by parent
-      regularProjects.forEach(project => {
-        if (project.parentId) {
-          const siblings = childProjectsMap.get(project.parentId) || []
-          siblings.push(project)
-          childProjectsMap.set(project.parentId, siblings)
-        }
-      })
+      // Sort root projects by order
+      const sortedRootProjects = rootProjects.sort((a, b) => a.order - b.order)
 
       // Recursive function to add project and its children
       const addProjectWithChildren = (project: TodoistProject, indent = 0) => {
         const option = projectToOption(project, indent)
         options.push(option)
 
-        // Add children
-        const children = childProjectsMap.get(project.id) || []
-        children.forEach(child => {
-          const childOption = projectToOption(child, indent + 1)
-          // Add children to parent's children array for hierarchical display
-          if (!option.children) option.children = []
-          option.children.push(childOption)
-          
-          // Also add to flat list for navigation
+        // Find all children of this project
+        const children = regularProjects.filter(p => p.parentId === project.id)
+        
+        // Sort children by order if they exist
+        const sortedChildren = children.sort((a, b) => a.order - b.order)
+        
+        // Recursively add each child
+        sortedChildren.forEach(child => {
           addProjectWithChildren(child, indent + 1)
         })
       }
 
       // Add all root projects and their children
-      rootProjects.forEach(project => addProjectWithChildren(project))
+      sortedRootProjects.forEach(project => addProjectWithChildren(project))
     } else {
       // Flatten all projects for sorting
       const allOptions = regularProjects.map(project => projectToOption(project))

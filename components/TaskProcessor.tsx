@@ -96,6 +96,7 @@ export default function TaskProcessor() {
   const [assigneeFilter, setAssigneeFilter] = useState<AssigneeFilterType>('not-assigned-to-others')
   const [projectCollaborators, setProjectCollaborators] = useState<Record<string, TodoistUser[]>>({})
   const [dateLoadingStates, setDateLoadingStates] = useState<Record<string, 'due' | 'deadline' | null>>({})
+  // Removed showNextQueuePrompt as it's now integrated into empty state
   
   // NEW QUEUE ARCHITECTURE STATE
   // 1. Master task store - continuously updated as changes are made
@@ -514,7 +515,7 @@ export default function TaskProcessor() {
     loadAssigneeData()
   }, [currentTask?.id, currentTask?.assigneeId, collaboratorsData])
   
-  
+  // Removed queue completion detection as it's now integrated into empty state
 
   // NEW QUEUE ARCHITECTURE: Only update master store, queue unchanged
   const autoSaveTask = useCallback(async (taskId: string, updates: TaskUpdate) => {
@@ -1073,10 +1074,66 @@ export default function TaskProcessor() {
     }
   }, [currentTask, activeQueue.length])
 
+  const handleProgressToNextQueue = useCallback(() => {
+    const queueState = processingModeSelectorRef.current?.queueState
+    if (!queueState?.hasNextQueue) return
+    
+    // Get the next queue option BEFORE moving
+    const nextQueue = queueState.nextQueue
+    if (!nextQueue) return
+    
+    // Move to next queue
+    queueState.moveToNextQueue()
+    
+    // Create processing mode from the next queue
+    const newMode: ProcessingMode = {
+      type: processingMode.type,
+      value: Array.isArray(nextQueue.id) ? nextQueue.id : String(nextQueue.id),
+      displayName: nextQueue.label
+    }
+    
+    // Update the processing mode state (this will update the dropdown)
+    setProcessingMode(newMode)
+    
+    // Load tasks for the new queue
+    loadTasksForMode(newMode)
+    
+    // Show success toast
+    setToast({ 
+      message: `Moving to ${nextQueue.label}`, 
+      type: 'info' 
+    })
+  }, [processingMode.type, loadTasksForMode])
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Check if we're in empty state with a next queue available
+      if (!currentTask && totalTasks > 0 && processedTaskIds.length === taskQueue.length) {
+        const queueState = processingModeSelectorRef.current?.queueState
+        
+        // Right arrow or Enter to continue to next queue
+        if (queueState?.hasNextQueue && (e.key === 'ArrowRight' || e.key === 'Enter')) {
+          e.preventDefault()
+          handleProgressToNextQueue()
+          return
+        }
+        
+        // R to refresh current queue
+        if (e.key === 'r' || e.key === 'R') {
+          e.preventDefault()
+          loadTasksForMode(processingMode)
+          return
+        }
+      }
+      
+      // Also handle refresh in empty state with no tasks
+      if (!currentTask && totalTasks === 0 && (e.key === 'r' || e.key === 'R')) {
+        e.preventDefault()
+        loadTasksForMode(processingMode)
+        return
+      }
+      
       // Don't handle shortcuts when overlays are open - they handle their own keys
       if (showPriorityOverlay || showProjectOverlay || showLabelOverlay || showScheduledOverlay || showDeadlineOverlay || showAssigneeOverlay) {
         return
@@ -1190,7 +1247,7 @@ export default function TaskProcessor() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [navigateToNextTask, navigateToPrevTask, showShortcuts, showPriorityOverlay, showProjectOverlay, showLabelOverlay, showScheduledOverlay, showDeadlineOverlay, showAssigneeOverlay, hasCollaboratorsForCurrentProject, handleProcessTask])
+  }, [navigateToNextTask, navigateToPrevTask, showShortcuts, showPriorityOverlay, showProjectOverlay, showLabelOverlay, showScheduledOverlay, showDeadlineOverlay, showAssigneeOverlay, hasCollaboratorsForCurrentProject, handleProcessTask, currentTask, totalTasks, processedTaskIds, taskQueue, handleProgressToNextQueue, processingMode])
 
   // Handle Enter key for confirmation dialogs
   useEffect(() => {
@@ -1315,16 +1372,73 @@ export default function TaskProcessor() {
                   }
                 </p>
                 {totalTasks > 0 && (
-                  <div className="text-sm text-gray-500">
+                  <div className="text-sm text-gray-500 mb-6">
                     Processed: {processedTaskIds.length} • Skipped: {skippedTaskIds.length}
                   </div>
                 )}
-                <button
-                  onClick={() => loadTasksForMode(processingMode)}
-                  className="mt-4 px-4 py-2 bg-todoist-blue text-white rounded-md hover:bg-blue-600 transition-colors"
-                >
-                  Refresh Tasks
-                </button>
+                
+                {/* Queue Progression Options */}
+                {totalTasks > 0 && (() => {
+                  const queueState = processingModeSelectorRef.current?.queueState
+                  if (queueState?.hasNextQueue && queueState.nextQueue) {
+                    return (
+                      <div className="space-y-4">
+                        <div className="flex flex-col gap-3 items-center">
+                          <button
+                            onClick={handleProgressToNextQueue}
+                            className="px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center gap-2"
+                          >
+                            Continue to {queueState.nextQueue.label}
+                            {queueState.nextQueue.count && queueState.nextQueue.count > 0 && (
+                              <span className="text-green-200">({queueState.nextQueue.count} tasks)</span>
+                            )}
+                            <div className="flex items-center gap-1 ml-2">
+                              <kbd className="px-1.5 py-0.5 text-xs bg-green-700 rounded">→</kbd>
+                              <kbd className="px-1.5 py-0.5 text-xs bg-green-700 rounded">↵</kbd>
+                            </div>
+                          </button>
+                          <button
+                            onClick={() => loadTasksForMode(processingMode)}
+                            className="px-4 py-2 text-gray-700 border border-gray-300 bg-white rounded-md hover:bg-gray-50 transition-colors flex items-center gap-2"
+                          >
+                            Refresh Current Queue
+                            <kbd className="ml-1 px-1.5 py-0.5 text-xs bg-gray-100 rounded">R</kbd>
+                          </button>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">
+                          Queue {queueState.queueProgress.current} of {queueState.queueProgress.total} completed
+                        </p>
+                      </div>
+                    )
+                  } else {
+                    // Last queue or no next queue
+                    return (
+                      <div className="space-y-2">
+                        <p className="text-green-600 font-medium mb-4">
+                          🏁 Last queue completed!
+                        </p>
+                        <button
+                          onClick={() => loadTasksForMode(processingMode)}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center gap-2"
+                        >
+                          Refresh Tasks
+                          <kbd className="px-1.5 py-0.5 text-xs bg-blue-700 rounded">R</kbd>
+                        </button>
+                      </div>
+                    )
+                  }
+                })()}
+                
+                {/* Just show refresh for empty queues */}
+                {totalTasks === 0 && (
+                  <button
+                    onClick={() => loadTasksForMode(processingMode)}
+                    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center gap-2"
+                  >
+                    Refresh Tasks
+                    <kbd className="px-1.5 py-0.5 text-xs bg-blue-700 rounded">R</kbd>
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -1412,7 +1526,16 @@ export default function TaskProcessor() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <h3 className="text-lg font-bold text-green-800 mb-2">All Tasks Processed! 🎉</h3>
-                <p className="text-green-700">Great job! You&apos;ve processed all {taskQueue.length} tasks in this queue.</p>
+                <p className="text-green-700">
+                  Great job! You&apos;ve processed all {taskQueue.length} tasks in this queue.
+                  {(() => {
+                    const queueState = processingModeSelectorRef.current?.queueState
+                    if (!queueState?.hasNextQueue) {
+                      return ' This was the last queue in the sequence.'
+                    }
+                    return ''
+                  })()}
+                </p>
               </div>
             )}
             
@@ -1617,6 +1740,20 @@ export default function TaskProcessor() {
           </div>
         </div>
       )}
+      
+      {/* Debug Mode */}
+      {isDebugMode && (
+        <div className="fixed top-20 right-4 z-50">
+          <button
+            onClick={() => setShowDebug(!showDebug)}
+            className="text-xs px-2 py-1 bg-gray-900 hover:bg-gray-800 rounded text-gray-100 font-mono"
+            title="Toggle debug view"
+          >
+            {showDebug ? 'Hide' : 'Show'} Debug
+          </button>
+        </div>
+      )}
+
 
       {/* Toast Notification */}
       {toast && (
@@ -1627,7 +1764,7 @@ export default function TaskProcessor() {
         />
       )}
       
-      {/* Debug Mode */}
+      {/* Debug Mode - kept at original location */}
       {isDebugMode && (
         <div className="fixed top-20 right-4 z-50">
           <button
