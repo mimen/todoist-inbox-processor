@@ -1,0 +1,38 @@
+{
+  "standardModes": {
+    "project": {
+      "sortBy": "default",
+      "multiSelect": false,
+      "hideEmpty": false
+    },
+    "priority": {
+      "reverseOrder": false,
+      "hideEmpty": false,
+      "multiSelect": false
+    },
+    "label": {
+      "sortBy": "count",
+      "excludeLabels": [],
+      "multiSelect": true
+    },
+    "date": {
+      "hideEmpty": false
+    },
+    "deadline": {
+      "hideEmpty": false
+    },
+    "preset": {
+      "hideEmpty": false
+    },
+    "all": {
+      "sortBy": "default"
+    }
+  },
+  "customQueues": [],
+  "behavior": {
+    "rememberPosition": false,
+    "autoAdvance": false,
+    "showEmptyQueues": true,
+    "confirmQueueSwitch": false
+  }
+}

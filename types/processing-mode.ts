@@ -1,9 +1,12 @@
 export type ProcessingModeType = 'project' | 'priority' | 'label' | 'date' | 'deadline' | 'preset' | 'all';
 
 export interface ProcessingMode {
-  type: ProcessingModeType;
+  type: ProcessingModeType | `custom:${string}`;
   value: string | string[];
   displayName: string;
+  // New fields for queue progression
+  queueId?: string;      // Current queue ID within mode
+  queueIndex?: number;   // Position in queue sequence
 }
 
 export interface ProcessingModeOption {
