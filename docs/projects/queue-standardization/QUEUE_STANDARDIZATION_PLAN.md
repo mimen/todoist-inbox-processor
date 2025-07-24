@@ -12,7 +12,7 @@ The application currently has 8 distinct dropdown components, each handling diff
 5. **DateDropdown** - Scheduled date ranges
 6. **DeadlineDropdown** - Deadline date ranges
 7. **PresetDropdown** - Smart filter presets
-8. **AllTasksDropdown** - Sort options for all tasks
+8. **AllTasksDropdown** - All mode for viewing all tasks with sort options
 
 ### Common Patterns
 - All use `forwardRef` with imperative handle
@@ -69,13 +69,16 @@ interface DropdownOption {
 }
 
 interface DropdownConfig {
-  type: 'single' | 'multi'
+  selectionMode: 'single' | 'multi'  // Now any dropdown can be multi-select!
   showSearch?: boolean
   showCounts?: boolean
   hierarchical?: boolean
-  sortOptions?: SortOption[]  // For future: sorting dropdowns
+  sortOptions?: Array<{
+    key: string
+    label: string
+    sortFn: (a: DropdownOption, b: DropdownOption) => number
+  }>
   defaultSort?: string
-  allowCustomOrder?: boolean  // For future: drag-and-drop reordering
 }
 ```
 
@@ -138,27 +141,125 @@ const useQueueProgression = (mode: ProcessingMode, dropdownOptions: DropdownOpti
 - Clear data flow from dropdowns → queue state → UI
 
 ### 5. JSON-Based Queue Configuration
-Similar to smart filters, allow customization via JSON:
-```typescript
+
+#### Core Concept: Standard Modes Have Fixed Behaviors
+Each mode type has its own fixed behavior and options:
+
+**Projects Mode:**
+- Shows all your Todoist projects
+- Default order: Same as Todoist (parent → child hierarchy)
+- What you can customize: Sort order only
+
+**Priority Mode:**
+- Shows 4 queues: P1, P2, P3, P4
+- Default order: P1 → P2 → P3 → P4
+- What you can customize: Reverse order, hide empty priorities
+
+**Label Mode:**
+- Shows all your labels
+- Default order: By task count (most tasks first)
+- What you can customize: Sort order, exclude specific labels
+- Currently multi-select, but could be single-select too
+
+**Date Mode (Scheduled Dates):**
+- Shows 6 fixed queues: Overdue, Today, Tomorrow, Next 7 Days, Future (beyond 7 days), Recurring Tasks
+- Cannot add/remove date ranges (these are hardcoded)
+- What you can customize: Hide empty ranges
+- Special: Recurring tasks can be filtered separately
+
+**Deadline Mode:**
+- Shows 5 fixed queues: Overdue, Today, Tomorrow, This Week, This Month
+- Cannot add/remove ranges (these are hardcoded)
+- What you can customize: Hide empty ranges
+- Note: No recurring filter (deadlines don't recur)
+
+#### Simple Configuration File
+```json
 // queue-config.json
 {
-  "projectQueues": {
-    "defaultSort": "priority",
-    "customOrder": ["inbox", "work", "personal"],
-    "skipEmpty": false
+  // Customize standard modes (all optional)
+  "standardModes": {
+    "project": {
+      "sortBy": "default",  // default | name | priority | taskCount
+      "multiSelect": false   // Could enable multi-select for projects
+    },
+    "priority": {
+      "reverseOrder": false,  // Show P4 → P3 → P2 → P1
+      "hideEmpty": false,
+      "multiSelect": false
+    },
+    "label": {
+      "sortBy": "count",  // count | name
+      "excludeLabels": ["personal", "archive"],
+      "multiSelect": true  // Already true by default
+    },
+    "date": {
+      "hideEmpty": false
+      // Cannot change which ranges appear
+    },
+    "deadline": {
+      "hideEmpty": false
+      // Cannot change which ranges appear
+    }
   },
+  
+  // Create custom queue sequences
   "customQueues": [
     {
+      "id": "morning-review",
       "name": "Morning Review",
-      "queues": [
+      "icon": "☀️",
+      "sequence": [
         { "type": "project", "id": "inbox" },
-        { "type": "priority", "id": "4" },  // P1
-        { "type": "preset", "id": "daily-planning" }
+        { "type": "priority", "id": "4" },  // P1 tasks
+        { "type": "label", "id": "urgent" }
+      ]
+    },
+    {
+      "id": "focus-session",
+      "name": "Focus Session",
+      "icon": "🎯",
+      "sequence": [
+        { "type": "label", "id": "deep-work" },
+        { "type": "project", "id": "2234567890" }  // Specific project
       ]
     }
   ]
 }
 ```
+
+#### Without Any Config:
+Everything works with these defaults:
+- **Projects**: Your Todoist project order, single-select
+- **Priorities**: P1 → P2 → P3 → P4, single-select
+- **Labels**: Sorted by task count, multi-select
+- **Dates**: Overdue → Today → Tomorrow → Next 7 Days → Future → Recurring, single-select
+- **Deadlines**: Overdue → Today → Tomorrow → This Week → This Month, single-select
+- All queues show even if empty
+
+#### With Config:
+You can customize specific things:
+```typescript
+// Example: Sort projects by priority instead of Todoist order
+if (config.standardModes.project.sortBy === 'priority') {
+  // Projects with P1 priority show first
+}
+
+// Example: Enable multi-select for priorities
+if (config.standardModes.priority.multiSelect) {
+  // Can select P1 AND P2 at the same time
+}
+```
+
+#### Multi-Select vs Single-Select:
+The `multiSelect` option could work for any mode:
+- **Single-select** (default for most): Process tasks from ONE queue at a time
+- **Multi-select** (currently only labels): Process tasks from MULTIPLE queues combined
+
+Examples:
+- Projects multi-select: Work on "Work" AND "Personal" projects together
+- Priority multi-select: See all P1 AND P2 tasks in one view
+- Date multi-select: Process "Today" AND "Tomorrow" tasks together
 
 ### 6. Next Queue UI Component
 ```typescript
@@ -243,6 +344,12 @@ interface NextQueuePromptProps {
 2. Add sort option interfaces (but don't implement UI)
 3. Document how to add custom queues later
 4. Create placeholder for state persistence
+
+### Phase 8: Multi-Select Support (Future - 2 days)
+1. Update UnifiedDropdown to support multi-select mode
+2. Add checkbox UI for multi-select dropdowns
+3. Update queue processing to handle arrays of selected items
+4. Test with labels first, then expand to other modes
 
 ## Obstacles and Considerations
 
