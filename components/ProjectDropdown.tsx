@@ -5,7 +5,7 @@ import { TodoistTask, TodoistProject } from '@/lib/types';
 import UnifiedDropdown from './UnifiedDropdown';
 import { UnifiedDropdownRef } from '@/types/dropdown';
 import { useProjectOptions } from '@/hooks/useProjectOptions';
-import { DEFAULT_QUEUE_CONFIG } from '@/constants/queue-config';
+import { useQueueConfig } from '@/hooks/useQueueConfig';
 
 interface ProjectDropdownProps {
   projects: TodoistProject[];
@@ -27,12 +27,13 @@ const ProjectDropdown = forwardRef<any, ProjectDropdownProps>(({
   allTasks = []
 }: ProjectDropdownProps, ref) => {
   const dropdownRef = useRef<UnifiedDropdownRef>(null);
+  const queueConfig = useQueueConfig();
 
   // Get project options using the hook
   const projectOptions = useProjectOptions(
     projects,
     allTasks,
-    DEFAULT_QUEUE_CONFIG.standardModes.project
+    queueConfig.standardModes.project
   );
 
   // Expose openDropdown method via ref
@@ -44,23 +45,30 @@ const ProjectDropdown = forwardRef<any, ProjectDropdownProps>(({
 
   // Handle special case for inbox selection
   const handleProjectChange = (value: string | string[], displayName: string) => {
-    const projectId = value === 'inbox' 
-      ? projects.find(p => p.isInboxProject)?.id || value
-      : value;
+    // For now, only handle single selection even in multi-select mode
+    // TODO: Update parent components (ProcessingModeSelector, task filtering) to handle array of project IDs
+    // Multi-select UI will work but only first selection will be used for filtering
+    const singleValue = Array.isArray(value) ? value[0] : value;
+    const projectId = singleValue === 'inbox' 
+      ? projects.find(p => p.isInboxProject)?.id || singleValue
+      : singleValue;
     onProjectChange(projectId as string);
   };
 
   // Map selected ID for display (handle inbox special case)
-  const displayValue = selectedProjectId === projects.find(p => p.isInboxProject)?.id 
-    ? 'inbox' 
-    : selectedProjectId;
+  // For multi-select, we need to handle arrays
+  const displayValue = queueConfig.standardModes.project.multiSelect
+    ? [selectedProjectId === projects.find(p => p.isInboxProject)?.id ? 'inbox' : selectedProjectId]
+    : selectedProjectId === projects.find(p => p.isInboxProject)?.id 
+      ? 'inbox' 
+      : selectedProjectId;
 
   return (
     <UnifiedDropdown
       ref={dropdownRef}
       options={projectOptions}
       config={{
-        selectionMode: 'single',
+        selectionMode: queueConfig.standardModes.project.multiSelect ? 'multi' : 'single',
         showSearch: true,
         showCounts: true,
         hierarchical: true,

@@ -5,7 +5,7 @@ import { TodoistTask } from '@/lib/types';
 import UnifiedDropdown from './UnifiedDropdown';
 import { UnifiedDropdownRef } from '@/types/dropdown';
 import { useDateOptions } from '@/hooks/useDateOptions';
-import { DEFAULT_QUEUE_CONFIG } from '@/constants/queue-config';
+import { useQueueConfig } from '@/hooks/useQueueConfig';
 
 interface DateDropdownProps {
   selectedDate: string;
@@ -19,11 +19,12 @@ const DateDropdown = forwardRef<any, DateDropdownProps>(({
   allTasks
 }: DateDropdownProps, ref) => {
   const dropdownRef = useRef<UnifiedDropdownRef>(null);
+  const queueConfig = useQueueConfig();
 
   // Get date options using the hook
   const dateOptions = useDateOptions(
     allTasks,
-    DEFAULT_QUEUE_CONFIG.standardModes.date
+    queueConfig.standardModes.date
   );
 
   // Expose openDropdown method via ref
@@ -38,7 +39,7 @@ const DateDropdown = forwardRef<any, DateDropdownProps>(({
       ref={dropdownRef}
       options={dateOptions}
       config={{
-        selectionMode: 'single',
+        selectionMode: queueConfig.standardModes.date.multiSelect ? 'multi' : 'single',
         showSearch: false,
         showCounts: true,
         hierarchical: false,

@@ -5,7 +5,7 @@ import { TodoistTask } from '@/lib/types';
 import UnifiedDropdown from './UnifiedDropdown';
 import { UnifiedDropdownRef } from '@/types/dropdown';
 import { useDeadlineOptions } from '@/hooks/useDeadlineOptions';
-import { DEFAULT_QUEUE_CONFIG } from '@/constants/queue-config';
+import { useQueueConfig } from '@/hooks/useQueueConfig';
 
 interface DeadlineDropdownProps {
   selectedDeadline: string;
@@ -19,11 +19,12 @@ const DeadlineDropdown = forwardRef<any, DeadlineDropdownProps>(({
   allTasks
 }: DeadlineDropdownProps, ref) => {
   const dropdownRef = useRef<UnifiedDropdownRef>(null);
+  const queueConfig = useQueueConfig();
 
   // Get deadline options using the hook
   const deadlineOptions = useDeadlineOptions(
     allTasks,
-    DEFAULT_QUEUE_CONFIG.standardModes.deadline
+    queueConfig.standardModes.deadline
   );
 
   // Expose openDropdown method via ref
@@ -38,7 +39,7 @@ const DeadlineDropdown = forwardRef<any, DeadlineDropdownProps>(({
       ref={dropdownRef}
       options={deadlineOptions}
       config={{
-        selectionMode: 'single',
+        selectionMode: queueConfig.standardModes.deadline.multiSelect ? 'multi' : 'single',
         showSearch: false,
         showCounts: true,
         hierarchical: false,

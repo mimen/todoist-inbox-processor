@@ -5,7 +5,7 @@ import { TodoistTask } from '@/lib/types';
 import UnifiedDropdown from './UnifiedDropdown';
 import { UnifiedDropdownRef } from '@/types/dropdown';
 import { usePriorityOptions } from '@/hooks/usePriorityOptions';
-import { DEFAULT_QUEUE_CONFIG } from '@/constants/queue-config';
+import { useQueueConfig } from '@/hooks/useQueueConfig';
 
 interface PriorityDropdownProps {
   selectedPriority: string;
@@ -19,11 +19,12 @@ const PriorityDropdown = forwardRef<any, PriorityDropdownProps>(({
   allTasks
 }: PriorityDropdownProps, ref) => {
   const dropdownRef = useRef<UnifiedDropdownRef>(null);
+  const queueConfig = useQueueConfig();
 
   // Get priority options using the hook
   const priorityOptions = usePriorityOptions(
     allTasks,
-    DEFAULT_QUEUE_CONFIG.standardModes.priority
+    queueConfig.standardModes.priority
   );
 
   // Expose openDropdown method via ref
@@ -44,7 +45,7 @@ const PriorityDropdown = forwardRef<any, PriorityDropdownProps>(({
       ref={dropdownRef}
       options={priorityOptions}
       config={{
-        selectionMode: 'single',
+        selectionMode: queueConfig.standardModes.priority.multiSelect ? 'multi' : 'single',
         showSearch: false,
         showCounts: true,
         hierarchical: false,

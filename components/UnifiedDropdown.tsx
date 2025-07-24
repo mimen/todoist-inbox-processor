@@ -20,6 +20,13 @@ interface UnifiedDropdownProps {
   disabled?: boolean
   loading?: boolean
   error?: string | null
+  // TODO: Future enhancements:
+  // sortable?: boolean // Enable drag-and-drop reordering
+  // groupBy?: string // Group options by a metadata field
+  // customFilter?: (option: DropdownOption, query: string) => boolean
+  // renderOption?: (option: DropdownOption) => React.ReactNode
+  // maxHeight?: number // Custom max height for dropdown
+  // virtualScroll?: boolean // Enable virtual scrolling for large lists
 }
 
 /**

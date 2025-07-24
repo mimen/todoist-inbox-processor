@@ -15,7 +15,7 @@ import { AssigneeFilterType } from './AssigneeFilter';
 import { TodoistTask, TodoistLabel, TodoistProject } from '@/lib/types';
 import { useQueueProgression } from '@/hooks/useQueueProgression';
 import { useCurrentModeOptions } from '@/hooks/useCurrentModeOptions';
-import { DEFAULT_QUEUE_CONFIG } from '@/constants/queue-config';
+import { useQueueConfig } from '@/hooks/useQueueConfig';
 import { QueueProgressionState } from '@/types/queue';
 
 export interface ProcessingModeSelectorRef {
@@ -49,6 +49,9 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
   currentUserId,
   assigneeFilter = 'all'
 }: ProcessingModeSelectorProps, ref) => {
+  // Get queue config
+  const queueConfig = useQueueConfig();
+
   // Refs for each dropdown
   const projectDropdownRef = useRef<any>(null);
   const priorityDropdownRef = useRef<any>(null);
@@ -89,7 +92,7 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
   const queueState = useQueueProgression({
     mode: mode.type,
     dropdownOptions: currentModeOptions,
-    config: DEFAULT_QUEUE_CONFIG
+    config: queueConfig
   });
 
   const handleModeTypeChange = (newType: ProcessingModeType) => {
@@ -165,6 +168,12 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
     },
     openCurrentDropdown,
     queueState
+    // TODO: Future methods to expose:
+    // getQueueHistory: () => completedQueues[]
+    // skipToQueue: (queueId: string) => void
+    // reorderQueues: (newOrder: string[]) => void
+    // saveQueueState: () => void
+    // loadQueueState: () => void
   }), [mode.type, handleModeTypeChange, queueState]);
 
   const handleValueChange = (value: string | string[], displayName: string) => {

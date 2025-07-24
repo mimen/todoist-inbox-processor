@@ -13,7 +13,7 @@
     "label": {
       "sortBy": "count",
       "excludeLabels": [],
-      "multiSelect": true
+      "multiSelect": false
     },
     "date": {
       "hideEmpty": false

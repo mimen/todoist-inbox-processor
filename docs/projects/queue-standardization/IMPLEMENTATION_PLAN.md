@@ -11,9 +11,9 @@ Implement standardized dropdown components and queue progression system for the 
 | 2 | Option Providers | 2 days | ✅ Completed | 2025-01-24 | 2025-01-24 |
 | 3 | Unified Dropdown | 3 days | ✅ Completed | 2025-01-24 | 2025-01-24 |
 | 4 | Migrate Dropdowns | 3 days | ✅ Completed | 2025-01-24 | 2025-01-24 |
-| 5 | Queue Progression | 2 days | In Progress | 2025-01-24 | - |
-| 6 | Next Queue UI | 2 days | Not Started | - | - |
-| 7 | Future-Proofing | 1 day | Not Started | - | - |
+| 5 | Queue Progression | 2 days | ✅ Completed | 2025-01-24 | 2025-01-24 |
+| 6 | Next Queue UI | 2 days | ✅ Completed | 2025-01-24 | 2025-01-24 |
+| 7 | Future-Proofing | 1 day | ✅ Completed | 2025-01-24 | 2025-01-24 |
 | 8 | Multi-Select | 2 days | Future | - | - |
 
 ## Phase 1: Create Core Interfaces and Types (1 day)
@@ -383,13 +383,38 @@ Implement standardized dropdown components and queue progression system for the 
 - Add multi-select capability to any dropdown
 - Update queue processing for multiple selections
 
-### Future Tasks
-1. Update UnifiedDropdown for multi-select
-2. Add checkbox UI elements
-3. Update selection state management
-4. Modify queue filtering for arrays
-5. Test with all dropdown types
-6. Update configuration options
+### Current Issues Found
+- UnifiedDropdown already supports multi-select UI (checkboxes work)
+- JSON config can enable/disable multi-select per dropdown type
+- However, parent components expect single values, causing issues when switching modes
+- LabelDropdown breaks in single-select mode due to array/string mismatch
+- Other dropdowns only use first value when multi-select is enabled
+
+### Tasks
+1. **Standardize value handling across all dropdowns**
+   - [ ] Create useDropdownAdapter hook for value normalization (partially done)
+   - [ ] Update all dropdown components to handle both single/array values
+   - [ ] Ensure smooth switching between modes via JSON config
+
+2. **Update parent components to handle arrays**
+   - [ ] Modify ProcessingModeSelector to accept array values for all modes
+   - [ ] Update ProcessingMode type to support `value: string | string[]`
+   - [ ] Change all onModeChange callbacks to handle arrays
+
+3. **Update filtering logic**
+   - [ ] Modify task-filters.ts to support multiple values per mode
+   - [ ] Enable filtering by multiple projects, priorities, etc.
+   - [ ] Update filter display to show multiple selections
+
+4. **Fix immediate issues**
+   - [ ] Fix LabelDropdown single-select mode
+   - [ ] Make other dropdowns properly handle multi-select values
+   - [ ] Add proper TypeScript types for multi-mode values
+
+5. **Testing**
+   - [ ] Test all dropdowns in both single and multi modes
+   - [ ] Verify JSON config changes work dynamically
+   - [ ] Ensure no regression in existing functionality
 
 ---
 

@@ -5,7 +5,8 @@ import { TodoistTask, TodoistLabel } from '@/lib/types';
 import UnifiedDropdown from './UnifiedDropdown';
 import { UnifiedDropdownRef } from '@/types/dropdown';
 import { useLabelOptions } from '@/hooks/useLabelOptions';
-import { DEFAULT_QUEUE_CONFIG } from '@/constants/queue-config';
+import { useQueueConfig } from '@/hooks/useQueueConfig';
+import { useDropdownAdapter } from '@/hooks/useDropdownAdapter';
 
 interface LabelDropdownProps {
   selectedLabels: string[];
@@ -23,12 +24,13 @@ const LabelDropdown = forwardRef<any, LabelDropdownProps>(({
   labelObjects = []
 }: LabelDropdownProps, ref) => {
   const dropdownRef = useRef<UnifiedDropdownRef>(null);
+  const queueConfig = useQueueConfig();
 
   // Get label options using the hook
   const labelOptions = useLabelOptions(
     labelObjects,
     allTasks,
-    DEFAULT_QUEUE_CONFIG.standardModes.label
+    queueConfig.standardModes.label
   );
 
   // Expose openDropdown method via ref
@@ -44,29 +46,33 @@ const LabelDropdown = forwardRef<any, LabelDropdownProps>(({
     return labelObj?.id || labelName;
   });
 
-  // Convert back to names when changing
-  const handleLabelsChange = (value: string | string[], displayName: string) => {
-    const ids = value as string[];
-    const names = ids.map(id => {
-      const labelObj = labelObjects.find(l => l.id === id);
-      return labelObj?.name || id;
-    });
-    onLabelsChange(names, displayName);
-  };
+  // Use adapter to handle single/multi select standardization
+  const { dropdownValue, handleDropdownChange } = useDropdownAdapter(
+    queueConfig.standardModes.label?.multiSelect ?? true,
+    selectedLabelIds,
+    (ids, displayName) => {
+      // Convert IDs back to names
+      const names = ids.map(id => {
+        const labelObj = labelObjects.find(l => l.id === id);
+        return labelObj?.name || id;
+      });
+      onLabelsChange(names, displayName);
+    }
+  );
 
   return (
     <UnifiedDropdown
       ref={dropdownRef}
       options={labelOptions}
       config={{
-        selectionMode: 'multi',
+        selectionMode: queueConfig.standardModes.label?.multiSelect ? 'multi' : 'single',
         showSearch: true,
         showCounts: true,
         hierarchical: false,
         placeholder: 'Select labels...'
       }}
-      value={selectedLabelIds}
-      onChange={handleLabelsChange}
+      value={dropdownValue}
+      onChange={handleDropdownChange}
     />
   );
 });

@@ -9,7 +9,7 @@ import { useDateOptions } from './useDateOptions'
 import { useDeadlineOptions } from './useDeadlineOptions'
 import { usePresetOptions } from './usePresetOptions'
 import { useAllOptions } from './useAllOptions'
-import { DEFAULT_QUEUE_CONFIG } from '@/constants/queue-config'
+import { useQueueConfig } from './useQueueConfig'
 
 interface UseCurrentModeOptionsProps {
   mode: ProcessingModeType
@@ -26,42 +26,44 @@ export function useCurrentModeOptions({
   labels,
   projectMetadata
 }: UseCurrentModeOptionsProps): DropdownOption[] {
+  const queueConfig = useQueueConfig()
+
   const projectOptions = useProjectOptions(
     projects,
     allTasks,
-    DEFAULT_QUEUE_CONFIG.standardModes.project
+    queueConfig.standardModes.project
   )
 
   const priorityOptions = usePriorityOptions(
     allTasks,
-    DEFAULT_QUEUE_CONFIG.standardModes.priority
+    queueConfig.standardModes.priority
   )
 
   const labelOptions = useLabelOptions(
     labels,
     allTasks,
-    DEFAULT_QUEUE_CONFIG.standardModes.label
+    queueConfig.standardModes.label
   )
 
   const dateOptions = useDateOptions(
     allTasks,
-    DEFAULT_QUEUE_CONFIG.standardModes.date
+    queueConfig.standardModes.date
   )
 
   const deadlineOptions = useDeadlineOptions(
     allTasks,
-    DEFAULT_QUEUE_CONFIG.standardModes.deadline
+    queueConfig.standardModes.deadline
   )
 
   const presetOptions = usePresetOptions(
     allTasks,
     projectMetadata,
-    DEFAULT_QUEUE_CONFIG.standardModes.preset
+    queueConfig.standardModes.preset
   )
 
   const allOptions = useAllOptions(
     allTasks,
-    DEFAULT_QUEUE_CONFIG.standardModes.all
+    queueConfig.standardModes.all
   )
 
   return useMemo(() => {

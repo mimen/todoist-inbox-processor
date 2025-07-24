@@ -5,7 +5,7 @@ import { TodoistTask } from '@/lib/types';
 import UnifiedDropdown from './UnifiedDropdown';
 import { UnifiedDropdownRef } from '@/types/dropdown';
 import { usePresetOptions } from '@/hooks/usePresetOptions';
-import { DEFAULT_QUEUE_CONFIG } from '@/constants/queue-config';
+import { useQueueConfig } from '@/hooks/useQueueConfig';
 
 interface PresetDropdownProps {
   selectedPreset: string;
@@ -21,12 +21,13 @@ const PresetDropdown = forwardRef<any, PresetDropdownProps>(({
   projectMetadata = {}
 }: PresetDropdownProps, ref) => {
   const dropdownRef = useRef<UnifiedDropdownRef>(null);
+  const queueConfig = useQueueConfig();
 
   // Get preset options using the hook
   const presetOptions = usePresetOptions(
     allTasks,
     projectMetadata,
-    DEFAULT_QUEUE_CONFIG.standardModes.preset
+    queueConfig.standardModes.preset
   );
 
   // Expose openDropdown method via ref
@@ -41,7 +42,7 @@ const PresetDropdown = forwardRef<any, PresetDropdownProps>(({
       ref={dropdownRef}
       options={presetOptions}
       config={{
-        selectionMode: 'single',
+        selectionMode: queueConfig.standardModes.preset.multiSelect ? 'multi' : 'single',
         showSearch: false,
         showCounts: true,
         hierarchical: false,

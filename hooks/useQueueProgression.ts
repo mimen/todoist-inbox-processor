@@ -62,6 +62,13 @@ export function useQueueProgression({
     }
     
     setCurrentQueueIndex(newIndex)
+    
+    // TODO: Future enhancements:
+    // - Emit analytics event for queue completion
+    // - Save state to localStorage if persistState is enabled
+    // - Check for conditional progression rules
+    // - Auto-skip empty queues if configured
+    // - Show celebration animation for milestones
   }, [activeQueues, currentQueueIndex])
 
   // Calculate progress
