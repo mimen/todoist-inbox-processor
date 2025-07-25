@@ -59,6 +59,12 @@
         "icon": "⏰"
       },
       {
+        "type": "preset",
+        "value": "today-all",
+        "name": "Today (All)",
+        "icon": "📅"
+      },
+      {
         "type": "priority",
         "value": "4",
         "name": "P1 Tasks",
@@ -70,12 +76,6 @@
         "name": "P1 Projects"
       },
       {
-        "type": "preset",
-        "value": "today-all",
-        "name": "Today (All)",
-        "icon": "📅"
-      },
-      {
         "type": "priority",
         "value": "3",
         "name": "P2 Tasks",
@@ -85,6 +85,28 @@
         "type": "priority-projects",
         "value": "3",
         "name": "P2 Projects"
+      },
+      {
+        "type": "priority",
+        "value": "2",
+        "name": "P3 Tasks",
+        "icon": "⚡"
+      },
+      {
+        "type": "priority-projects",
+        "value": "2",
+        "name": "P3 Projects"
+      },
+      {
+        "type": "priority",
+        "value": "1",
+        "name": "P4 Tasks",
+        "icon": "⚡"
+      },
+      {
+        "type": "priority-projects",
+        "value": "1",
+        "name": "P4 Projects"
       }
     ]
   },

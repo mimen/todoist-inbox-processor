@@ -59,13 +59,17 @@ export const DROPDOWN_SORT_OPTIONS: Record<ExtendedDropdownType, SortOption[]> =
     { value: 'name', label: 'Name Z-A', direction: 'desc' }
   ],
   
-  all: []
+  all: [],
+  
+  prioritized: [] // No sorting for prioritized dropdown - maintain configuration order
 }
 
 /**
  * Get the default sort option for a dropdown type
  */
-export function getDefaultSortOption(type: ExtendedDropdownType): SortOption {
+export function getDefaultSortOption(type: ExtendedDropdownType): SortOption | null {
   const options = DROPDOWN_SORT_OPTIONS[type]
-  return options?.[0] || { value: 'name', label: 'Name A-Z', direction: 'asc' }
+  // Return null if no sort options are defined (empty array)
+  if (!options || options.length === 0) return null
+  return options[0]
 }

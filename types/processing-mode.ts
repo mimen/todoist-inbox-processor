@@ -156,21 +156,23 @@ export const PRESET_FILTERS: PresetFilter[] = [
     description: 'Tasks overdue by scheduled date OR deadline',
     icon: '⏰',
     filter: (task) => {
+      // Get today's date in YYYY-MM-DD format
       const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      const todayStr = `${year}-${month}-${day}`;
       
       // Check scheduled date
       if (task.due) {
-        const dueDate = new Date(task.due.date);
-        dueDate.setHours(0, 0, 0, 0);
-        if (dueDate < today) return true;
+        const dueDateStr = task.due.date.split('T')[0]; // Extract YYYY-MM-DD part
+        if (dueDateStr < todayStr) return true;
       }
       
       // Check deadline
       if (task.deadline) {
-        const deadline = new Date(task.deadline.date);
-        deadline.setHours(0, 0, 0, 0);
-        if (deadline < today) return true;
+        const deadlineStr = task.deadline.date.split('T')[0]; // Extract YYYY-MM-DD part
+        if (deadlineStr < todayStr) return true;
       }
       
       return false;
@@ -182,23 +184,23 @@ export const PRESET_FILTERS: PresetFilter[] = [
     description: 'Tasks due today by scheduled date OR deadline',
     icon: '📅',
     filter: (task) => {
+      // Get today's date in YYYY-MM-DD format
       const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      const todayStr = `${year}-${month}-${day}`;
       
       // Check scheduled date
       if (task.due) {
-        const dueDate = new Date(task.due.date);
-        dueDate.setHours(0, 0, 0, 0);
-        if (dueDate >= today && dueDate < tomorrow) return true;
+        const dueDateStr = task.due.date.split('T')[0]; // Extract YYYY-MM-DD part
+        if (dueDateStr === todayStr) return true;
       }
       
       // Check deadline
       if (task.deadline) {
-        const deadline = new Date(task.deadline.date);
-        deadline.setHours(0, 0, 0, 0);
-        if (deadline >= today && deadline < tomorrow) return true;
+        const deadlineStr = task.deadline.date.split('T')[0]; // Extract YYYY-MM-DD part
+        if (deadlineStr === todayStr) return true;
       }
       
       return false;

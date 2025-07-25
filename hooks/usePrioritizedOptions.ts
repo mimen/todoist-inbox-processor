@@ -24,12 +24,9 @@ export function usePrioritizedOptions(
 
   return useMemo(() => {
     const options: DropdownOption[] = []
-    
-    console.log('Building prioritized options from config:', prioritizedConfig)
 
     // Process each item in the prioritized configuration IN ORDER
-    prioritizedConfig.forEach((item, index) => {
-      console.log(`Processing item ${index}:`, item)
+    prioritizedConfig.forEach(item => {
       switch (item.type) {
         case 'project': {
           // Find specific project option
@@ -94,8 +91,6 @@ export function usePrioritizedOptions(
         }
       }
     })
-    
-    console.log('Final prioritized options:', options.map(o => o.label))
 
     return options
   }, [prioritizedConfig, projectOptions, priorityOptions, presetOptions, projectMetadata, projects])
