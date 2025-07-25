@@ -1,0 +1,105 @@
+{
+  "standardModes": {
+    "project": {
+      "sortBy": "name",
+      "sortDirection": "asc",
+      "multiSelect": false,
+      "hideEmpty": false
+    },
+    "priority": {
+      "sortBy": "priority",
+      "sortDirection": "desc",
+      "hideEmpty": false,
+      "multiSelect": false
+    },
+    "label": {
+      "sortBy": "count",
+      "sortDirection": "desc",
+      "excludeLabels": [],
+      "multiSelect": false
+    },
+    "date": {
+      "sortBy": "date",
+      "sortDirection": "asc",
+      "hideEmpty": false
+    },
+    "deadline": {
+      "sortBy": "date",
+      "sortDirection": "asc",
+      "hideEmpty": false
+    },
+    "preset": {
+      "sortBy": "name",
+      "sortDirection": "asc",
+      "hideEmpty": false
+    },
+    "all": {
+      "sortBy": "count",
+      "sortDirection": "desc"
+    },
+    "filter": {
+      "sortBy": "name",
+      "sortDirection": "asc",
+      "hideEmpty": false
+    },
+    "assignee": {
+      "sortBy": "name",
+      "sortDirection": "asc",
+      "hideEmpty": false
+    }
+  },
+  "prioritizedQueue": {
+    "enabled": true,
+    "sequence": [
+      {
+        "type": "project",
+        "value": "Inbox",
+        "name": "Inbox",
+        "icon": "📥"
+      },
+      {
+        "type": "preset",
+        "value": "overdue-all",
+        "name": "Overdue",
+        "icon": "⏰"
+      },
+      {
+        "type": "priority",
+        "value": "4",
+        "name": "P1 Tasks",
+        "icon": "🚨"
+      },
+      {
+        "type": "priority-projects",
+        "value": "4",
+        "name": "P1 Projects",
+        "icon": "🔥"
+      },
+      {
+        "type": "preset",
+        "value": "today-all",
+        "name": "Today",
+        "icon": "📅"
+      },
+      {
+        "type": "priority",
+        "value": "3",
+        "name": "P2 Tasks",
+        "icon": "⚡"
+      },
+      {
+        "type": "priority-projects",
+        "value": "3",
+        "name": "P2 Projects",
+        "icon": "📊"
+      }
+    ]
+  },
+  "customQueues": [],
+  "behavior": {
+    "rememberPosition": false,
+    "autoAdvance": false,
+    "showEmptyQueues": true,
+    "confirmQueueSwitch": false
+  }
+}

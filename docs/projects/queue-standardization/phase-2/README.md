@@ -15,26 +15,31 @@
 - **Live Updates**: Configuration changes apply immediately in development
 - **Sorting**: Full sorting system with UI controls already integrated
 
-## Phase 2B: IN PROGRESS - Workflow Modes
+## Phase 2B: IN PROGRESS - Prioritized Dropdown
 
-### Current Focus: Workflow Modes 🎯
-We're starting Phase 2B by implementing predefined workflow modes that optimize task processing for different productivity goals.
+### Current Focus: Prioritized Dropdown 🎯
+We're implementing a new dropdown type that shows a prioritized list of processing options, combining projects, priorities, and smart filters into a single ordered dropdown.
 
-**Detailed Documentation:**
-- [Workflow Modes Design](./WORKFLOW_MODES_DESIGN.md) - 10 comprehensive workflow patterns
-- [Implementation Plan](./WORKFLOW_MODES_IMPLEMENTATION.md) - Technical implementation details
+**Key Features:**
+- **Unified List**: Combines different processing modes into one dropdown
+- **Smart Filters**: New filters for "Overdue (schedule or deadline)" and "Today (schedule or deadline)"  
+- **Priority Project Expansion**: P1/P2 projects appear as individual options
+- **Configurable Order**: JSON configuration controls the sequence
 
-**Key Workflow Modes Being Implemented:**
-1. 🌅 **Morning Review** - Start the day with clarity
-2. 🎯 **Focus Execution** - Deep work without distractions  
-3. 🚀 **Quick Wins** - Build momentum with small tasks
-4. 🏠 **Context Switching** - Process by location/context
-5. 📊 **Project Sprint** - Focus on specific projects
-6. 🧹 **System Maintenance** - Keep tasks organized
-7. 📅 **Weekly Planning** - Strategic week preparation
-8. 🌙 **End of Day** - Wrap up and prepare tomorrow
-9. 🔥 **Crisis Management** - Handle urgent overdue items
-10. 🎨 **Creative Work** - Focus on creative tasks
+**Prioritized Queue Sequence:**
+1. 📥 **Inbox** - Unprocessed tasks
+2. ⏰ **Overdue** - Tasks past schedule OR deadline (new smart filter)
+3. 🚨 **P1 Tasks** - Urgent priority tasks
+4. 🔥 **P1 Projects** - Each P1 project as its own option
+5. 📅 **Today** - Tasks due today schedule OR deadline (new smart filter)
+6. ⚡ **P2 Tasks** - High priority tasks
+7. 📊 **P2 Projects** - Each P2 project as its own option
+
+**Implementation Documentation:**
+- [Prioritized Dropdown Implementation](./PRIORITIZED_DROPDOWN_IMPLEMENTATION.md) - Current implementation plan
+- [Example Configuration](./queue-config-example.json) - JSON configuration structure
+- [Implementation Notes](./IMPLEMENTATION_NOTES.md) - Technical findings
+- [Future Workflow Modes](./WORKFLOW_MODES_DESIGN.md) - Expanded workflow patterns (future)
 
 ### Other Phase 2B Tasks (Planned)
 1. **Queue Progress Persistence**
