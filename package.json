@@ -4,7 +4,8 @@
   "description": "A sleek Next.js interface for processing Todoist inbox tasks",
   "main": "index.js",
   "scripts": {
-    "dev": "next dev --turbo",
+    "dev": "next dev",
+    "dev:turbo": "next dev --turbo",
     "dev:auto": "node scripts/dev-with-auto-clean.js",
     "build": "next build",
     "start": "next start",

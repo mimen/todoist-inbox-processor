@@ -17,7 +17,7 @@ function validateQueueConfig(config: any): { isValid: boolean; errors: string[];
     errors.push('Missing or invalid standardModes configuration')
   } else {
     // Validate each standard mode
-    const validModes = ['project', 'priority', 'label', 'date', 'deadline', 'preset', 'all']
+    const validModes = ['project', 'priority', 'label', 'date', 'deadline', 'preset', 'all', 'filter', 'assignee']
     
     for (const [mode, modeConfig] of Object.entries(config.standardModes)) {
       if (!validModes.includes(mode)) {
@@ -36,6 +36,13 @@ function validateQueueConfig(config: any): { isValid: boolean; errors: string[];
         // Validate sortBy
         if (mc.sortBy !== undefined && typeof mc.sortBy !== 'string') {
           errors.push(`Invalid sortBy value for ${mode}: must be string`)
+        }
+        
+        // Validate sortDirection
+        if (mc.sortDirection !== undefined) {
+          if (typeof mc.sortDirection !== 'string' || !['asc', 'desc'].includes(mc.sortDirection)) {
+            errors.push(`Invalid sortDirection value for ${mode}: must be 'asc' or 'desc'`)
+          }
         }
         
         // Validate hideEmpty
@@ -61,28 +68,19 @@ export function useQueueConfig(): QueueConfiguration {
   const [config, setConfig] = useState<QueueConfiguration>(DEFAULT_QUEUE_CONFIG)
 
   useEffect(() => {
-    let configHash = ''
-    
     async function loadConfig() {
       try {
-        // Add timestamp to prevent caching
-        const response = await fetch(`/config/queue-config.json?t=${Date.now()}`)
+        const response = await fetch('/config/queue-config.json')
         if (response.ok) {
           const jsonConfig = await response.json()
-          const newConfigHash = JSON.stringify(jsonConfig)
+          const validation = validateQueueConfig(jsonConfig)
           
-          // Only update if config actually changed
-          if (newConfigHash !== configHash) {
-            const validation = validateQueueConfig(jsonConfig)
-            
-            if (validation.isValid && validation.validConfig) {
-              setConfig(validation.validConfig)
-              configHash = newConfigHash
-              console.log('Queue configuration updated')
-            } else {
-              console.error('Invalid queue configuration:', validation.errors.join(', '))
-              console.warn('Using previous configuration')
-            }
+          if (validation.isValid && validation.validConfig) {
+            setConfig(validation.validConfig)
+            console.log('Queue configuration loaded:', validation.validConfig)
+          } else {
+            console.error('Invalid queue configuration:', validation.errors.join(', '))
+            console.warn('Using default configuration')
           }
         }
       } catch (error) {
@@ -90,22 +88,8 @@ export function useQueueConfig(): QueueConfiguration {
       }
     }
 
-    // Initial load
+    // Load config once on mount
     loadConfig()
-    
-    // Poll for changes every 2 seconds in development
-    const isDevelopment = process.env.NODE_ENV === 'development'
-    let interval: NodeJS.Timeout | null = null
-    
-    if (isDevelopment) {
-      interval = setInterval(loadConfig, 2000)
-    }
-
-    return () => {
-      if (interval) {
-        clearInterval(interval)
-      }
-    }
   }, [])
 
   return config

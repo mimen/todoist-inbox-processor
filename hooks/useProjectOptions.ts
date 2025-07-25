@@ -2,7 +2,6 @@ import { useMemo } from 'react'
 import { DropdownOption } from '@/types/dropdown'
 import { TodoistProject, TodoistTask } from '@/lib/types'
 import { ModeConfig } from '@/types/queue'
-import { COMMON_SORT_OPTIONS } from '@/constants/queue-config'
 import { useDropdownOptions } from './useDropdownOptions'
 
 /**
@@ -46,17 +45,8 @@ export function useProjectOptions(
   tasks: TodoistTask[],
   config?: ModeConfig
 ): DropdownOption[] {
-  const { calculateCount, sortOptions, filterEmpty } = useDropdownOptions({
-    tasks,
-    sortBy: config?.sortBy,
-    sortOptions: {
-      ...COMMON_SORT_OPTIONS,
-      default: {
-        key: 'default',
-        label: 'Default Order',
-        sortFn: () => 0 // Maintain original order
-      }
-    }
+  const { calculateCount, filterEmpty } = useDropdownOptions({
+    tasks
   })
 
   return useMemo(() => {
@@ -90,40 +80,34 @@ export function useProjectOptions(
       })
     }
 
-    // Handle hierarchy vs flat list
-    if (config?.sortBy === 'default' || !config?.sortBy) {
-      // Build hierarchy with parent-child relationships
-      const rootProjects = regularProjects.filter(p => !p.parentId)
+    // Always build hierarchy - UnifiedDropdown will handle display
+    // Build hierarchy with parent-child relationships
+    const rootProjects = regularProjects.filter(p => !p.parentId)
+    
+    // Sort root projects by order
+    const sortedRootProjects = rootProjects.sort((a, b) => a.order - b.order)
+
+    // Recursive function to add project and its children
+    const addProjectWithChildren = (project: TodoistProject, indent = 0) => {
+      const option = projectToOption(project, indent)
+      options.push(option)
+
+      // Find all children of this project
+      const children = regularProjects.filter(p => p.parentId === project.id)
       
-      // Sort root projects by order
-      const sortedRootProjects = rootProjects.sort((a, b) => a.order - b.order)
-
-      // Recursive function to add project and its children
-      const addProjectWithChildren = (project: TodoistProject, indent = 0) => {
-        const option = projectToOption(project, indent)
-        options.push(option)
-
-        // Find all children of this project
-        const children = regularProjects.filter(p => p.parentId === project.id)
-        
-        // Sort children by order if they exist
-        const sortedChildren = children.sort((a, b) => a.order - b.order)
-        
-        // Recursively add each child
-        sortedChildren.forEach(child => {
-          addProjectWithChildren(child, indent + 1)
-        })
-      }
-
-      // Add all root projects and their children
-      sortedRootProjects.forEach(project => addProjectWithChildren(project))
-    } else {
-      // Flatten all projects for sorting
-      const allOptions = regularProjects.map(project => projectToOption(project))
-      options.push(...sortOptions(allOptions))
+      // Sort children by order if they exist
+      const sortedChildren = children.sort((a, b) => a.order - b.order)
+      
+      // Recursively add each child
+      sortedChildren.forEach(child => {
+        addProjectWithChildren(child, indent + 1)
+      })
     }
+
+    // Add all root projects and their children
+    sortedRootProjects.forEach(project => addProjectWithChildren(project))
 
     // Filter empty if configured
     return filterEmpty(options, config?.hideEmpty || false)
-  }, [projects, tasks, config, calculateCount, sortOptions, filterEmpty])
+  }, [projects, tasks, config, calculateCount, filterEmpty])
 }

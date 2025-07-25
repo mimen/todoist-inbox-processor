@@ -52,6 +52,7 @@ const PresetDropdown = forwardRef<any, PresetDropdownProps>(({
       onChange={(value, displayName) => {
         onPresetChange(value as string, displayName);
       }}
+      type="preset"
     />
   );
 });

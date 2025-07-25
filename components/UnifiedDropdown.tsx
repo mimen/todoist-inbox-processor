@@ -9,6 +9,9 @@ import {
 } from '@/types/dropdown'
 import { ProcessingModeType } from '@/types/processing-mode'
 import OptionIcon from './OptionIcon'
+import { SortDropdown } from './SortDropdown'
+import { DROPDOWN_SORT_OPTIONS, getDefaultSortOption, type SortOption } from '@/constants/dropdown-sort-options'
+import { sortDropdownOptions } from '@/utils/dropdown-sorting'
 import { useQueueConfig } from '@/hooks/useQueueConfig'
 import { useProjectOptions } from '@/hooks/useProjectOptions'
 import { usePriorityOptions } from '@/hooks/usePriorityOptions'
@@ -23,12 +26,14 @@ interface UnifiedDropdownProps {
   config: DropdownConfig
   value: string | string[]
   onChange: (value: string | string[], displayName: string) => void
+  type?: ProcessingModeType | 'filter' | 'assignee'
   onOpen?: () => void
   onClose?: () => void
   className?: string
   disabled?: boolean
   loading?: boolean
   error?: string | null
+  showSort?: boolean
   // TODO: Future enhancements:
   // sortable?: boolean // Enable drag-and-drop reordering
   // groupBy?: string // Group options by a metadata field
@@ -46,17 +51,24 @@ const UnifiedDropdown = forwardRef<UnifiedDropdownRef, UnifiedDropdownProps>(({
   config,
   value,
   onChange,
+  type,
   onOpen,
   onClose,
   className = '',
   disabled = false,
   loading = false,
-  error = null
+  error = null,
+  showSort = true
 }, ref) => {
   // State
   const [isOpen, setIsOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [keyboardSelectedIndex, setKeyboardSelectedIndex] = useState(0)
+  
+  // Sort state
+  const sortOptions = type ? DROPDOWN_SORT_OPTIONS[type] : []
+  const defaultSort = type ? getDefaultSortOption(type) : null
+  const [currentSort, setCurrentSort] = useState(defaultSort)
   
   // Refs
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -109,38 +121,58 @@ const UnifiedDropdown = forwardRef<UnifiedDropdownRef, UnifiedDropdownProps>(({
     }
   }, [isOpen, config.showSearch, onOpen])
 
-  // Filter options based on search
+  // Filter and sort options
   const filteredOptions = useMemo(() => {
-    if (!searchTerm) return options
+    // First filter by search
+    let filtered = options
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase()
+      filtered = options.filter(option => 
+        option.label.toLowerCase().includes(searchLower) ||
+        option.description?.toLowerCase().includes(searchLower)
+      )
+    }
+    
+    // Then apply sorting if we have a sort configuration
+    if (currentSort && type) {
+      const sortConfig = { 
+        sortBy: currentSort.value, 
+        sortDirection: currentSort.direction 
+      }
+      return sortDropdownOptions(filtered, sortConfig, currentSort.value)
+    }
+    
+    return filtered
+  }, [options, searchTerm, currentSort, type])
 
-    const searchLower = searchTerm.toLowerCase()
-    return options.filter(option => 
-      option.label.toLowerCase().includes(searchLower) ||
-      option.description?.toLowerCase().includes(searchLower)
-    )
-  }, [options, searchTerm])
-
+  // Determine if we should show hierarchy
+  const showHierarchy = type === 'project' && currentSort?.value === 'hierarchy'
+  
   // Flatten options for keyboard navigation (including children)
   const flatOptions = useMemo(() => {
     const flat: DropdownOption[] = []
     
-    const addOption = (option: DropdownOption, indent = 0) => {
-      // For hierarchical display, preserve indent in metadata
+    const addOption = (option: DropdownOption) => {
+      // For hierarchical display, preserve existing indent from metadata
+      const existingIndent = option.metadata?.indent || 0
       const optionWithIndent = {
         ...option,
-        metadata: { ...option.metadata, indent }
+        metadata: { 
+          ...option.metadata, 
+          indent: showHierarchy ? existingIndent : 0 
+        }
       }
       flat.push(optionWithIndent)
       
       // Only include children if hierarchical mode is enabled
-      if (option.children && config.hierarchical) {
-        option.children.forEach(child => addOption(child, indent + 1))
+      if (option.children && showHierarchy) {
+        option.children.forEach(child => addOption(child))
       }
     }
 
     filteredOptions.forEach(option => addOption(option))
     return flat
-  }, [filteredOptions, config.hierarchical])
+  }, [filteredOptions, showHierarchy])
 
   // Get display value
   const getDisplayValue = () => {
@@ -237,8 +269,9 @@ const UnifiedDropdown = forwardRef<UnifiedDropdownRef, UnifiedDropdownProps>(({
 
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
-      {/* Dropdown Button */}
-      <button
+      <div className="flex items-center gap-2">
+        {/* Dropdown Button */}
+        <button
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
@@ -278,7 +311,17 @@ const UnifiedDropdown = forwardRef<UnifiedDropdownRef, UnifiedDropdownProps>(({
             `}
           />
         </div>
-      </button>
+        </button>
+        
+        {/* Sort Dropdown */}
+        {showSort && type && sortOptions && sortOptions.length > 0 && currentSort && (
+          <SortDropdown
+            options={sortOptions}
+            value={currentSort}
+            onChange={setCurrentSort}
+          />
+        )}
+      </div>
 
       {/* Dropdown Panel */}
       {isOpen && (
@@ -406,16 +449,9 @@ const OptionItem: React.FC<OptionItemProps> = ({
         ${isKeyboardSelected ? 'bg-gray-100' : ''}
         ${!isSelected && !isKeyboardSelected ? 'hover:bg-gray-50' : ''}
       `}
-      style={{ paddingLeft: `${16 + indent * 24}px` }}
+      style={{ paddingLeft: `${16 + indent * 20}px` }}
     >
       <div className="flex items-center space-x-3">
-        {/* Hierarchy indicator for child items */}
-        {indent > 0 && (
-          <span className="text-gray-400 mr-1">
-            └
-          </span>
-        )}
-        
         {/* Multi-select checkbox */}
         {config.selectionMode === 'multi' && (
           <div className={`

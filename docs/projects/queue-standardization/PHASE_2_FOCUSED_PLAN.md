@@ -148,46 +148,18 @@ export function useQueueConfig() {
 ### Duration: 1-2 weeks
 
 ### Objectives
-- Add queue progress persistence (current queue + completed queues)
-- Implement sorting options with JSON configuration
+- ~~Implement sorting options with JSON configuration~~ ✅ COMPLETED
 - Create practical workflow modes for different use cases
 
 ### Tasks
 
-#### 1. **Queue Progress Persistence** (3 days)
-
-**Focus**: Current queue position and completed queues (not full state persistence)
+#### 1. **Dropdown Sorting System** (3 days) ✅ COMPLETED
 
 **Solution**:
-- [ ] Persist current queue position in localStorage
-- [ ] Persist completed queues list
-- [ ] Restore progress on page refresh
-- [ ] Clear progress when switching modes
-
-**Implementation**:
-```typescript
-// Focused on queue progress only
-interface QueueProgress {
-  currentQueueId: string | null
-  completedQueueIds: string[]
-  modeType: ProcessingModeType
-  modeValue: string
-}
-
-export function useQueueProgressPersistence() {
-  // Save/restore just queue progress
-  // Clear when mode changes
-  // Simple localStorage implementation
-}
-```
-
-#### 2. **Dropdown Sorting System** (3 days)
-
-**Solution**:
-- [ ] Add sorting options to each dropdown type in JSON config
-- [ ] Support common sort types: name, count, priority, usage
-- [ ] Add sort direction (asc/desc)
-- [ ] Make default sort configurable per dropdown
+- [x] Add sorting options to each dropdown type in JSON config
+- [x] Support common sort types: name, count, priority, date, hierarchy
+- [x] Add sort direction (asc/desc)
+- [x] Make default sort configurable per dropdown
 
 **JSON Configuration**:
 ```json
@@ -207,12 +179,13 @@ export function useQueueProgressPersistence() {
 }
 ```
 
-**Files to Update**:
-- `hooks/use*Options.ts` - implement sorting logic
-- `public/config/queue-config.json` - add sort configurations
-- `components/UnifiedDropdown.tsx` - optional sort UI controls
+**Files Updated**:
+- [x] `utils/dropdown-sorting.ts` - created centralized sorting utility
+- [x] All `hooks/use*Options.ts` - implemented sorting logic
+- [x] `public/config/queue-config.json` - added sort configurations
+- [x] `types/queue.ts` - added sortDirection to ModeConfig
 
-#### 3. **Practical Workflow Modes** (3 days)
+#### 2. **Practical Workflow Modes** (3 days)
 
 **Focus**: Create useful built-in queue configurations for different work scenarios
 
@@ -257,7 +230,6 @@ export function useQueueProgressPersistence() {
 ```
 
 ### Success Criteria for Phase 2B
-- [ ] Queue progress persists across page refreshes
 - [ ] Sorting works for all dropdowns with JSON configuration
 - [ ] 3 practical workflow modes implemented and tested
 - [ ] Configuration changes apply in real-time
@@ -269,21 +241,31 @@ export function useQueueProgressPersistence() {
 ### Duration: 1 week
 
 ### Objectives
+- Add queue persistence and state management
 - Polish remaining rough edges
-- Add any missing sorting/configuration features
-- Optimize performance if needed
+- Add any missing features
 
 ### Tasks
 
-#### 1. **Multi-Select Support** (Moved from 2A)
+#### 1. **Queue Progress Persistence** (3 days)
+
+**Focus**: Current queue position and completed queues
+
+**Solution**:
+- [ ] Persist current queue position in localStorage
+- [ ] Persist completed queues list
+- [ ] Restore progress on page refresh
+- [ ] Clear progress when switching modes
+
+#### 2. **Multi-Select Support** (Moved from 2A)
 - Complete multi-select value handling
 - Fix any remaining issues with mode switching
 
-#### 2. **Enhanced Configuration UI** (Optional)
+#### 3. **Enhanced Configuration UI** (Optional)
 - Simple config editor if time permits
 - Focus on JSON editing with real-time preview
 
-#### 3. **Performance & Polish**
+#### 4. **Performance & Polish**
 - Optimize re-renders
 - Add loading states
 - Improve error handling

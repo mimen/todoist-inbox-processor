@@ -49,6 +49,7 @@ const DeadlineDropdown = forwardRef<any, DeadlineDropdownProps>(({
       onChange={(value, displayName) => {
         onDeadlineChange(value as string, displayName);
       }}
+      type="deadline"
     />
   );
 });

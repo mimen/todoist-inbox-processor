@@ -38,11 +38,6 @@ export function useFilterOptions(
       }
     }))
 
-    // Sort by favorite first, then by name
-    return options.sort((a, b) => {
-      if (a.metadata?.isFavorite && !b.metadata?.isFavorite) return -1
-      if (!a.metadata?.isFavorite && b.metadata?.isFavorite) return 1
-      return a.label.localeCompare(b.label)
-    })
+    return options
   }, [filters, tasks, config])
 }

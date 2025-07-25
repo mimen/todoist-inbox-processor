@@ -56,6 +56,7 @@ const ProjectDropdown = forwardRef<any, ProjectDropdownProps>(({
       config={config}
       value={displayValue}
       onChange={handleProjectChange}
+      type="project"
       className={className}
       loading={allTasks.length === 0}
     />

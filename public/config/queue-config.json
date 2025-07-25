@@ -1,31 +1,51 @@
 {
   "standardModes": {
     "project": {
-      "sortBy": "default",
+      "sortBy": "name",
+      "sortDirection": "asc",
       "multiSelect": false,
       "hideEmpty": false
     },
     "priority": {
-      "reverseOrder": false,
+      "sortBy": "priority",
+      "sortDirection": "desc",
       "hideEmpty": false,
       "multiSelect": false
     },
     "label": {
       "sortBy": "count",
+      "sortDirection": "desc",
       "excludeLabels": [],
       "multiSelect": false
     },
     "date": {
+      "sortBy": "date",
+      "sortDirection": "asc",
       "hideEmpty": false
     },
     "deadline": {
+      "sortBy": "date",
+      "sortDirection": "asc",
       "hideEmpty": false
     },
     "preset": {
+      "sortBy": "name",
+      "sortDirection": "asc",
       "hideEmpty": false
     },
     "all": {
-      "sortBy": "default"
+      "sortBy": "count",
+      "sortDirection": "desc"
+    },
+    "filter": {
+      "sortBy": "name",
+      "sortDirection": "asc",
+      "hideEmpty": false
+    },
+    "assignee": {
+      "sortBy": "name",
+      "sortDirection": "asc",
+      "hideEmpty": false
     }
   },
   "customQueues": [],

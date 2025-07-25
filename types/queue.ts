@@ -41,6 +41,9 @@ export interface ModeConfig {
   /** How to sort options (default, name, priority, count) */
   sortBy?: string
   
+  /** Sort direction (asc or desc) */
+  sortDirection?: 'asc' | 'desc'
+  
   /** Enable multi-select mode */
   multiSelect?: boolean
   

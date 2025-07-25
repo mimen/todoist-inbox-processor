@@ -2,8 +2,8 @@ import { useMemo } from 'react'
 import { DropdownOption } from '@/types/dropdown'
 import { TodoistLabel, TodoistTask } from '@/lib/types'
 import { ModeConfig } from '@/types/queue'
-import { COMMON_SORT_OPTIONS } from '@/constants/queue-config'
 import { useDropdownOptions } from './useDropdownOptions'
+import { isExcludedLabel } from '@/lib/excluded-labels'
 
 /**
  * Todoist label color mapping (same as used in LabelIcon)
@@ -69,29 +69,19 @@ export function useLabelOptions(
   tasks: TodoistTask[],
   config?: ModeConfig
 ): DropdownOption[] {
-  const { calculateCount, sortOptions, filterEmpty } = useDropdownOptions({
-    tasks,
-    sortBy: config?.sortBy,
-    sortOptions: {
-      ...COMMON_SORT_OPTIONS,
-      count: {
-        key: 'count',
-        label: 'Sort by Task Count',
-        sortFn: (a, b) => (b.count || 0) - (a.count || 0)
-      },
-      name: {
-        key: 'name',
-        label: 'Sort by Name',
-        sortFn: (a, b) => a.label.localeCompare(b.label)
-      }
-    }
+  const { calculateCount, filterEmpty } = useDropdownOptions({
+    tasks
   })
 
   return useMemo(() => {
-    // Filter out excluded labels
-    const filteredLabels = config?.excludeItems 
-      ? labels.filter(label => !config.excludeItems?.includes(label.name))
-      : labels
+    // Filter out excluded labels (both from config and system excluded)
+    const filteredLabels = labels.filter(label => {
+      // Check system excluded labels
+      if (isExcludedLabel(label.name)) return false
+      // Check config excluded labels
+      if (config?.excludeItems?.includes(label.name)) return false
+      return true
+    })
 
     // Convert to options with counts
     const labelOptions = filteredLabels.map(label => ({
@@ -103,10 +93,7 @@ export function useLabelOptions(
       metadata: { label }
     }))
 
-    // Apply sorting (default is by count)
-    const sorted = sortOptions(labelOptions)
-
     // Filter empty if configured
-    return filterEmpty(sorted, config?.hideEmpty || false)
-  }, [labels, tasks, config, calculateCount, sortOptions, filterEmpty])
+    return filterEmpty(labelOptions, config?.hideEmpty || false)
+  }, [labels, tasks, config, calculateCount, filterEmpty])
 }

@@ -22,12 +22,7 @@ export function usePriorityOptions(
       count: calculateCount(task => task.priority === Number(priorityOption.id))
     }))
 
-    // Apply reverse order if configured
-    let orderedOptions = config?.reverseOrder 
-      ? [...optionsWithCounts].reverse()
-      : optionsWithCounts
-
     // Filter empty if configured
-    return filterEmpty(orderedOptions, config?.hideEmpty || false)
+    return filterEmpty(optionsWithCounts, config?.hideEmpty || false)
   }, [tasks, config, calculateCount, filterEmpty])
 }

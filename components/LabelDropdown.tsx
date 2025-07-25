@@ -47,9 +47,13 @@ const LabelDropdown = forwardRef<any, LabelDropdownProps>(({
     return labelObj?.id || labelName;
   });
 
+  // Get config first to ensure consistency
+  const config = getDropdownConfig('label', queueConfig);
+  const isMultiSelect = config.selectionMode === 'multi';
+
   // Use adapter to handle single/multi select standardization
   const { dropdownValue, handleDropdownChange } = useDropdownAdapter(
-    queueConfig.standardModes.label?.multiSelect ?? true,
+    isMultiSelect,
     selectedLabelIds,
     (ids, displayName) => {
       // Convert IDs back to names
@@ -61,8 +65,6 @@ const LabelDropdown = forwardRef<any, LabelDropdownProps>(({
     }
   );
 
-  const config = getDropdownConfig('label', queueConfig);
-
   return (
     <UnifiedDropdown
       ref={dropdownRef}
@@ -70,6 +72,7 @@ const LabelDropdown = forwardRef<any, LabelDropdownProps>(({
       config={config}
       value={dropdownValue}
       onChange={handleDropdownChange}
+      type="label"
     />
   );
 });

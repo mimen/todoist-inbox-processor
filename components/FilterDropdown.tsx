@@ -46,6 +46,7 @@ const FilterDropdown = forwardRef<any, FilterDropdownProps>(({
       config={config}
       value={selectedFilter}
       onChange={handleFilterChange}
+      type="filter"
     />
   );
 })

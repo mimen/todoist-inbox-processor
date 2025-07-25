@@ -38,6 +38,7 @@ const DateDropdown = forwardRef<any, DateDropdownProps>(({
       onChange={(value, displayName) => {
         onDateChange(value as string, displayName);
       }}
+      type="date"
     />
   );
 });

@@ -36,6 +36,7 @@ const PriorityDropdown = forwardRef<any, PriorityDropdownProps>(({
       config={config}
       value={selectedPriority}
       onChange={(value, displayName) => onPriorityChange(value as string, displayName)}
+      type="priority"
     />
   );
 });
