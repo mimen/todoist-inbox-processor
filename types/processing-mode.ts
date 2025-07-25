@@ -1,4 +1,4 @@
-export type ProcessingModeType = 'project' | 'priority' | 'label' | 'date' | 'deadline' | 'preset' | 'all';
+export type ProcessingModeType = 'project' | 'priority' | 'label' | 'date' | 'deadline' | 'preset' | 'all' | 'prioritized';
 
 export interface ProcessingMode {
   type: ProcessingModeType | `custom:${string}`;
@@ -58,6 +58,12 @@ export const PROCESSING_MODE_OPTIONS: ProcessingModeOption[] = [
     label: 'All Tasks',
     icon: '',
     description: 'View all tasks with sorting options'
+  },
+  {
+    type: 'prioritized',
+    label: 'Queue',
+    icon: '📋',
+    description: 'Process tasks in prioritized order'
   }
 ];
 
@@ -100,7 +106,7 @@ export const PRESET_FILTERS: PresetFilter[] = [
     name: 'Daily Planning',
     description: 'Priority 1 tasks, due today, or overdue',
     icon: '🎯',
-    filter: (task, projectMetadata) => {
+    filter: (task) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
@@ -142,6 +148,70 @@ export const PRESET_FILTERS: PresetFilter[] = [
       nextWeek.setDate(today.getDate() + 7);
       
       return projectDue >= today && projectDue <= nextWeek;
+    }
+  },
+  {
+    id: 'overdue-all',
+    name: 'Overdue (All)',
+    description: 'Tasks overdue by scheduled date OR deadline',
+    icon: '⏰',
+    filter: (task) => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      // Check scheduled date
+      if (task.due) {
+        const dueDate = new Date(task.due.date);
+        dueDate.setHours(0, 0, 0, 0);
+        if (dueDate < today) return true;
+      }
+      
+      // Check deadline
+      if (task.deadline) {
+        const deadline = new Date(task.deadline.date);
+        deadline.setHours(0, 0, 0, 0);
+        if (deadline < today) return true;
+      }
+      
+      return false;
+    }
+  },
+  {
+    id: 'today-all',
+    name: 'Today (All)',
+    description: 'Tasks due today by scheduled date OR deadline',
+    icon: '📅',
+    filter: (task) => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      
+      // Check scheduled date
+      if (task.due) {
+        const dueDate = new Date(task.due.date);
+        dueDate.setHours(0, 0, 0, 0);
+        if (dueDate >= today && dueDate < tomorrow) return true;
+      }
+      
+      // Check deadline
+      if (task.deadline) {
+        const deadline = new Date(task.deadline.date);
+        deadline.setHours(0, 0, 0, 0);
+        if (deadline >= today && deadline < tomorrow) return true;
+      }
+      
+      return false;
+    }
+  },
+  {
+    id: 'p2-projects',
+    name: 'P2 Projects',
+    description: 'Tasks in projects marked as P2',
+    icon: '📊',
+    filter: (task, projectMetadata) => {
+      const metadata = projectMetadata[task.projectId];
+      return metadata?.priority === 3; // P2 (remember: 3 = P2 in API)
     }
   }
 ];

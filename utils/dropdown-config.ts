@@ -6,17 +6,17 @@ import { QueueConfiguration } from '@/types/queue'
  * Generates UnifiedDropdown configuration based on dropdown type and queue config
  */
 export function getDropdownConfig(
-  type: ProcessingModeType,
+  type: ProcessingModeType | 'prioritized',
   queueConfig: QueueConfiguration,
   overrides?: Partial<DropdownConfig>
 ): DropdownConfig {
-  const modeConfig = queueConfig.standardModes[type]
+  const modeConfig = type === 'prioritized' ? undefined : queueConfig.standardModes[type]
   
   const baseConfig: DropdownConfig = {
     selectionMode: modeConfig?.multiSelect ? 'multi' : 'single',
     showSearch: getSearchDefault(type),
     showCounts: true,
-    showPriority: type === 'project',
+    showPriority: type === 'project' || type === 'prioritized',
     hierarchical: type === 'project',
     placeholder: getPlaceholder(type)
   }
@@ -27,10 +27,11 @@ export function getDropdownConfig(
 /**
  * Get default search setting for each dropdown type
  */
-function getSearchDefault(type: ProcessingModeType): boolean {
+function getSearchDefault(type: ProcessingModeType | 'prioritized'): boolean {
   switch (type) {
     case 'project':
     case 'label':
+    case 'prioritized':
       return true
     default:
       return false
@@ -40,7 +41,7 @@ function getSearchDefault(type: ProcessingModeType): boolean {
 /**
  * Get default placeholder for each dropdown type
  */
-function getPlaceholder(type: ProcessingModeType): string {
+function getPlaceholder(type: ProcessingModeType | 'prioritized'): string {
   switch (type) {
     case 'project':
       return 'Select project...'
@@ -56,6 +57,8 @@ function getPlaceholder(type: ProcessingModeType): string {
       return 'Select preset...'
     case 'all':
       return 'Select all...'
+    case 'prioritized':
+      return 'Select queue...'
     default:
       return 'Select option...'
   }

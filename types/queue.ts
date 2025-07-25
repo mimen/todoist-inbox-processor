@@ -30,6 +30,12 @@ export interface QueueConfiguration {
   /** Custom queue sequences */
   customQueues?: CustomQueue[]
   
+  /** Prioritized queue configuration */
+  prioritizedQueue?: {
+    enabled: boolean
+    sequence: PrioritizedQueueItem[]
+  }
+  
   /** General queue behavior settings */
   behavior?: QueueBehavior
 }
@@ -89,6 +95,23 @@ export interface QueueItem {
   
   /** Optional override label */
   label?: string
+}
+
+/**
+ * Item in a prioritized queue sequence
+ */
+export interface PrioritizedQueueItem {
+  /** Type of queue item (project, priority, preset, priority-projects) */
+  type: 'project' | 'priority' | 'preset' | 'priority-projects'
+  
+  /** Value for the item (project ID, priority level, preset ID, or priority level for projects) */
+  value: string
+  
+  /** Display name override */
+  name?: string
+  
+  /** Icon override */
+  icon?: string
 }
 
 /**

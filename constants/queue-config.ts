@@ -35,6 +35,29 @@ export const DEFAULT_QUEUE_CONFIG: QueueConfiguration = {
     }
   },
   customQueues: [],
+  prioritizedQueue: {
+    enabled: true,
+    sequence: [
+      {
+        type: 'preset',
+        value: 'overdue-all',
+        name: 'Overdue (All)',
+        icon: '⏰'
+      },
+      {
+        type: 'preset',
+        value: 'today-all',
+        name: 'Today (All)',
+        icon: '📅'
+      },
+      {
+        type: 'priority',
+        value: '4',
+        name: 'P1 Tasks',
+        icon: '🚨'
+      }
+    ]
+  },
   behavior: {
     rememberPosition: false,
     autoAdvance: false,

@@ -17,7 +17,7 @@ function validateQueueConfig(config: any): { isValid: boolean; errors: string[];
     errors.push('Missing or invalid standardModes configuration')
   } else {
     // Validate each standard mode
-    const validModes = ['project', 'priority', 'label', 'date', 'deadline', 'preset', 'all', 'filter', 'assignee']
+    const validModes = ['project', 'priority', 'label', 'date', 'deadline', 'preset', 'all', 'filter', 'assignee', 'prioritized']
     
     for (const [mode, modeConfig] of Object.entries(config.standardModes)) {
       if (!validModes.includes(mode)) {

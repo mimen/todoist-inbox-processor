@@ -11,6 +11,7 @@ import DateDropdown from './DateDropdown';
 import DeadlineDropdown from './DeadlineDropdown';
 import PresetDropdown from './PresetDropdown';
 import AllTasksDropdown from './AllTasksDropdown';
+import PrioritizedDropdown from './PrioritizedDropdown';
 import { AssigneeFilterType } from './AssigneeFilter';
 import { TodoistTask, TodoistLabel, TodoistProject } from '@/lib/types';
 import { useQueueProgression } from '@/hooks/useQueueProgression';
@@ -60,6 +61,7 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
   const deadlineDropdownRef = useRef<any>(null);
   const presetDropdownRef = useRef<any>(null);
   const allTasksDropdownRef = useRef<any>(null);
+  const prioritizedDropdownRef = useRef<any>(null);
 
   // Filter tasks based on assignee filter for accurate counts
   const filteredTasks = allTasks.filter(task => {
@@ -147,6 +149,9 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
         break;
       case 'all':
         allTasksDropdownRef.current?.openDropdown();
+        break;
+      case 'prioritized':
+        prioritizedDropdownRef.current?.openDropdown();
         break;
     }
   };
@@ -343,6 +348,32 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
                     return true;
                 }
               }) : filteredTasks}
+            />
+          )}
+
+          {mode.type === 'prioritized' && (
+            <PrioritizedDropdown
+              ref={prioritizedDropdownRef}
+              selectedValue={mode.value as string}
+              onModeChange={onModeChange}
+              allTasks={allTasksGlobal.length > 0 ? allTasksGlobal.filter(task => {
+                if (assigneeFilter === 'all') return true;
+                
+                switch (assigneeFilter) {
+                  case 'unassigned':
+                    return !task.assigneeId;
+                  case 'assigned-to-me':
+                    return task.assigneeId === currentUserId;
+                  case 'assigned-to-others':
+                    return task.assigneeId && task.assigneeId !== currentUserId;
+                  case 'not-assigned-to-others':
+                    return !task.assigneeId || task.assigneeId === currentUserId;
+                  default:
+                    return true;
+                }
+              }) : filteredTasks}
+              projectMetadata={projectMetadata}
+              projects={projects}
             />
           )}
         </div>
