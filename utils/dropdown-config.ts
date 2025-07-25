@@ -16,6 +16,7 @@ export function getDropdownConfig(
     selectionMode: modeConfig?.multiSelect ? 'multi' : 'single',
     showSearch: getSearchDefault(type),
     showCounts: true,
+    showPriority: type === 'project',
     hierarchical: type === 'project',
     placeholder: getPlaceholder(type)
   }

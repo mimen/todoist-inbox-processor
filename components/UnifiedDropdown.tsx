@@ -9,7 +9,8 @@ import {
 } from '@/types/dropdown'
 import { ProcessingModeType } from '@/types/processing-mode'
 import OptionIcon from './OptionIcon'
-import { SortDropdown } from './SortDropdown'
+import PriorityBadge from './PriorityBadge'
+import { SortDropdown, SortDropdownRef } from './SortDropdown'
 import { DROPDOWN_SORT_OPTIONS, getDefaultSortOption, type SortOption } from '@/constants/dropdown-sort-options'
 import { sortDropdownOptions } from '@/utils/dropdown-sorting'
 import { useQueueConfig } from '@/hooks/useQueueConfig'
@@ -74,6 +75,7 @@ const UnifiedDropdown = forwardRef<UnifiedDropdownRef, UnifiedDropdownProps>(({
   const dropdownRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const optionsListRef = useRef<HTMLDivElement>(null)
+  const sortDropdownRef = useRef<{ close: () => void }>(null)
 
   // Expose methods via ref
   useImperativeHandle(ref, () => ({
@@ -272,12 +274,20 @@ const UnifiedDropdown = forwardRef<UnifiedDropdownRef, UnifiedDropdownProps>(({
       <div className="flex items-center gap-2">
         {/* Dropdown Button */}
         <button
-        type="button"
-        onClick={() => !disabled && setIsOpen(!isOpen)}
-        disabled={disabled}
-        aria-haspopup="listbox"
-        aria-expanded={isOpen}
-        aria-label={config.placeholder || 'Select option'}
+          type="button"
+          onClick={() => {
+            if (!disabled) {
+              setIsOpen(!isOpen)
+              if (!isOpen) {
+                onOpen?.()
+                sortDropdownRef.current?.close()
+              }
+            }
+          }}
+          disabled={disabled}
+          aria-haspopup="listbox"
+          aria-expanded={isOpen}
+          aria-label={config.placeholder || 'Select option'}
         className={`
           w-full flex items-center justify-between p-3
           bg-gray-50 hover:bg-gray-100 border border-gray-200 
@@ -316,9 +326,14 @@ const UnifiedDropdown = forwardRef<UnifiedDropdownRef, UnifiedDropdownProps>(({
         {/* Sort Dropdown */}
         {showSort && type && sortOptions && sortOptions.length > 0 && currentSort && (
           <SortDropdown
+            ref={sortDropdownRef}
             options={sortOptions}
             value={currentSort}
             onChange={setCurrentSort}
+            onOpen={() => {
+              setIsOpen(false)
+              setSearchTerm('')
+            }}
           />
         )}
       </div>
@@ -478,12 +493,27 @@ const OptionItem: React.FC<OptionItemProps> = ({
         </div>
       </div>
 
-      {/* Count badge */}
-      {config.showCounts && option.count !== undefined && (
-        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded ml-2">
-          {option.count}
-        </span>
-      )}
+      <div className="flex items-center gap-2">
+        {/* Priority badge - fixed width container for alignment */}
+        {config.showPriority && (
+          <div className="w-8 flex justify-end">
+            {option.metadata?.priority && (
+              <PriorityBadge priority={option.metadata.priority} />
+            )}
+          </div>
+        )}
+        
+        {/* Count badge - fixed width for alignment */}
+        {config.showCounts && (
+          <div className="w-10 flex justify-end">
+            {option.count !== undefined && (
+              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                {option.count}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
     </button>
   )
 }

@@ -59,6 +59,9 @@ export interface DropdownConfig {
   /** Show task counts */
   showCounts?: boolean
   
+  /** Show priority badges (P1-P4) */
+  showPriority?: boolean
+  
   /** Enable hierarchical display (only works with default sort) */
   hierarchical?: boolean
   

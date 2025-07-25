@@ -314,6 +314,13 @@ export default function TaskProcessor() {
           
           // Build hierarchy after metadata is extracted
           buildProjectHierarchy(projectsData, metadata)
+          
+          // Update projects state with enriched data
+          const enrichedProjects = projectsData.map((project: any) => ({
+            ...project,
+            priority: metadata[project.id]?.priority || null
+          }))
+          setProjects(enrichedProjects)
         }
       } catch (err) {
         console.error('Error loading initial data:', err)

@@ -1,17 +1,27 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react'
 import { ChevronDown, ArrowUpDown } from 'lucide-react'
 import { SortOption } from '@/constants/dropdown-sort-options'
+
+export interface SortDropdownRef {
+  close: () => void
+}
 
 interface SortDropdownProps {
   options: SortOption[]
   value: SortOption
   onChange: (option: SortOption) => void
+  onOpen?: () => void
   className?: string
 }
 
-export function SortDropdown({ options, value, onChange, className = '' }: SortDropdownProps) {
-  const [isOpen, setIsOpen] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
+const SortDropdown = forwardRef<SortDropdownRef, SortDropdownProps>(
+  ({ options, value, onChange, onOpen, className = '' }, ref) => {
+    const [isOpen, setIsOpen] = useState(false)
+    const dropdownRef = useRef<HTMLDivElement>(null)
+    
+    useImperativeHandle(ref, () => ({
+      close: () => setIsOpen(false)
+    }))
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -32,7 +42,13 @@ export function SortDropdown({ options, value, onChange, className = '' }: SortD
   return (
     <div ref={dropdownRef} className={`relative ${className}`}>
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          const newState = !isOpen
+          setIsOpen(newState)
+          if (newState && onOpen) {
+            onOpen()
+          }
+        }}
         className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"
         title="Change sort order"
       >
@@ -62,4 +78,8 @@ export function SortDropdown({ options, value, onChange, className = '' }: SortD
       )}
     </div>
   )
-}
+})
+
+SortDropdown.displayName = 'SortDropdown'
+
+export { SortDropdown, type SortDropdownRef }

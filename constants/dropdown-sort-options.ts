@@ -14,6 +14,7 @@ type ExtendedDropdownType = ProcessingModeType | 'filter' | 'assignee'
 export const DROPDOWN_SORT_OPTIONS: Record<ExtendedDropdownType, SortOption[]> = {
   project: [
     { value: 'hierarchy', label: 'Hierarchy', direction: 'asc' },
+    { value: 'project-priority', label: 'Priority', direction: 'desc' },
     { value: 'count', label: 'Most Tasks', direction: 'desc' },
     { value: 'count', label: 'Least Tasks', direction: 'asc' },
     { value: 'name', label: 'Name A-Z', direction: 'asc' },

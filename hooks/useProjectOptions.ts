@@ -65,7 +65,8 @@ export function useProjectOptions(
         project,
         parentId: project.parentId,
         indent,
-        isInboxProject: project.isInboxProject
+        isInboxProject: project.isInboxProject,
+        priority: (project as any).priority || null
       }
     })
 

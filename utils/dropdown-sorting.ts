@@ -37,7 +37,15 @@ export function sortDropdownOptions(
       // For priority sorting, use the id which contains the priority level
       const aPriority = parseInt(a.id, 10) || 0
       const bPriority = parseInt(b.id, 10) || 0
-      return bPriority - aPriority // Higher priority (4) first
+      return aPriority - bPriority // Higher priority (4) first
+    },
+    
+    'project-priority': (a, b) => {
+      // For project priority sorting, get priority from metadata
+      // P1 = 4, P2 = 3, P3 = 2, P4 = 1
+      const aPriority = a.metadata?.priority || 0
+      const bPriority = b.metadata?.priority || 0
+      return aPriority - bPriority // Higher priority (4) first
     },
     
     date: (a, b) => {
