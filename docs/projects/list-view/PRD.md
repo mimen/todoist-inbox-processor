@@ -99,9 +99,12 @@ The List View feature introduces a new viewing mode for the task processor appli
 
 **Acceptance Criteria:**
 - Given I hover over a task, then action buttons appear (complete, edit, move)
-- Given I click on a task, then it expands to show description and additional details
+- Given I click on a task description area, then it expands to show the full description (hidden by default)
 - Given I click complete on a task, then it's marked complete and removed from the list
 - Given I make changes, then the list updates in real-time
+- Given I click on any task element (project, labels, deadline), then the appropriate overlay opens
+- Given I'm editing inline, then all fields are directly editable without leaving the list view
+- Given I'm viewing labels, then an "add more labels" button is always visible
 
 ## Functional Requirements
 
@@ -118,11 +121,13 @@ The List View feature introduces a new viewing mode for the task processor appli
   - Footer with summary statistics
 - **Task Row Components**:
   - Checkbox for completion
-  - Task content (truncated if needed)
-  - Priority indicator
-  - Project badge (context-aware)
-  - Date badges (scheduled/deadline)
-  - Label pills
+  - Task name (inline editable)
+  - Description indicator (click to expand, hidden by default)
+  - Priority indicator (clickable)
+  - Project badge (clickable for overlay, context-aware)
+  - Date badges (clickable for overlay)
+  - Label pills (clickable for overlay)
+  - "Add labels" button (always visible)
   - Assignee avatar
   - Action buttons (on hover)
 
@@ -143,14 +148,20 @@ The List View feature introduces a new viewing mode for the task processor appli
 - **Sort Options**: Priority, due date, creation date, alphabetical
 
 ### FR5: Task Interactions
-- **Click**: Expand/collapse task details
+- **Click on description icon**: Expand/collapse task description (hidden by default)
+- **Click on project**: Open project overlay
+- **Click on labels**: Open label overlay
+- **Click on dates**: Open date picker overlay
+- **Inline editing**: All fields directly editable in the list
 - **Hover**: Show action buttons
-- **Double-click**: Open in Processing View
-- **Keyboard shortcuts**: 
-  - Space: Toggle task expansion
+- **Keyboard navigation**: 
+  - Up/Down arrows: Navigate through tasks
+  - #: Open project overlay for highlighted task
+  - @: Open label overlay for highlighted task
+  - All existing processing view shortcuts work on highlighted task
+  - Space: Toggle task description
   - C: Complete task
-  - E: Edit task
-  - Arrow keys: Navigate list
+  - E: Enter inline edit mode
 
 ### FR6: Performance Optimization
 - **Virtual scrolling**: For lists > 100 tasks
@@ -226,10 +237,12 @@ The List View feature introduces a new viewing mode for the task processor appli
 ```
 
 ### State Management
+- Single source of truth for all task data (shared with Processing View)
 - View preference (localStorage)
-- Expanded task IDs (component state)
+- Expanded description IDs (component state)
 - Sort/group preferences (component state)
-- Selected task IDs for bulk actions (component state)
+- Currently highlighted task for keyboard navigation (component state)
+- All changes update the master task store immediately
 
 ### Data Fetching
 - Reuse existing task loading logic
@@ -318,10 +331,12 @@ The List View feature introduces a new viewing mode for the task processor appli
 - **Things 3**: Grouped list with collapsible sections
 
 ### Differentiation Opportunities
+- Full inline editing without leaving list view
+- Overlay integration matching processing view experience
+- Complete keyboard navigation with all shortcuts from processing view
 - Smarter context-aware hiding
 - Seamless view transitions
-- Better keyboard navigation
-- Integrated processing workflow
+- Integrated processing workflow with consistent interactions
 
 ## Conclusion
 

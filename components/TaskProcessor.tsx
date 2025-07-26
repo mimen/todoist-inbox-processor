@@ -224,13 +224,21 @@ export default function TaskProcessor() {
         
         console.log(`📁 Loaded ${projectsData.length} projects, 🏷️  ${labelsData.length} labels`)
         
-        // Set default to actual inbox project if it exists
+        // Set default to prioritized queue starting with inbox
         const inboxProject = projectsData.find((p: any) => p.isInboxProject)
         const inboxId = inboxProject?.id || 'inbox'
+        
+        // Create the prioritized value for inbox
+        const prioritizedValue = {
+          filterType: 'project',
+          filterValue: inboxId,
+          isPriorityProject: false
+        }
+        
         setProcessingMode({
-          type: 'project',
-          value: inboxId,
-          displayName: inboxProject?.name || 'Inbox'
+          type: 'prioritized',
+          value: JSON.stringify(prioritizedValue),
+          displayName: 'Inbox'
         })
         
         // Load ALL tasks immediately using sync API
@@ -1093,10 +1101,28 @@ export default function TaskProcessor() {
     queueState.moveToNextQueue()
     
     // Create processing mode from the next queue
-    const newMode: ProcessingMode = {
-      type: processingMode.type,
-      value: Array.isArray(nextQueue.id) ? nextQueue.id : String(nextQueue.id),
-      displayName: nextQueue.label
+    let newMode: ProcessingMode
+    
+    // For prioritized mode, we need to construct the proper JSON value
+    if (processingMode.type === 'prioritized') {
+      const prioritizedValue = {
+        filterType: nextQueue.type,
+        filterValue: nextQueue.id,
+        isPriorityProject: nextQueue.metadata?.isPriorityProject || false
+      }
+      
+      newMode = {
+        type: 'prioritized',
+        value: JSON.stringify(prioritizedValue),
+        displayName: nextQueue.label
+      }
+    } else {
+      // For other modes, use the standard approach
+      newMode = {
+        type: processingMode.type,
+        value: Array.isArray(nextQueue.id) ? nextQueue.id : String(nextQueue.id),
+        displayName: nextQueue.label
+      }
     }
     
     // Update the processing mode state (this will update the dropdown)

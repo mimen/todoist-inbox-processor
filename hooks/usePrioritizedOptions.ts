@@ -29,8 +29,21 @@ export function usePrioritizedOptions(
     prioritizedConfig.forEach(item => {
       switch (item.type) {
         case 'project': {
-          // Find specific project option
-          const option = projectOptions.find(opt => opt.id === item.value)
+          // Find project by name (case-insensitive)
+          let option
+          const projectNameLower = item.value.toLowerCase()
+          
+          if (projectNameLower === 'inbox') {
+            // Special handling for inbox - look for the special 'inbox' ID
+            option = projectOptions.find(opt => opt.id === 'inbox')
+          } else {
+            // Find project by name
+            const project = projects.find(p => p.name.toLowerCase() === projectNameLower)
+            if (project) {
+              option = projectOptions.find(opt => opt.id === project.id)
+            }
+          }
+          
           if (option) {
             options.push({
               ...option,

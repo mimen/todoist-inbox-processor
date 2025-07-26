@@ -18,6 +18,12 @@ export interface ProcessingModeOption {
 
 export const PROCESSING_MODE_OPTIONS: ProcessingModeOption[] = [
   {
+    type: 'prioritized',
+    label: 'Queue',
+    icon: '📋',
+    description: 'Process tasks in prioritized order'
+  },
+  {
     type: 'project',
     label: 'Project',
     icon: '',
@@ -58,12 +64,6 @@ export const PROCESSING_MODE_OPTIONS: ProcessingModeOption[] = [
     label: 'All Tasks',
     icon: '',
     description: 'View all tasks with sorting options'
-  },
-  {
-    type: 'prioritized',
-    label: 'Queue',
-    icon: '📋',
-    description: 'Process tasks in prioritized order'
   }
 ];
 

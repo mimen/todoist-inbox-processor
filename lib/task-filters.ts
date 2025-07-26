@@ -132,6 +132,26 @@ export function filterTasksByMode(
       console.log(`Preset filter ${presetId} matched ${result.length} tasks`);
       return result;
 
+    case 'prioritized':
+      // Handle prioritized mode by extracting the actual filter type and value
+      try {
+        const prioritizedValue = JSON.parse(mode.value as string);
+        const { filterType, filterValue } = prioritizedValue;
+        
+        // Create a temporary mode with the actual filter type
+        const actualMode: ProcessingMode = {
+          type: filterType,
+          value: filterValue,
+          displayName: mode.displayName
+        };
+        
+        // Recursively call filterTasksByMode with the actual mode
+        return filterTasksByMode(tasks, actualMode, projectMetadata, assigneeFilter, currentUserId);
+      } catch (error) {
+        console.error('Error parsing prioritized mode value:', error);
+        return filtered;
+      }
+
     case 'all':
       const sortBy = mode.value as string;
       let sorted = [...filtered];

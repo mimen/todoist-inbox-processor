@@ -53,6 +53,12 @@
     "enabled": true,
     "sequence": [
       {
+        "type": "project",
+        "value": "Inbox",
+        "name": "Inbox",
+        "icon": "📥"
+      },
+      {
         "type": "preset",
         "value": "overdue-all",
         "name": "Overdue (All)",

@@ -9,6 +9,7 @@ import { useDateOptions } from './useDateOptions'
 import { useDeadlineOptions } from './useDeadlineOptions'
 import { usePresetOptions } from './usePresetOptions'
 import { useAllOptions } from './useAllOptions'
+import { usePrioritizedOptions } from './usePrioritizedOptions'
 import { useQueueConfig } from './useQueueConfig'
 
 interface UseCurrentModeOptionsProps {
@@ -27,6 +28,14 @@ export function useCurrentModeOptions({
   projectMetadata
 }: UseCurrentModeOptionsProps): DropdownOption[] {
   const queueConfig = useQueueConfig()
+  
+  // Import the prioritized options hook
+  const prioritizedOptions = usePrioritizedOptions(
+    allTasks,
+    queueConfig.prioritizedQueue?.sequence || [],
+    projectMetadata || {},
+    projects
+  )
 
   const projectOptions = useProjectOptions(
     projects,
@@ -82,8 +91,10 @@ export function useCurrentModeOptions({
         return presetOptions
       case 'all':
         return allOptions
+      case 'prioritized':
+        return prioritizedOptions
       default:
         return []
     }
-  }, [mode, projectOptions, priorityOptions, labelOptions, dateOptions, deadlineOptions, presetOptions, allOptions])
+  }, [mode, projectOptions, priorityOptions, labelOptions, dateOptions, deadlineOptions, presetOptions, allOptions, prioritizedOptions])
 }

@@ -4,20 +4,13 @@
 
 This project standardizes all dropdown components in the Todoist Inbox Processor and adds a queue progression system for efficient task processing.
 
-## Project Structure
+## Key Documents
 
-```
-queue-standardization/
-├── README.md (this file)
-├── phase-1/
-│   ├── README.md - Phase 1 summary and achievements
-│   ├── QUEUE_STANDARDIZATION_PLAN.md - Original project plan
-│   ├── TECHNICAL_SPECIFICATION.md - Technical details
-│   └── IMPLEMENTATION_PLAN.md - Implementation timeline
-└── phase-2/
-    ├── README.md - Phase 2 status and next steps
-    └── ARCHIVE_phase2a_completion.md - Detailed Phase 2A completion report
-```
+- **EXTENDING_QUEUES.md** - Guide for adding new queue types and customizing the system
+- **PRIORITIZED_QUEUE_CONFIG.md** - How to configure the prioritized queue
+- **TODO.md** - Outstanding tasks and future enhancements
+- **processing-options-analysis.md** - Analysis of processing options architecture
+- **archive/** - Historical phase documentation
 
 ## Quick Status
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { forwardRef, useImperativeHandle, useRef } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef, useMemo } from 'react';
 import { TodoistTask, TodoistProject } from '@/lib/types';
 import { ProcessingMode, ProcessingModeType } from '@/types/processing-mode';
 import UnifiedDropdown from './UnifiedDropdown';
@@ -54,60 +54,63 @@ const PrioritizedDropdown = forwardRef<any, PrioritizedDropdownProps>(({
     const selectedOption = prioritizedOptions.find(opt => opt.id === value);
     if (!selectedOption) return;
 
-    // Determine the processing mode based on the selected option
-    let mode: ProcessingMode;
-
-    // Check if this is a priority project (expanded from priority-projects)
-    if (selectedOption.type === 'project' && selectedOption.metadata?.isPriorityProject) {
-      mode = {
-        type: 'project',
-        value: selectedOption.id,
-        displayName: selectedOption.label
-      };
-    } else {
-      // Find the original configuration item to determine the correct type
-      const configItem = config.prioritizedQueue?.sequence.find(
-        item => {
-          // Match by value for direct items
-          if (item.value === value) return true;
-          
-          // For priority-projects, check if this option was expanded from it
-          if (item.type === 'priority-projects' && selectedOption.type === 'project') {
-            const targetPriority = parseInt(item.value);
-            const metadata = projectMetadata[selectedOption.id];
-            return metadata?.priority === targetPriority;
-          }
-          
-          return false;
-        }
-      );
-
-      if (configItem && configItem.type !== 'priority-projects') {
-        // Direct mapping for non-expanded items
-        mode = {
-          type: configItem.type as ProcessingModeType,
-          value: value as string,
-          displayName: selectedOption.label
-        };
-      } else {
-        // Default to the option's type
-        mode = {
-          type: selectedOption.type as ProcessingModeType,
-          value: value as string,
-          displayName: selectedOption.label
-        };
+    // For inbox project, we need to find the actual project ID
+    let actualValue = value;
+    if (selectedOption.type === 'project' && value === 'inbox') {
+      // Find the actual inbox project ID
+      const inboxProject = projects.find(p => p.isInboxProject);
+      if (inboxProject) {
+        actualValue = inboxProject.id;
       }
     }
 
+    // Stay in prioritized mode but store the actual filter details in the value
+    // Create a structured value that includes the type and actual value
+    const prioritizedValue = {
+      filterType: selectedOption.type,
+      filterValue: actualValue,
+      // Include metadata for priority projects
+      isPriorityProject: selectedOption.metadata?.isPriorityProject || false
+    };
+    
+    const mode: ProcessingMode = {
+      type: 'prioritized',
+      value: JSON.stringify(prioritizedValue), // Serialize to string
+      displayName: selectedOption.label
+    };
+
     onModeChange(mode);
   };
+
+  // Extract the actual filter value from the composite for dropdown selection
+  const dropdownValue = useMemo(() => {
+    if (!selectedValue || selectedValue === '') return '';
+    
+    try {
+      const parsed = JSON.parse(selectedValue);
+      
+      // Special handling for inbox - if the stored value is the numeric ID but the 
+      // dropdown expects 'inbox', convert it back
+      if (parsed.filterType === 'project' && parsed.filterValue) {
+        const inboxProject = projects.find(p => p.isInboxProject);
+        if (inboxProject && parsed.filterValue === inboxProject.id) {
+          return 'inbox';
+        }
+      }
+      
+      return parsed.filterValue || '';
+    } catch {
+      // Fallback for non-JSON values
+      return selectedValue;
+    }
+  }, [selectedValue, projects]);
 
   return (
     <UnifiedDropdown
       ref={dropdownRef}
       options={prioritizedOptions}
       config={dropdownConfig}
-      value={selectedValue}
+      value={dropdownValue}
       onChange={handleChange}
       type="prioritized"
     />

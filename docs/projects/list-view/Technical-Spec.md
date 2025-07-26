@@ -31,14 +31,18 @@ type ViewMode = 'processing' | 'list';
 
 // Additional state in TaskProcessor
 const [viewMode, setViewMode] = useState<ViewMode>('processing');
-const [expandedTaskIds, setExpandedTaskIds] = useState<Set<string>>(new Set());
-const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
+const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set());
+const [highlightedTaskId, setHighlightedTaskId] = useState<string | null>(null);
+const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
 const [listSortBy, setListSortBy] = useState<SortOption>('default');
 const [listGroupBy, setListGroupBy] = useState<GroupOption>('none');
 
 // Sort and Group options
 type SortOption = 'default' | 'priority' | 'dueDate' | 'createdAt' | 'alphabetical';
 type GroupOption = 'none' | 'project' | 'priority' | 'dueDate' | 'label';
+
+// Shared overlay state with Processing View
+const { activeOverlay, overlayTaskId, setActiveOverlay, setOverlayTaskId } = useOverlayContext();
 ```
 
 ## Component Specifications
@@ -151,9 +155,97 @@ const TaskListItem: React.FC<TaskListItemProps> = ({
   onToggleSelect,
   onComplete,
   onProcess,
-  onUpdate
+  onUpdate,
+  isEditing,
+  overlayHandlers
 }) => {
-  // Condensed row layout with hover actions
+  const [editedContent, setEditedContent] = useState(task.content);
+  const taskLabels = labels.filter(l => task.labels.includes(l.name));
+  
+  return (
+    <div className={`list-view-task-row ${isSelected ? 'list-view-task-row--selected' : ''}`}>
+      {/* Completion checkbox */}
+      <input
+        type="checkbox"
+        className="mr-3"
+        onChange={onComplete}
+      />
+      
+      {/* Task content - inline editable */}
+      {isEditing ? (
+        <input
+          type="text"
+          value={editedContent}
+          onChange={(e) => setEditedContent(e.target.value)}
+          onBlur={() => onUpdate({ content: editedContent })}
+          className="flex-1 px-2 py-1 border rounded"
+          autoFocus
+        />
+      ) : (
+        <span className="flex-1 cursor-text" onClick={() => setIsEditing(true)}>
+          {task.content}
+        </span>
+      )}
+      
+      {/* Description indicator - click to expand */}
+      {task.description && (
+        <button
+          onClick={onToggleExpand}
+          className="ml-2 text-gray-400 hover:text-gray-600"
+        >
+          <DescriptionIcon className="w-4 h-4" />
+        </button>
+      )}
+      
+      {/* Priority - clickable for overlay */}
+      <button
+        onClick={() => overlayHandlers.openPriorityOverlay(task.id)}
+        className={`ml-2 px-2 py-1 rounded ${getPriorityColor(task.priority)}`}
+      >
+        P{5 - task.priority}
+      </button>
+      
+      {/* Project - clickable for overlay */}
+      {showProjectColumn && project && (
+        <button
+          onClick={() => overlayHandlers.openProjectOverlay(task.id)}
+          className="ml-2 px-2 py-1 bg-gray-100 rounded hover:bg-gray-200"
+        >
+          {project.name}
+        </button>
+      )}
+      
+      {/* Labels - clickable for overlay */}
+      <div className="ml-2 flex items-center gap-1">
+        {taskLabels.map(label => (
+          <button
+            key={label.id}
+            onClick={() => overlayHandlers.openLabelOverlay(task.id)}
+            className="px-2 py-1 text-xs bg-gray-100 rounded hover:bg-gray-200"
+          >
+            {label.name}
+          </button>
+        ))}
+        {/* Always visible "Add labels" button */}
+        <button
+          onClick={() => overlayHandlers.openLabelOverlay(task.id)}
+          className="px-2 py-1 text-xs text-gray-500 border border-dashed rounded hover:border-gray-400"
+        >
+          + Add labels
+        </button>
+      </div>
+      
+      {/* Dates - clickable for overlay */}
+      {(task.due || task.deadline) && (
+        <button
+          onClick={() => overlayHandlers.openDateOverlay(task.id)}
+          className="ml-2 px-2 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded"
+        >
+          {formatTaskDate(task.due || task.deadline)}
+        </button>
+      )}
+    </div>
+  );
 };
 ```
 
@@ -370,16 +462,22 @@ function groupTasks(tasks: TodoistTask[], groupBy: GroupOption): TaskGroup[] {
 }
 ```
 
-## Keyboard Navigation
+## Keyboard Navigation & Overlays
+
+### Full Keyboard Support
 
 ```typescript
 const useKeyboardNavigation = (tasks: TodoistTask[], viewMode: ViewMode) => {
   const [focusedIndex, setFocusedIndex] = useState(-1);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   
   useEffect(() => {
     if (viewMode !== 'list') return;
     
     const handleKeyDown = (e: KeyboardEvent) => {
+      const focusedTask = focusedIndex >= 0 ? tasks[focusedIndex] : null;
+      
+      // Navigation
       switch (e.key) {
         case 'ArrowUp':
           e.preventDefault();
@@ -390,36 +488,105 @@ const useKeyboardNavigation = (tasks: TodoistTask[], viewMode: ViewMode) => {
           e.preventDefault();
           setFocusedIndex(prev => Math.min(tasks.length - 1, prev + 1));
           break;
-          
-        case ' ':
-          e.preventDefault();
-          if (focusedIndex >= 0) {
-            toggleTaskExpansion(tasks[focusedIndex].id);
-          }
-          break;
-          
-        case 'Enter':
-          e.preventDefault();
-          if (focusedIndex >= 0) {
-            switchToProcessingView(tasks[focusedIndex].id);
-          }
-          break;
-          
-        case 'c':
-        case 'C':
-          e.preventDefault();
-          if (focusedIndex >= 0) {
-            completeTask(tasks[focusedIndex].id);
-          }
-          break;
+      }
+      
+      // All processing view shortcuts work on highlighted task
+      if (focusedTask) {
+        switch (e.key) {
+          case '#':
+            e.preventDefault();
+            openProjectOverlay(focusedTask.id);
+            break;
+            
+          case '@':
+            e.preventDefault();
+            openLabelOverlay(focusedTask.id);
+            break;
+            
+          case 'd':
+            e.preventDefault();
+            openDateOverlay(focusedTask.id);
+            break;
+            
+          case 'p':
+            if (e.metaKey || e.ctrlKey) {
+              e.preventDefault();
+              openPriorityOverlay(focusedTask.id);
+            }
+            break;
+            
+          case 'e':
+            e.preventDefault();
+            setEditingTaskId(focusedTask.id);
+            break;
+            
+          case 'c':
+            e.preventDefault();
+            completeTask(focusedTask.id);
+            break;
+            
+          case ' ':
+            e.preventDefault();
+            toggleTaskDescription(focusedTask.id);
+            break;
+            
+          case 'Enter':
+            if (editingTaskId) {
+              e.preventDefault();
+              saveInlineEdit();
+            }
+            break;
+            
+          case 'Escape':
+            if (editingTaskId) {
+              e.preventDefault();
+              cancelInlineEdit();
+            }
+            break;
+        }
       }
     };
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [viewMode, tasks, focusedIndex]);
+  }, [viewMode, tasks, focusedIndex, editingTaskId]);
   
-  return { focusedIndex };
+  return { focusedIndex, editingTaskId };
+};
+```
+
+### Overlay Integration
+
+```typescript
+interface OverlayHandlers {
+  openProjectOverlay: (taskId: string) => void;
+  openLabelOverlay: (taskId: string) => void;
+  openDateOverlay: (taskId: string) => void;
+  openPriorityOverlay: (taskId: string) => void;
+}
+
+// Reuse existing overlay components from processing view
+const useOverlays = (): OverlayHandlers => {
+  const { setActiveOverlay, setOverlayTaskId } = useOverlayContext();
+  
+  return {
+    openProjectOverlay: (taskId: string) => {
+      setOverlayTaskId(taskId);
+      setActiveOverlay('project');
+    },
+    openLabelOverlay: (taskId: string) => {
+      setOverlayTaskId(taskId);
+      setActiveOverlay('label');
+    },
+    openDateOverlay: (taskId: string) => {
+      setOverlayTaskId(taskId);
+      setActiveOverlay('date');
+    },
+    openPriorityOverlay: (taskId: string) => {
+      setOverlayTaskId(taskId);
+      setActiveOverlay('priority');
+    }
+  };
 };
 ```
 
@@ -545,51 +712,28 @@ describe('View Mode Toggle', () => {
 });
 ```
 
-## Migration & Rollout
+## Implementation Notes
 
-### Feature Flags
+### Single User App
+Since this is a single-user application, we can skip complex migration strategies and feature flags. The toggle will be available immediately upon deployment.
 
-```typescript
-const FEATURE_FLAGS = {
-  LIST_VIEW_ENABLED: process.env.NEXT_PUBLIC_LIST_VIEW_ENABLED === 'true',
-  LIST_VIEW_DEFAULT: process.env.NEXT_PUBLIC_LIST_VIEW_DEFAULT === 'true',
-};
-
-// Conditional rendering based on feature flag
-{FEATURE_FLAGS.LIST_VIEW_ENABLED && (
-  <ViewModeToggle mode={viewMode} onModeChange={setViewMode} />
-)}
-```
-
-### Gradual Rollout Plan
-
-1. **Phase 1**: Internal testing with feature flag
-2. **Phase 2**: 10% of users with opt-in
-3. **Phase 3**: 50% of users with opt-out
-4. **Phase 4**: 100% rollout
-
-### Analytics Events
+### Shared State Management
+The List View shares the same task data model as Processing View:
+- Single source of truth in `masterTasks`
+- All updates immediately reflected in both views
+- Consistent behavior across views
 
 ```typescript
-// Track view mode usage
-const trackViewModeChange = (newMode: ViewMode) => {
-  analytics.track('View Mode Changed', {
-    from: viewMode,
-    to: newMode,
-    queueType: processingMode.type,
-    taskCount: activeQueue.length
-  });
-};
-
-// Track list view interactions
-const trackListInteraction = (action: string, taskId: string) => {
-  analytics.track('List View Interaction', {
-    action,
-    taskId,
-    expandedCount: expandedTaskIds.size,
-    sortBy: listSortBy,
-    groupBy: listGroupBy
-  });
+// Shared task update handler
+const handleTaskUpdate = (taskId: string, updates: Partial<TodoistTask>) => {
+  // Update master task store
+  setMasterTasks(prev => ({
+    ...prev,
+    [taskId]: { ...prev[taskId], ...updates }
+  }));
+  
+  // Sync with Todoist API
+  syncTaskUpdate(taskId, updates);
 };
 ```
 
