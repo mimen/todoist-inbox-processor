@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import { CheckCircle, ArrowRight, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { DropdownOption } from '@/types/dropdown'
-import { OptionIcon } from './OptionIcon'
+import OptionIcon from './OptionIcon'
 
 interface NextQueuePromptProps {
   currentQueue: DropdownOption | null
@@ -63,7 +63,7 @@ export function NextQueuePrompt({
               <p className="font-medium text-gray-900 dark:text-gray-100">
                 {nextQueue.label}
               </p>
-              {nextQueue.count > 0 && (
+              {nextQueue.count !== undefined && nextQueue.count > 0 && (
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   {nextQueue.count} {nextQueue.count === 1 ? 'task' : 'tasks'} remaining
                 </p>

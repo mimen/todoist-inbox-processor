@@ -39,8 +39,7 @@ const PrioritizedDropdown = forwardRef<any, PrioritizedDropdownProps>(({
   const dropdownConfig = getDropdownConfig('prioritized', config, {
     placeholder: 'Select queue...',
     selectionMode: 'single',
-    searchable: true,
-    showSort: false  // Disable sorting for prioritized dropdown
+    showSearch: true
   });
 
   // Expose openDropdown method via ref

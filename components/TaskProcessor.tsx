@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import { TodoistTask, TodoistProject, TodoistLabel, ProcessingState, TaskUpdate, TodoistUser, CollaboratorsData } from '@/lib/types'
 import { generateMockSuggestions } from '@/lib/mock-data'
 import { suggestionsCache } from '@/lib/suggestions-cache'
-import { ProcessingMode } from '@/types/processing-mode'
+import { ProcessingMode, PROCESSING_MODE_OPTIONS } from '@/types/processing-mode'
 import { filterTasksByMode, getTaskCountsForProjects } from '@/lib/task-filters'
 
 // Extract project metadata from special tasks marked with * prefix or project-metadata label
@@ -1237,33 +1237,21 @@ export default function TaskProcessor() {
           e.preventDefault()
           setShowShortcuts(!showShortcuts)
           break
+        // Dynamic processing mode switching based on index
         case '1':
-          e.preventDefault()
-          processingModeSelectorRef.current?.switchToMode('project')
-          break
         case '2':
-          e.preventDefault()
-          processingModeSelectorRef.current?.switchToMode('priority')
-          break
         case '3':
-          e.preventDefault()
-          processingModeSelectorRef.current?.switchToMode('label')
-          break
         case '4':
-          e.preventDefault()
-          processingModeSelectorRef.current?.switchToMode('date')
-          break
         case '5':
-          e.preventDefault()
-          processingModeSelectorRef.current?.switchToMode('deadline')
-          break
         case '6':
-          e.preventDefault()
-          processingModeSelectorRef.current?.switchToMode('preset')
-          break
         case '7':
+        case '8':
+        case '9':
           e.preventDefault()
-          processingModeSelectorRef.current?.switchToMode('all')
+          const modeIndex = parseInt(e.key) - 1
+          if (modeIndex < PROCESSING_MODE_OPTIONS.length) {
+            processingModeSelectorRef.current?.switchToMode(PROCESSING_MODE_OPTIONS[modeIndex].type)
+          }
           break
         case 'Escape':
         case '`':

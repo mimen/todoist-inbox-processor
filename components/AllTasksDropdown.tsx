@@ -39,7 +39,7 @@ const AllTasksDropdown = forwardRef<any, AllTasksDropdownProps>(({
       ref={dropdownRef}
       options={allOptions}
       config={{
-        selectionMode: queueConfig.standardModes.all.multiSelect ? 'multi' : 'single',
+        selectionMode: queueConfig.standardModes.all?.multiSelect ? 'multi' : 'single',
         showSearch: false,
         showCounts: true,
         hierarchical: false,

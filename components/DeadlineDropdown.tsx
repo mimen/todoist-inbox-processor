@@ -39,7 +39,7 @@ const DeadlineDropdown = forwardRef<any, DeadlineDropdownProps>(({
       ref={dropdownRef}
       options={deadlineOptions}
       config={{
-        selectionMode: queueConfig.standardModes.deadline.multiSelect ? 'multi' : 'single',
+        selectionMode: queueConfig.standardModes.deadline?.multiSelect ? 'multi' : 'single',
         showSearch: false,
         showCounts: true,
         hierarchical: false,

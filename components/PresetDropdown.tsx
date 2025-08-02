@@ -42,7 +42,7 @@ const PresetDropdown = forwardRef<any, PresetDropdownProps>(({
       ref={dropdownRef}
       options={presetOptions}
       config={{
-        selectionMode: queueConfig.standardModes.preset.multiSelect ? 'multi' : 'single',
+        selectionMode: queueConfig.standardModes.preset?.multiSelect ? 'multi' : 'single',
         showSearch: false,
         showCounts: true,
         hierarchical: false,

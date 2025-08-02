@@ -35,7 +35,7 @@ const RECOGNIZED_PATTERNS = [
 ]
 
 const SmartScheduleDateInput = forwardRef<HTMLInputElement, SmartScheduleDateInputProps>(function SmartScheduleDateInput({ value, onChange, placeholder = "e.g., tomorrow, next friday, in 2 weeks..." }, ref) {
-  const [highlightedText, setHighlightedText] = useState<JSX.Element[]>([])
+  const [highlightedText, setHighlightedText] = useState<React.ReactElement[]>([])
   const internalRef = useRef<HTMLInputElement>(null)
   const inputRef = ref || internalRef
   
@@ -46,7 +46,7 @@ const SmartScheduleDateInput = forwardRef<HTMLInputElement, SmartScheduleDateInp
     }
 
     let lastIndex = 0
-    const parts: JSX.Element[] = []
+    const parts: React.ReactElement[] = []
     const matches: Array<{ start: number; end: number; match: string }> = []
     
     // Find all matches
@@ -116,7 +116,7 @@ const SmartScheduleDateInput = forwardRef<HTMLInputElement, SmartScheduleDateInp
   }
   
   const hasRecognizedPatterns = highlightedText.some(part => 
-    part.props.className?.includes('bg-blue-100')
+    (part.props as any).className?.includes('bg-blue-100')
   )
   
   return (

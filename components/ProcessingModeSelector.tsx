@@ -83,7 +83,7 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
 
   // Get current mode options
   const currentModeOptions = useCurrentModeOptions({
-    mode: mode.type,
+    mode: mode.type.startsWith('custom:') ? 'preset' : mode.type as ProcessingModeType,
     projects,
     allTasks: filteredTasks,
     labels,
@@ -114,8 +114,7 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
     }
     
     // Reset queue progression when changing modes
-    // @ts-ignore - Accessing internal method
-    if (queueState.resetQueueProgress) {
+    if ('resetQueueProgress' in queueState && typeof queueState.resetQueueProgress === 'function') {
       queueState.resetQueueProgress();
     }
     
@@ -158,7 +157,8 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
 
   // Helper function to open current dropdown
   const openCurrentDropdown = () => {
-    openDropdownByType(mode.type);
+    const modeType = mode.type.startsWith('custom:') ? 'preset' : mode.type;
+    openDropdownByType(modeType as ProcessingModeType);
   };
 
   // Expose methods to parent via ref
@@ -195,9 +195,8 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
 
     // Jump to the selected queue if found
     if (selectedIndex !== -1) {
-      // @ts-ignore - Accessing internal method
-      if (queueState.jumpToQueue) {
-        queueState.jumpToQueue(selectedIndex);
+      if ('jumpToQueue' in queueState && typeof queueState.jumpToQueue === 'function') {
+        (queueState as any).jumpToQueue(selectedIndex);
       }
     }
 
