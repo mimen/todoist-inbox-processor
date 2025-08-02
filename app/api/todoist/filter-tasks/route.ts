@@ -11,7 +11,7 @@ export async function GET(request: Request) {
 
   try {
     // Use the Todoist API to get tasks matching the filter
-    const tasks = await TodoistApiClient.getTasks({ filter });
+    const tasks = await TodoistApiClient.getTasks(filter);
     
     // Transform tasks to app format
     const transformedTasks = tasks.map(transformApiTaskToAppTask);

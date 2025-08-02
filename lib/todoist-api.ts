@@ -1,8 +1,13 @@
 import { TodoistApi } from '@doist/todoist-api-typescript'
 import crypto from 'crypto'
 import { TodoistTask } from './types'
+import { RateLimiter } from './rate-limiter'
 
 // Initialize Todoist API client
+if (!process.env.TODOIST_API_KEY) {
+    throw new Error('TODOIST_API_KEY environment variable is required')
+}
+
 const api = new TodoistApi(process.env.TODOIST_API_KEY!)
 
 export interface TodoistTaskApi {
@@ -80,44 +85,10 @@ export interface TaskUpdateRequest {
 }
 
 export class TodoistApiClient {
-    // Fetch all projects
+    // Fetch all projects - ALWAYS use Sync API for consistent IDs
     static async getProjects(): Promise<TodoistProjectApi[]> {
-        try {
-            const response = await api.getProjects()
-            // API response received
-
-            // Handle different response formats
-            let projects: any[]
-            if (Array.isArray(response)) {
-                projects = response
-            } else if (response && typeof response === 'object') {
-                // Try common pagination field names
-                projects =
-                    (response as any).data ||
-                    (response as any).items ||
-                    (response as any).projects ||
-                    (response as any).results ||
-                    []
-            } else {
-                projects = []
-            }
-
-            console.log(`📁 Loaded ${projects.length} projects`)
-
-            // Filter out null/undefined items
-            const validProjects = projects.filter((project) => project && project.id)
-
-            return validProjects.map((project: any) => ({
-                id: project.id,
-                name: project.name,
-                color: project.color,
-                isInboxProject: project.inboxProject || false,
-                parentId: project.parentId || undefined,
-            }))
-        } catch (error) {
-            console.error('Error fetching projects:', error)
-            throw new Error('Failed to fetch projects')
-        }
+        // Always use Sync API to ensure consistent project IDs across all operations
+        return TodoistApiClient.getProjectsSync()
     }
 
     // Fetch all labels
@@ -239,183 +210,155 @@ export class TodoistApiClient {
 
     // Get ALL projects using Sync API (to ensure consistent IDs with tasks)
     static async getProjectsSync(): Promise<TodoistProjectApi[]> {
-        try {
-            const apiKey = process.env.TODOIST_API_KEY
-            if (!apiKey) {
-                throw new Error('TODOIST_API_KEY is not configured')
+        return RateLimiter.executeWithRateLimit(
+            'sync-projects',
+            async () => {
+                try {
+                    const apiKey = process.env.TODOIST_API_KEY
+                    if (!apiKey) {
+                        throw new Error('TODOIST_API_KEY is not configured')
+                    }
+
+                    // Use sync API to get all projects
+                    const response = await fetch('https://api.todoist.com/sync/v9/sync', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${apiKey}`,
+                        },
+                        body: JSON.stringify({
+                            sync_token: '*',
+                            resource_types: ['projects'],
+                        }),
+                    })
+
+                    if (!response.ok) {
+                        const errorText = await response.text()
+                        console.error('Sync API error:', errorText)
+                        const error = new Error(`Sync API request failed: ${response.status}`)
+                        // Attach the status code for rate limiter to detect
+                        ;(error as any).statusCode = response.status
+                        ;(error as any).message = `Sync API request failed: ${response.status}. ${errorText}`
+                        throw error
+                    }
+
+                    const result = await response.json()
+                    const allProjects = result.projects || []
+                    console.log(
+                        'Sync API projects response:',
+                        'total:', allProjects.length,
+                        'deleted:', allProjects.filter((p: any) => p.is_deleted).length,
+                        'archived:', allProjects.filter((p: any) => p.is_archived).length,
+                        'active:', allProjects.filter((p: any) => !p.is_deleted && !p.is_archived).length
+                    )
+
+                    // Convert sync API projects to our format - include archived projects
+                    return allProjects
+                        .filter((project: any) => !project.is_deleted) // Only filter out deleted, keep archived
+                        .map((project: any) => ({
+                            id: String(project.id), // Numeric ID from sync API
+                            name: project.name,
+                            color: project.color,
+                            parentId: project.parent_id ? String(project.parent_id) : undefined,
+                            isInboxProject: project.inbox_project || false,
+                            order: project.child_order || 0,
+                        }))
+                } catch (error) {
+                    console.error('Error fetching projects via Sync API:', error)
+                    // Fallback to regular API
+                    return TodoistApiClient.getProjects()
+                }
             }
-
-            // Use sync API to get all projects
-            const response = await fetch('https://api.todoist.com/sync/v9/sync', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${apiKey}`,
-                },
-                body: JSON.stringify({
-                    sync_token: '*',
-                    resource_types: ['projects'],
-                }),
-            })
-
-            if (!response.ok) {
-                const errorText = await response.text()
-                console.error('Sync API error:', errorText)
-                throw new Error(`Sync API request failed: ${response.status}`)
-            }
-
-            const result = await response.json()
-            console.log(
-                'Sync API projects response received, projects count:',
-                result.projects?.length || 0,
-            )
-
-            // Convert sync API projects to our format
-            const projects = result.projects || []
-
-            return projects
-                .filter((project: any) => !project.is_deleted)
-                .map((project: any) => ({
-                    id: String(project.id), // Numeric ID from sync API
-                    name: project.name,
-                    color: project.color,
-                    parentId: project.parent_id ? String(project.parent_id) : undefined,
-                    isInboxProject: project.inbox_project || false,
-                    order: project.child_order || 0,
-                }))
-        } catch (error) {
-            console.error('Error fetching projects via Sync API:', error)
-            // Fallback to regular API
-            return TodoistApiClient.getProjects()
-        }
+        )
     }
 
     // Get ALL tasks using Sync API (more efficient for large datasets)
     static async getAllTasksSync(): Promise<TodoistTaskApi[]> {
-        try {
-            const apiKey = process.env.TODOIST_API_KEY
-            if (!apiKey) {
-                throw new Error('TODOIST_API_KEY is not configured')
+        return RateLimiter.executeWithRateLimit(
+            'sync-tasks',
+            async () => {
+                try {
+                    const apiKey = process.env.TODOIST_API_KEY
+                    if (!apiKey) {
+                        throw new Error('TODOIST_API_KEY is not configured')
+                    }
+
+                    // Use sync API to get all items in one request
+                    const response = await fetch('https://api.todoist.com/sync/v9/sync', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${apiKey}`,
+                        },
+                        body: JSON.stringify({
+                            sync_token: '*',
+                            resource_types: ['items'],
+                        }),
+                    })
+
+                    if (!response.ok) {
+                        const errorText = await response.text()
+                        console.error('Sync API error:', errorText)
+                        const error = new Error(`Sync API request failed: ${response.status}`)
+                        // Attach the status code for rate limiter to detect
+                        ;(error as any).statusCode = response.status
+                        ;(error as any).message = `Sync API request failed: ${response.status}. ${errorText}`
+                        throw error
+                    }
+
+                    const result = await response.json()
+                    console.log('Sync API response received, items count:', result.items?.length || 0)
+
+                    // Convert sync API items to our task format
+                    const items = result.items || []
+
+                    // Filter out completed tasks and convert to our format
+                    const activeTasks = items
+                        .filter((item: any) => !item.is_deleted && !item.checked)
+                        .map((item: any) => ({
+                            id: item.id,
+                            content: item.content,
+                            description: item.description || '',
+                            projectId: String(item.project_id), // Ensure string type for consistency
+                            priority: item.priority as 1 | 2 | 3 | 4, // Sync API and Internal format are the same: 1=P4, 2=P3, 3=P2, 4=P1
+                            labels: item.labels || [],
+                            due: item.due
+                                ? {
+                                      date: item.due.date,
+                                      string: item.due.string,
+                                      datetime: item.due.datetime || undefined,
+                                  }
+                                : undefined,
+                            deadline: item.deadline
+                                ? {
+                                      date: item.deadline.date,
+                                      string: item.deadline.string,
+                                  }
+                                : undefined,
+                            responsibleUid: item.responsible_uid || null,
+                            isCompleted: false,
+                            createdAt: item.added_at || new Date().toISOString(),
+                        }))
+
+                    console.log(
+                        `Sync API: Fetched ${activeTasks.length} active tasks from ${items.length} total items`,
+                    )
+                    return activeTasks
+                } catch (error) {
+                    console.error('Error fetching all tasks via Sync API:', error)
+                    throw new Error('Failed to fetch all tasks via Sync API')
+                }
             }
-
-            // Use sync API to get all items in one request
-            const response = await fetch('https://api.todoist.com/sync/v9/sync', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${apiKey}`,
-                },
-                body: JSON.stringify({
-                    sync_token: '*',
-                    resource_types: ['items'],
-                }),
-            })
-
-            if (!response.ok) {
-                const errorText = await response.text()
-                console.error('Sync API error:', errorText)
-                throw new Error(`Sync API request failed: ${response.status}`)
-            }
-
-            const result = await response.json()
-            console.log('Sync API response received, items count:', result.items?.length || 0)
-
-            // Convert sync API items to our task format
-            const items = result.items || []
-
-            // Filter out completed tasks and convert to our format
-            const activeTasks = items
-                .filter((item: any) => !item.is_deleted && !item.checked)
-                .map((item: any) => ({
-                    id: item.id,
-                    content: item.content,
-                    description: item.description || '',
-                    projectId: String(item.project_id), // Ensure string type for consistency
-                    priority: item.priority as 1 | 2 | 3 | 4, // Sync API and Internal format are the same: 1=P4, 2=P3, 3=P2, 4=P1
-                    labels: item.labels || [],
-                    due: item.due
-                        ? {
-                              date: item.due.date,
-                              string: item.due.string,
-                              datetime: item.due.datetime || undefined,
-                          }
-                        : undefined,
-                    deadline: item.deadline
-                        ? {
-                              date: item.deadline.date,
-                              string: item.deadline.string,
-                          }
-                        : undefined,
-                    responsibleUid: item.responsible_uid || null,
-                    isCompleted: false,
-                    createdAt: item.added_at || new Date().toISOString(),
-                }))
-
-            console.log(
-                `Sync API: Fetched ${activeTasks.length} active tasks from ${items.length} total items`,
-            )
-            return activeTasks
-        } catch (error) {
-            console.error('Error fetching all tasks via Sync API:', error)
-            throw new Error('Failed to fetch all tasks via Sync API')
-        }
+        )
     }
 
     // Get tasks for a specific project
     static async getProjectTasks(projectId: string): Promise<TodoistTaskApi[]> {
         try {
-            console.log(`getProjectTasks called with projectId: ${projectId} (type: ${typeof projectId})`)
-            
-            // The REST API expects a string project ID, not numeric
-            const response = await api.getTasks({ projectId: projectId } as any)
-            console.log(`Tasks response for project ${projectId}:`, response)
-
-            // Handle different response formats
-            let tasks: any[]
-            if (Array.isArray(response)) {
-                tasks = response
-            } else if (response && typeof response === 'object') {
-                // Try common pagination field names
-                tasks =
-                    (response as any).data ||
-                    (response as any).items ||
-                    (response as any).tasks ||
-                    (response as any).results ||
-                    []
-            } else {
-                tasks = []
-            }
-
-            console.log(`Extracted tasks for project ${projectId}:`, tasks)
-
-            // Filter out null/undefined items
-            const validTasks = tasks.filter((task) => task && task.id)
-            
-
-            return validTasks.map((task: any) => ({
-                id: task.id,
-                content: task.content,
-                description: task.description || '',
-                projectId: String(task.projectId),
-                priority: task.priority as 1 | 2 | 3 | 4,
-                labels: task.labels || [],
-                due: task.due
-                    ? {
-                          date: task.due.date,
-                          string: task.due.string,
-                          datetime: task.due.datetime || undefined,
-                      }
-                    : undefined,
-                deadline: task.deadline
-                    ? {
-                          date: task.deadline.date,
-                          string: task.deadline.string,
-                      }
-                    : undefined,
-                createdAt: task.created_at || task.createdAt || task.added_at || new Date().toISOString(),
-                responsibleUid: task.responsibleUid || null,
-                isCompleted: task.isCompleted || false,
-            }))
+            // Use Sync API to get all tasks and filter by project ID
+            // This ensures consistent ID handling across all operations
+            const allTasks = await TodoistApiClient.getAllTasksSync()
+            return allTasks.filter(task => task.projectId === projectId)
         } catch (error) {
             console.error(`Error fetching tasks for project ${projectId}:`, error)
             throw new Error('Failed to fetch project tasks')
@@ -774,6 +717,8 @@ export class TodoistApiClient {
         },
     ): Promise<TodoistTaskApi> {
         try {
+            console.log('createTask called with:', { content, options })
+            
             const apiKey = process.env.TODOIST_API_KEY
             if (!apiKey) {
                 throw new Error('TODOIST_API_KEY is not configured')
@@ -796,9 +741,8 @@ export class TodoistApiClient {
                 args.project_id = options.projectId
             }
             if (options?.priority) {
-                // Convert priority: REST API uses 1-4 (1=natural, 4=urgent)
-                // Sync API uses 1-4 (1=natural/p4, 4=urgent/p1)
-                args.priority = 5 - options.priority
+                // Sync API uses same priority format as internal: 1-4 (1=lowest/P4, 4=highest/P1)
+                args.priority = options.priority
             }
             if (options?.labels) {
                 args.labels = options.labels
@@ -1027,6 +971,10 @@ export class TodoistApiClient {
             return true
         } catch (error) {
             console.error('Error setting project metadata:', error)
+            if (error instanceof Error) {
+                console.error('Error message:', error.message)
+                console.error('Error stack:', error.stack)
+            }
             throw new Error('Failed to set project metadata')
         }
     }

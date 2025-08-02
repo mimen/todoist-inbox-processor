@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { TodoistApiClient } from '@/lib/todoist-api'
 
 export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url)
+  const projectId = searchParams.get('projectId')
+  
   try {
-    const { searchParams } = new URL(request.url)
-    const projectId = searchParams.get('projectId')
-    
     console.log('API: Fetching tasks for projectId:', projectId)
     
     let tasks
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       { 
         error: 'Failed to fetch tasks',
         details: error.message || 'Unknown error',
-        projectId: searchParams.get('projectId')
+        projectId: projectId
       },
       { status: 500 }
     )
