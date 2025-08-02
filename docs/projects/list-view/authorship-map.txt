@@ -1,0 +1,10 @@
+Component-Templates.md:software-architect
+IMPLEMENTATION_PLAN.md:project-manager-specialist
+Implementation-Guide.md:software-architect
+Stakeholder-Questions.md:product-requirements-analyst
+Task-Breakdown.md:task-decomposition-lead
+Technical-Architecture.md:software-architect
+Technical-Spec.md:product-requirements-analyst
+User-Stories.md:product-requirements-analyst
+README.md:llm-documentation-specialist
+EOF < /dev/null
