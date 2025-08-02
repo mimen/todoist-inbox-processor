@@ -3,10 +3,11 @@ import { TodoistApiClient } from '@/lib/todoist-api'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { projectId: string } }
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
-    const metadata = await TodoistApiClient.getProjectMetadata(params.projectId)
+    const { projectId } = await params
+    const metadata = await TodoistApiClient.getProjectMetadata(projectId)
     return NextResponse.json(metadata || {
       description: '',
       category: null,
@@ -23,11 +24,14 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { projectId: string } }
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
+    const { projectId } = await params
     const body = await request.json()
     const { description, category, priority, dueString, deadline } = body
+    
+    // Validate input first before making API calls
     
     // Validate category if provided
     if (category !== undefined && category !== null && !['area', 'project'].includes(category)) {
@@ -45,7 +49,7 @@ export async function PUT(
       )
     }
 
-    await TodoistApiClient.setProjectMetadata(params.projectId, {
+    await TodoistApiClient.setProjectMetadata(projectId, {
       description,
       category,
       priority,
@@ -56,8 +60,19 @@ export async function PUT(
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error updating project metadata:', error)
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    
+    // Return more specific status codes based on error
+    if (errorMessage.includes('not found')) {
+      return NextResponse.json(
+        { error: errorMessage },
+        { status: 404 }
+      )
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to update project metadata' },
+      { error: `Failed to update project metadata: ${errorMessage}` },
       { status: 500 }
     )
   }

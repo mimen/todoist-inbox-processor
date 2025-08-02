@@ -6,18 +6,19 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { projectId: string } }
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
+    const { projectId } = await params
     const { currentDescription } = await request.json()
     
     // Get project details and tasks
     const [projects, tasks] = await Promise.all([
       TodoistApiClient.getProjects(),
-      TodoistApiClient.getProjectTasks(params.projectId)
+      TodoistApiClient.getProjectTasks(projectId)
     ])
     
-    const project = projects.find(p => p.id === params.projectId)
+    const project = projects.find(p => p.id === projectId)
     if (!project) {
       return NextResponse.json(
         { error: 'Project not found' },

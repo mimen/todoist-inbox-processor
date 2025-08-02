@@ -55,7 +55,7 @@ export async function GET(
         console.log('Using current user:', currentUser)
 
         // Fetch collaborators for the project
-        let users = []
+        let users: any[] = []
         let isPersonalProject = true
         
         try {
@@ -70,12 +70,12 @@ export async function GET(
             console.log('Response keys:', Object.keys(response || {}))
             
             // Handle different response formats
-            let collaborators = []
+            let collaborators: any[] = []
             if (Array.isArray(response)) {
                 collaborators = response
             } else if (response && typeof response === 'object') {
                 // Try different field names the API might use
-                collaborators = response.results || response.data || response.collaborators || response.users || []
+                collaborators = (response as any).results || (response as any).data || (response as any).collaborators || (response as any).users || []
             }
             
             console.log('Extracted collaborators count:', collaborators.length)
