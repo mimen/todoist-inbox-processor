@@ -4,6 +4,20 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { TodoistProject } from '@/lib/types'
 import EnhancedProjectCard from '@/components/EnhancedProjectCard'
+import DraggableProjectCard from '@/components/DraggableProjectCard'
+import PriorityDropZone from '@/components/PriorityDropZone'
+import {
+  DndContext,
+  DragOverlay,
+  closestCorners,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragStartEvent,
+  DragOverEvent,
+} from '@dnd-kit/core'
 
 interface ProjectWithMetadata extends TodoistProject {
   description: string
@@ -14,24 +28,70 @@ interface ProjectWithMetadata extends TodoistProject {
 }
 
 type FilterType = 'all' | 'without-descriptions' | 'areas' | 'projects' | 'no-type' | 'need-priority' | 'need-dates'
-type SortType = 'name' | 'priority' | 'scheduled-date' | 'deadline'
+type SortType = 'order' | 'name' | 'priority' | 'priority-grouped' | 'scheduled-date' | 'deadline'
+
+// Helper function to get priority name
+const getPriorityName = (priority: 1 | 2 | 3 | 4) => {
+  switch (priority) {
+    case 4: return 'Urgent'
+    case 3: return 'High'
+    case 2: return 'Medium'
+    case 1: return 'Low'
+  }
+}
+
+// Helper function to get priority background color
+const getPriorityBgColor = (priority: 1 | 2 | 3 | 4) => {
+  switch (priority) {
+    case 4: return 'bg-red-500'
+    case 3: return 'bg-orange-500'
+    case 2: return 'bg-yellow-500'
+    case 1: return 'bg-blue-500'
+  }
+}
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<ProjectWithMetadata[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeFilter, setActiveFilter] = useState<FilterType>('all')
-  const [sortBy, setSortBy] = useState<SortType>('name')
-  const [allCollapsed, setAllCollapsed] = useState(false)
+  const [sortBy, setSortBy] = useState<SortType>('order')
+  const [allCollapsed, setAllCollapsed] = useState(true)
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const [overId, setOverId] = useState<string | null>(null)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor)
+  )
 
   // Load projects with descriptions
   useEffect(() => {
+    let retryTimeout: NodeJS.Timeout
+
     async function loadProjects() {
       try {
         setLoading(true)
         setError(null)
 
         const response = await fetch('/api/projects/with-metadata')
+        
+        if (response.status === 429) {
+          // Handle rate limit error
+          const errorData = await response.json()
+          setError(errorData.error || 'Rate limit exceeded. Please wait before trying again.')
+          
+          // Retry after 30 seconds
+          retryTimeout = setTimeout(() => {
+            loadProjects()
+          }, 30000)
+          return
+        }
+        
         if (!response.ok) {
           throw new Error('Failed to fetch projects')
         }
@@ -49,6 +109,13 @@ export default function ProjectsPage() {
     }
 
     loadProjects()
+    
+    // Cleanup function
+    return () => {
+      if (retryTimeout) {
+        clearTimeout(retryTimeout)
+      }
+    }
   }, [])
 
   const handleMetadataChange = useCallback(async (projectId: string, metadata: {
@@ -58,9 +125,23 @@ export default function ProjectsPage() {
     dueString?: string
     deadline?: string
   }) => {
+    // Optimistically update local state immediately
+    const previousProjects = projects
+    setProjects(prev => prev.map(project => 
+      project.id === projectId 
+        ? { 
+            ...project, 
+            description: metadata.description ?? project.description,
+            category: metadata.category !== undefined ? metadata.category : project.category,
+            priority: metadata.priority !== undefined ? metadata.priority : project.priority,
+            // Handle date parsing for display
+            ...(metadata.dueString && { due: { date: '', string: metadata.dueString } }),
+            ...(metadata.deadline && { deadline: { date: '', string: metadata.deadline } })
+          } as ProjectWithMetadata
+        : project
+    ))
+
     try {
-      // Updating project metadata
-      
       // Update the project metadata via API
       const response = await fetch(`/api/projects/${projectId}/metadata`, {
         method: 'PUT',
@@ -73,28 +154,60 @@ export default function ProjectsPage() {
       if (!response.ok) {
         const errorData = await response.json()
         console.error('API Response error:', errorData)
-        throw new Error(`Failed to update project metadata: ${errorData.error || response.statusText}`)
+        
+        // Revert on error
+        setProjects(previousProjects)
+        
+        if (response.status === 404) {
+          // Project doesn't exist - refresh the project list
+          console.error('Project not found, refreshing project list...')
+          window.location.reload()
+          return
+        }
+        
+        throw new Error(errorData.error || `Failed to update project metadata: ${response.statusText}`)
       }
-
-      // Update local state
-      setProjects(prev => prev.map(project => 
-        project.id === projectId 
-          ? { 
-              ...project, 
-              ...metadata,
-              // Handle date parsing for display
-              ...(metadata.dueString && { due: { date: '', string: metadata.dueString } }),
-              ...(metadata.deadline && { deadline: { date: '', string: metadata.deadline } })
-            }
-          : project
-      ))
 
       // Project metadata updated successfully
     } catch (err) {
       console.error('Error updating project metadata:', err)
       setError(err instanceof Error ? err.message : 'Failed to update project metadata')
+      
+      // Revert on error
+      setProjects(previousProjects)
     }
-  }, [])
+  }, [projects])
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string)
+  }
+
+  const handleDragOver = (event: DragOverEvent) => {
+    setOverId(event.over?.id as string | null)
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    setActiveId(null)
+    setOverId(null)
+
+    if (!over || active.id === over.id) return
+
+    // Extract priority from the drop zone ID (format: "priority-4" or "priority-none")
+    const overIdStr = over.id.toString()
+    if (overIdStr.startsWith('priority-')) {
+      const newPriority = overIdStr === 'priority-none' 
+        ? null 
+        : parseInt(overIdStr.replace('priority-', '')) as 1 | 2 | 3 | 4
+
+      // Find the dragged project
+      const draggedProject = projects.find(p => p.id === active.id)
+      if (draggedProject && draggedProject.priority !== newPriority) {
+        // Update the priority
+        handleMetadataChange(draggedProject.id, { priority: newPriority })
+      }
+    }
+  }
 
   // Group projects by hierarchy (handles unlimited nesting depth)
   const organizeProjects = (projects: ProjectWithMetadata[]) => {
@@ -121,13 +234,17 @@ export default function ProjectsPage() {
       organizedProjects.push({ ...project, nestingDepth: depth })
       processedIds.add(project.id)
       
-      // Find and add all direct children
-      const children = projects.filter(p => p.parentId === project.id)
+      // Find and add all direct children, sorted by their order
+      const children = projects
+        .filter(p => p.parentId === project.id)
+        .sort((a, b) => a.order - b.order)
       children.forEach(child => addProjectAndChildren(child, depth + 1))
     }
     
-    // Start with root projects (those without parents)
-    const rootProjects = projects.filter(p => !p.parentId)
+    // Start with root projects (those without parents), sorted by order
+    const rootProjects = projects
+      .filter(p => !p.parentId)
+      .sort((a, b) => a.order - b.order)
     rootProjects.forEach(rootProject => addProjectAndChildren(rootProject, 0))
     
     // Add any orphaned projects (projects whose parents might not exist)
@@ -163,7 +280,10 @@ export default function ProjectsPage() {
 
   // Sort projects
   const sortedProjects = [...filteredProjects].sort((a, b) => {
-    if (sortBy === 'priority') {
+    if (sortBy === 'order') {
+      // Sort by Todoist's order
+      return a.order - b.order
+    } else if (sortBy === 'priority') {
       // Sort by priority (4=P1 highest, 1=P4 lowest, null last)
       const aPriority = a.priority || 0
       const bPriority = b.priority || 0
@@ -193,7 +313,11 @@ export default function ProjectsPage() {
     }
   })
 
-  const organizedProjects = organizeProjects(sortedProjects)
+  // When sorting by order, organize into hierarchy
+  // Otherwise, show flat list to see all projects sorted together
+  const organizedProjects = sortBy === 'order' 
+    ? organizeProjects(sortedProjects)
+    : sortedProjects.map(p => ({ ...p, nestingDepth: 0 }))
 
   if (loading) {
     return (
@@ -267,8 +391,10 @@ export default function ProjectsPage() {
                   onChange={(e) => setSortBy(e.target.value as SortType)}
                   className="px-3 py-1 text-sm text-gray-900 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
+                  <option value="order">Todoist Order</option>
                   <option value="name">Name</option>
                   <option value="priority">Priority</option>
+                  <option value="priority-grouped">Priority (Grouped)</option>
                   <option value="scheduled-date">Scheduled Date</option>
                   <option value="deadline">Deadline</option>
                 </select>
@@ -420,6 +546,56 @@ export default function ProjectsPage() {
                activeFilter === 'need-dates' ? 'All projects have dates set.' : 'No projects match the current filter.'}
             </p>
           </div>
+        ) : sortBy === 'priority-grouped' ? (
+          // Priority grouped view with drag and drop
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCorners}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="space-y-8">
+              {([4, 3, 2, 1, null] as const).map((priorityLevel) => {
+                const projectsInPriority = organizedProjects.filter(p => p.priority === priorityLevel)
+                
+                return (
+                  <div key={priorityLevel ?? 'none'} className="space-y-4">
+                    <div className="flex items-center gap-3 pb-2 border-b border-gray-200">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {priorityLevel ? `P${5 - priorityLevel} - ${getPriorityName(priorityLevel)}` : 'No Priority'}
+                      </h3>
+                      <span className="text-sm text-gray-500">
+                        ({projectsInPriority.length} {projectsInPriority.length === 1 ? 'project' : 'projects'})
+                      </span>
+                      {priorityLevel && (
+                        <div className={`w-3 h-3 rounded-full ${getPriorityBgColor(priorityLevel)}`} />
+                      )}
+                    </div>
+                    
+                    <PriorityDropZone
+                      priorityLevel={priorityLevel}
+                      projects={projectsInPriority}
+                      onMetadataChange={handleMetadataChange}
+                      isCollapsed={allCollapsed}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+            
+            <DragOverlay>
+              {activeId ? (
+                <div className="opacity-50">
+                  <EnhancedProjectCard
+                    project={projects.find(p => p.id === activeId)!}
+                    nestingDepth={0}
+                    isCollapsed={allCollapsed}
+                  />
+                </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
         ) : (
           <div className="space-y-4">
             {organizedProjects.map((project) => (

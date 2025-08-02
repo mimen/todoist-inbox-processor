@@ -230,21 +230,44 @@ export default function EnhancedProjectCard({
           {project.name}
         </h2>
         
-        {/* Badges */}
+        {/* Badges and Controls */}
         <div className="flex items-center gap-2">
+          {/* Priority Selection - Always visible */}
+          <div className="flex gap-1">
+            {[4, 3, 2, 1].map((p) => (
+              <button
+                key={p}
+                onClick={() => handlePriorityChange(p === priority ? null : p as 1 | 2 | 3 | 4)}
+                className={`px-2 py-1 text-xs font-medium rounded-md border transition-colors ${
+                  priority === p 
+                    ? getPriorityColor(p as 1 | 2 | 3 | 4).replace('border', 'bg').replace('700', '100')
+                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                }`}
+                title={`Set priority to ${getPriorityDisplayName(p as 1 | 2 | 3 | 4)}`}
+              >
+                {getPriorityDisplayName(p as 1 | 2 | 3 | 4)}
+              </button>
+            ))}
+            {priority && (
+              <button
+                onClick={() => handlePriorityChange(null)}
+                className="px-2 py-1 text-xs font-medium rounded-md border bg-white text-gray-400 border-gray-200 hover:bg-gray-50"
+                title="Clear priority"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          
+          {/* Other badges */}
           {category && (
             <span className={`px-2 py-1 text-xs font-medium rounded-md border ${getCategoryColor(category)}`}>
-              {category === 'area' ? 'Area of Responsibility' : 'Project'}
-            </span>
-          )}
-          {priority && (
-            <span className={`px-2 py-1 text-xs font-medium rounded-md border ${getPriorityColor(priority)}`}>
-              {getPriorityDisplayName(priority)}
+              {category === 'area' ? 'Area' : 'Project'}
             </span>
           )}
           {nestingDepth > 0 && (
             <span className="px-2 py-1 text-xs font-medium rounded-md bg-purple-50 text-purple-700 border border-purple-200">
-              Level {nestingDepth}
+              L{nestingDepth}
             </span>
           )}
           {project.isInboxProject && (
@@ -289,35 +312,6 @@ export default function EnhancedProjectCard({
           </div>
         </div>
 
-        {/* Priority Selection */}
-        <div>
-          <label className="text-sm font-medium text-gray-700 mb-2 block">
-            Priority
-          </label>
-          <div className="flex gap-1">
-            {[4, 3, 2, 1].map((p) => (
-              <button
-                key={p}
-                onClick={() => handlePriorityChange(priority === p ? null : p as 1 | 2 | 3 | 4)}
-                className={`px-2 py-1 text-xs rounded border transition-colors ${
-                  priority === p 
-                    ? getPriorityColor(p) 
-                    : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
-                }`}
-              >
-                {getPriorityDisplayName(p)}
-              </button>
-            ))}
-            {priority && (
-              <button
-                onClick={() => handlePriorityChange(null)}
-                className="px-2 py-1 text-xs rounded border bg-gray-50 text-gray-400 border-gray-200 hover:bg-red-50 hover:text-red-600"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-        </div>
       </div>
 
       {/* Dates Section - Only show for Projects, not Areas */}
