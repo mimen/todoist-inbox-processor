@@ -1,0 +1,76 @@
+# Task Scheduler Feature - Authorship Map
+
+## Document Creation Timeline
+
+### Phase 1: Initial Documentation (First Session)
+- PRD.md - Initial product requirements document
+- User-Stories.md - Detailed user scenarios with acceptance criteria  
+- Technical-Architecture.md - System design and component architecture
+- Stakeholder-Questions.md - Key questions and decisions
+- Task-Breakdown.md - Granular task decomposition
+- Implementation-Plan.md - Phased implementation approach
+
+### Phase 2: User Feedback Integration (Second Session)
+All documents above were updated based on user feedback:
+- Removed task duration features (moved to future phase)
+- Changed to 15-minute navigation increments
+- Updated to hardcoded authentication approach
+- Added calendar visibility requirements
+- Implemented two-step confirmation flow
+
+### Phase 3: Technical Documentation (Third Session)
+- Technical-Spec.md - Detailed technical specifications
+- Implementation-Guide.md - Step-by-step implementation instructions
+- Component-Templates.md - Reusable code templates and patterns
+
+### Phase 4: Reorganization (Fourth Session)
+- IMPLEMENTATION-README.md - Entry point for LLM consumption
+- 01-CRITICAL-READS/CRITICAL-UI-REUSE.md - Emphasis on reusing existing overlays
+- 01-CRITICAL-READS/MVP-SCOPE-DECISIONS.md - Final MVP scope boundaries
+- 01-CRITICAL-READS/HARDCODED-AUTH-GUIDE.md - Google Calendar auth implementation
+- authorship-map.txt - This document
+
+## Key Decisions Made
+
+### MVP Scope Refinements
+1. Fixed 30-minute task duration (no adjustment in MVP)
+2. 15-minute positioning grid with keyboard navigation
+3. Hardcoded Google Calendar credentials (no OAuth)
+4. Two-step confirmation flow (preview → confirm)
+5. Calendar visibility toggles with localStorage persistence
+6. Desktop-only optimization
+7. PST timezone only
+
+### Technical Approach
+1. Reuse existing overlay infrastructure
+2. Replace ScheduledDateSelector and DeadlineSelector internals
+3. Maintain backward compatibility with existing keyboard shortcuts
+4. Side-by-side event display (overlap only when necessary)
+5. Keyboard navigation skips positions without 30-minute clearance
+
+## Document Relationships
+
+### Requirements Flow
+PRD.md → User-Stories.md → Task-Breakdown.md → Implementation-Plan.md
+
+### Technical Flow  
+Technical-Architecture.md → Technical-Spec.md → Component-Templates.md
+
+### Implementation Flow
+IMPLEMENTATION-README.md → CRITICAL-READS/* → Task-Breakdown.md → Component-Templates.md
+
+## Primary Authors/Contributors
+- All documentation created by Claude (AI assistant)
+- User provided requirements, feedback, and scope refinements
+- Documentation structure inspired by list-view project
+
+## Version History
+- v1.0 - Initial documentation creation
+- v2.0 - Major scope refinement based on user feedback
+- v3.0 - Added technical specifications and templates
+- v4.0 - Reorganized for LLM consumption with numbered folders
+
+## Notes
+- This project follows the documentation pattern established in the list-view project
+- All critical implementation decisions are captured in 01-CRITICAL-READS/
+- The documentation is optimized for LLM consumption with clear implementation paths
