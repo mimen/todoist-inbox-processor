@@ -7,4 +7,5 @@ Technical-Architecture.md:software-architect
 Technical-Spec.md:product-requirements-analyst
 User-Stories.md:product-requirements-analyst
 README.md:llm-documentation-specialist
+Engineering-Feedback-Summary.md:claude-main
 EOF < /dev/null

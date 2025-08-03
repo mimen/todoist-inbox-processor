@@ -1,5 +1,9 @@
 # List View Feature
 
+## 🚀 Start Here
+
+**For implementation, read:** [IMPLEMENTATION-README.md](./IMPLEMENTATION-README.md)
+
 ## Project Overview
 
 The List View feature introduces a new viewing mode for the task processor application that replaces the current single-task processing interface with a comprehensive, vertically compact list of all tasks in the current queue. This feature enables users to get a high-level overview of their tasks, understand task distribution across projects, and navigate more efficiently through their work.
@@ -10,15 +14,35 @@ The List View feature introduces a new viewing mode for the task processor appli
 **Started**: 2024-01  
 **Target Completion**: TBD
 
-## Key Documents
+## 📁 Document Organization
 
-- [Product Requirements Document](PRD.md) - Executive summary, problem statement, user personas, inline editing
-- [User Stories](User-Stories.md) - Detailed user stories with acceptance criteria
-- [Stakeholder Questions](Stakeholder-Questions.md) - Key questions and decisions needed
-- [Technical Specification](Technical-Spec.md) - Detailed technical specifications, keyboard navigation, overlays
-- [Technical Architecture](Technical-Architecture.md) - System design and component architecture
-- [Implementation Guide](Implementation-Guide.md) - Step-by-step implementation instructions
-- [Component Templates](Component-Templates.md) - React component structures and patterns
+The documentation has been organized for optimal implementation flow:
+
+```
+list-view/
+├── IMPLEMENTATION-README.md     # 🚀 START HERE FOR IMPLEMENTATION
+├── 01-CRITICAL-READS/          # Must read before coding
+├── 02-PLANNING/                # Project planning docs
+├── 03-TASKS/                   # Your task checklist
+├── 04-SPECIFICATIONS/          # Detailed specifications
+└── 05-CODE-TEMPLATES/          # Ready-to-use code
+```
+
+### Quick Links by Purpose
+
+**Starting Implementation?**
+- [IMPLEMENTATION-README.md](./IMPLEMENTATION-README.md) - Complete workflow guide
+
+**Need Task Details?**
+- [Task-Breakdown.md](./03-TASKS/Task-Breakdown.md) - All tasks with dependencies
+
+**Need Code Examples?**
+- [Component-Templates.md](./05-CODE-TEMPLATES/Component-Templates.md) - Copy-paste components
+- [Implementation-Guide.md](./05-CODE-TEMPLATES/Implementation-Guide.md) - Integration steps
+
+**Need Technical Details?**
+- [Technical-Spec.md](./04-SPECIFICATIONS/Technical-Spec.md) - Detailed specifications
+- [CRITICAL-UI-REUSE.md](./01-CRITICAL-READS/CRITICAL-UI-REUSE.md) - Component reuse rules
 
 ## Timeline
 
@@ -37,11 +61,13 @@ The List View feature introduces a new viewing mode for the task processor appli
 
 ## Key Features
 
-1. **Toggle Between Views**: Switch between Processing View and List View
-2. **Compact Task Display**: View all tasks in current queue with essential information
-3. **Inline Actions**: Quick actions without entering processing mode
-4. **Smart Grouping**: Group tasks by project with expand/collapse functionality
-5. **Advanced Filtering**: Real-time filtering and sorting capabilities
+1. **Toggle Between Views**: Switch between Processing View and List View (remembers preference)
+2. **Todoist-Style Inline Display**: Beautiful, compact task rows with inline metadata
+3. **Shared Overlays**: Uses exact same overlay components as Processing View
+4. **Context-Aware Display**: Intelligently hides redundant information (e.g., project when viewing single project)
+5. **Virtual Scrolling**: Smooth performance with 100+ tasks
+6. **Queue-Based Infinite Scroll**: Seamlessly browse through multiple queues in dropdown
+7. **Keyboard Navigation**: Full keyboard support matching Processing View
 
 ## Technical Stack
 
