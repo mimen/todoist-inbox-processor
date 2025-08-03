@@ -11,6 +11,11 @@ interface ShortcutItem {
 
 export default function KeyboardShortcuts({ onClose }: KeyboardShortcutsProps) {
   const shortcuts = [
+    { category: 'View Modes', items: [
+      { key: 'v', description: 'Toggle between Processing and List view' },
+      { key: 'p', description: 'Switch to Processing view' },
+      { key: 'l', description: 'Switch to List view' },
+    ]},
     { category: 'Navigation', items: [
       { key: ['j', '→'], description: 'Browse next task (wraps around)' },
       { key: ['k', '←'], description: 'Browse previous task (wraps around)' },
@@ -25,7 +30,7 @@ export default function KeyboardShortcuts({ onClose }: KeyboardShortcutsProps) {
       { key: '1-9', description: 'Quick switch to processing modes (based on order)' },
     ]},
     { category: 'Task Management', items: [
-      { key: 'p', description: 'Change task priority' },
+      { key: 'Shift+p', description: 'Change task priority' },
       { key: '#', description: 'Move to different project' },
       { key: '@', description: 'Add or remove labels' },
       { key: '+', description: 'Assign task to someone (if collaborators exist)' },

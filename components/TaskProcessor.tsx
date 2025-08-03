@@ -58,6 +58,7 @@ import AssigneeSelectionOverlay from './AssigneeSelectionOverlay'
 import ProjectMetadataDisplay from './ProjectMetadataDisplay'
 import AssigneeFilter, { AssigneeFilterType } from './AssigneeFilter'
 import QueueCompletionView from './QueueCompletionView'
+import ViewModeToggle from './ViewModeToggle'
 
 export default function TaskProcessor() {
   const searchParams = useSearchParams()
@@ -1234,10 +1235,26 @@ export default function TaskProcessor() {
       }
 
       switch (e.key) {
+        case 'v':
+        case 'V':
+          e.preventDefault()
+          setViewMode(prev => prev === 'processing' ? 'list' : 'processing')
+          break
+        case 'l':
+        case 'L':
+          e.preventDefault()
+          setViewMode('list')
+          break
         case 'p':
         case 'P':
-          e.preventDefault()
-          setShowPriorityOverlay(true)
+          // Only show priority overlay with shift+p, regular p switches to processing view
+          if (e.shiftKey) {
+            e.preventDefault()
+            setShowPriorityOverlay(true)
+          } else {
+            e.preventDefault()
+            setViewMode('processing')
+          }
           break
         case '#':
           e.preventDefault()
@@ -1320,7 +1337,7 @@ export default function TaskProcessor() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [navigateToNextTask, navigateToPrevTask, showShortcuts, showPriorityOverlay, showProjectOverlay, showLabelOverlay, showScheduledOverlay, showDeadlineOverlay, showAssigneeOverlay, hasCollaboratorsForCurrentProject, handleProcessTask, currentTask, totalTasks, processedTaskIds, taskQueue, handleProgressToNextQueue, processingMode])
+  }, [navigateToNextTask, navigateToPrevTask, showShortcuts, showPriorityOverlay, showProjectOverlay, showLabelOverlay, showScheduledOverlay, showDeadlineOverlay, showAssigneeOverlay, hasCollaboratorsForCurrentProject, handleProcessTask, currentTask, totalTasks, processedTaskIds, taskQueue, handleProgressToNextQueue, processingMode, viewMode, setViewMode])
 
   // Handle Enter key for confirmation dialogs
   useEffect(() => {
@@ -1494,6 +1511,13 @@ export default function TaskProcessor() {
                 onChange={setAssigneeFilter}
                 tasks={allTasksGlobal}
                 currentUserId={currentUserId}
+              />
+              <div className="w-px h-6 bg-gray-300" />
+              <ViewModeToggle
+                mode={viewMode}
+                onModeChange={setViewMode}
+                taskCount={activeQueue.length}
+                isLoading={loadingTasks}
               />
               <div className="w-px h-6 bg-gray-300" />
               <Link
