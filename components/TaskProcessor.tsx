@@ -59,6 +59,7 @@ import ProjectMetadataDisplay from './ProjectMetadataDisplay'
 import AssigneeFilter, { AssigneeFilterType } from './AssigneeFilter'
 import QueueCompletionView from './QueueCompletionView'
 import ViewModeToggle from './ViewModeToggle'
+import ListView from './ListView/ListView'
 
 export default function TaskProcessor() {
   const searchParams = useSearchParams()
@@ -97,6 +98,7 @@ export default function TaskProcessor() {
   const [collaboratorsData, setCollaboratorsData] = useState<CollaboratorsData | null>(null)
   const [currentTaskAssignee, setCurrentTaskAssignee] = useState<TodoistUser | undefined>(undefined)
   const [assigneeFilter, setAssigneeFilter] = useState<AssigneeFilterType>('not-assigned-to-others')
+  const [overlayTaskId, setOverlayTaskId] = useState<string | null>(null)
   const [projectCollaborators, setProjectCollaborators] = useState<Record<string, TodoistUser[]>>({})
   const [dateLoadingStates, setDateLoadingStates] = useState<Record<string, 'due' | 'deadline' | null>>({})
   // Removed showNextQueuePrompt as it's now integrated into empty state
@@ -155,6 +157,9 @@ export default function TaskProcessor() {
     const taskId = activeQueue[activeQueuePosition]
     return masterTasks[taskId] || null
   }, [activeQueue, activeQueuePosition, masterTasks])
+  
+  // Get the task for overlays - either from overlayTaskId (ListView) or currentTask (Processing)
+  const overlayTask = overlayTaskId ? masterTasks[overlayTaskId] : currentTask
   
   const queuedTasks = useMemo((): TodoistTask[] => {
     return activeQueue.slice(activeQueuePosition + 1)
@@ -734,94 +739,99 @@ export default function TaskProcessor() {
 
   const handlePrioritySelect = useCallback(async (priority: 1 | 2 | 3 | 4) => {
     setShowPriorityOverlay(false) // Close immediately
+    setOverlayTaskId(null) // Clear overlay task ID
     
-    if (currentTask) {
-      const originalPriority = currentTask.priority
+    const taskToUpdate = overlayTask
+    if (taskToUpdate) {
+      const originalPriority = taskToUpdate.priority
       
       // Update the task immediately in the master store for optimistic UI
       setMasterTasks(prev => ({
         ...prev,
-        [currentTask.id]: {
-          ...prev[currentTask.id],
+        [taskToUpdate.id]: {
+          ...prev[taskToUpdate.id],
           priority
         }
       }))
       
       try {
         // Then update via API
-        await autoSaveTask(currentTask.id, { priority })
+        await autoSaveTask(taskToUpdate.id, { priority })
       } catch (err) {
         // Revert on error
         setMasterTasks(prev => ({
           ...prev,
-          [currentTask.id]: {
-            ...prev[currentTask.id],
+          [taskToUpdate.id]: {
+            ...prev[taskToUpdate.id],
             priority: originalPriority
           }
         }))
       }
     }
-  }, [currentTask, autoSaveTask])
+  }, [overlayTask, autoSaveTask])
 
   const handleProjectSelect = useCallback(async (projectId: string) => {
     setShowProjectOverlay(false) // Close immediately
+    setOverlayTaskId(null) // Clear overlay task ID
     
-    if (currentTask) {
-      const originalProjectId = currentTask.projectId
+    const taskToUpdate = overlayTask
+    if (taskToUpdate) {
+      const originalProjectId = taskToUpdate.projectId
       
       // Update the task immediately in the master store
       setMasterTasks(prev => ({
         ...prev,
-        [currentTask.id]: {
-          ...prev[currentTask.id],
+        [taskToUpdate.id]: {
+          ...prev[taskToUpdate.id],
           projectId
         }
       }))
       
       try {
         // Queue the auto-save
-        await autoSaveTask(currentTask.id, { projectId })
+        await autoSaveTask(taskToUpdate.id, { projectId })
       } catch (err) {
         // Revert on error
         setMasterTasks(prev => ({
           ...prev,
-          [currentTask.id]: {
-            ...prev[currentTask.id],
+          [taskToUpdate.id]: {
+            ...prev[taskToUpdate.id],
             projectId: originalProjectId
           }
         }))
       }
     }
-  }, [currentTask, autoSaveTask])
+  }, [overlayTask, autoSaveTask])
 
   const handleLabelsChange = useCallback(async (labels: string[]) => {
-    if (currentTask) {
-      const originalLabels = currentTask.labels
+    const taskToUpdate = overlayTask
+    if (taskToUpdate) {
+      const originalLabels = taskToUpdate.labels
       
       // Update the task immediately in the master store
       setMasterTasks(prev => ({
         ...prev,
-        [currentTask.id]: {
-          ...prev[currentTask.id],
+        [taskToUpdate.id]: {
+          ...prev[taskToUpdate.id],
           labels
         }
       }))
       
       try {
         // Queue the auto-save
-        await autoSaveTask(currentTask.id, { labels })
+        await autoSaveTask(taskToUpdate.id, { labels })
       } catch (err) {
         // Revert on error
         setMasterTasks(prev => ({
           ...prev,
-          [currentTask.id]: {
-            ...prev[currentTask.id],
+          [taskToUpdate.id]: {
+            ...prev[taskToUpdate.id],
             labels: originalLabels
           }
         }))
       }
     }
-  }, [currentTask, autoSaveTask])
+  }, [overlayTask, autoSaveTask])
 
   const handleDescriptionChange = useCallback(async (newDescription: string) => {
     if (currentTask) {
@@ -870,11 +880,12 @@ export default function TaskProcessor() {
   }, [navigateToNextTask])
 
   const handleScheduledDateChange = useCallback(async (dateString: string) => {
-    if (!currentTask) return;
+    const taskToUpdate = overlayTask
+    if (!taskToUpdate) return;
     
     // Capture the current task ID and due date immediately
-    const taskId = currentTask.id;
-    const originalDue = currentTask.due;
+    const taskId = taskToUpdate.id;
+    const originalDue = taskToUpdate.due;
     
     try {
       // Set loading state
@@ -958,11 +969,12 @@ export default function TaskProcessor() {
   }, [currentTask, autoSaveTask])
 
   const handleDeadlineChange = useCallback(async (dateString: string) => {
-    if (!currentTask) return;
+    const taskToUpdate = overlayTask
+    if (!taskToUpdate) return;
     
     // Capture the current task ID and deadline immediately
-    const taskId = currentTask.id;
-    const originalDeadline = currentTask.deadline;
+    const taskId = taskToUpdate.id;
+    const originalDeadline = taskToUpdate.deadline;
     
     try {
       // Set loading state
@@ -1035,15 +1047,17 @@ export default function TaskProcessor() {
 
   const handleAssigneeSelect = useCallback(async (userId: string | null) => {
     setShowAssigneeOverlay(false) // Close immediately
+    setOverlayTaskId(null) // Clear overlay task ID
     
-    if (currentTask) {
-      const originalAssigneeId = currentTask.assigneeId
+    const taskToUpdate = overlayTask
+    if (taskToUpdate) {
+      const originalAssigneeId = taskToUpdate.assigneeId
       
       // Update the task immediately in the master store
       setMasterTasks(prev => ({
         ...prev,
-        [currentTask.id]: {
-          ...prev[currentTask.id],
+        [taskToUpdate.id]: {
+          ...prev[taskToUpdate.id],
           assigneeId: userId || undefined
         }
       }))
@@ -1060,13 +1074,13 @@ export default function TaskProcessor() {
       
       try {
         // Queue the auto-save
-        await autoSaveTask(currentTask.id, { assigneeId: userId || undefined })
+        await autoSaveTask(taskToUpdate.id, { assigneeId: userId || undefined })
       } catch (err) {
         // Revert on error
         setMasterTasks(prev => ({
           ...prev,
-          [currentTask.id]: {
-            ...prev[currentTask.id],
+          [taskToUpdate.id]: {
+            ...prev[taskToUpdate.id],
             assigneeId: originalAssigneeId
           }
         }))
@@ -1082,7 +1096,7 @@ export default function TaskProcessor() {
         }
       }
     }
-  }, [currentTask, autoSaveTask, projectCollaborators])
+  }, [overlayTask, autoSaveTask, projectCollaborators, collaboratorsData])
 
   const handleProcessTask = useCallback(() => {
     if (!currentTask) return
@@ -1195,6 +1209,80 @@ export default function TaskProcessor() {
       type: 'info' 
     })
   }, [processingMode.type, loadTasksForMode])
+
+  // Overlay handlers for ListView - these work with any task ID
+  const handleOpenProjectOverlay = useCallback((taskId: string) => {
+    setOverlayTaskId(taskId)
+    setShowProjectOverlay(true)
+  }, [])
+
+  const handleOpenPriorityOverlay = useCallback((taskId: string) => {
+    setOverlayTaskId(taskId)
+    setShowPriorityOverlay(true)
+  }, [])
+
+  const handleOpenLabelOverlay = useCallback((taskId: string) => {
+    setOverlayTaskId(taskId)
+    setShowLabelOverlay(true)
+  }, [])
+
+  const handleOpenScheduledOverlay = useCallback((taskId: string) => {
+    setOverlayTaskId(taskId)
+    setShowScheduledOverlay(true)
+  }, [])
+
+  const handleOpenDeadlineOverlay = useCallback((taskId: string) => {
+    setOverlayTaskId(taskId)
+    setShowDeadlineOverlay(true)
+  }, [])
+
+  const handleOpenAssigneeOverlay = useCallback((taskId: string) => {
+    setOverlayTaskId(taskId)
+    setShowAssigneeOverlay(true)
+  }, [])
+
+  // Handle task updates from ListView
+  const handleListViewTaskUpdate = useCallback(async (taskId: string, updates: TaskUpdate) => {
+    await autoSaveTask(taskId, updates)
+  }, [autoSaveTask])
+
+  // Handle task completion from ListView
+  const handleListViewTaskComplete = useCallback(async (taskId: string) => {
+    // Mark as processed
+    setProcessedTaskIds(prev => [...prev, taskId])
+    
+    // Show optimistic success message
+    setToast({ message: 'Task completed', type: 'success' })
+    
+    // Handle the API request in the background
+    try {
+      const response = await fetch(`/api/todoist/tasks/${taskId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to complete task')
+      }
+    } catch (err) {
+      console.error('Error completing task:', err)
+      setToast({ 
+        message: err instanceof Error ? err.message : 'Failed to complete task', 
+        type: 'error' 
+      })
+    }
+  }, [setToast])
+
+  // Handle task processing from ListView (switch to processing view)
+  const handleListViewTaskProcess = useCallback((taskId: string) => {
+    // Find the position of this task in the active queue
+    const position = activeQueue.findIndex(id => id === taskId)
+    if (position !== -1) {
+      setActiveQueuePosition(position)
+      setViewMode('processing')
+      setTaskKey(prev => prev + 1) // Force re-render
+    }
+  }, [activeQueue])
+
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -1569,8 +1657,30 @@ export default function TaskProcessor() {
           )}
         </div>
 
-        {/* Main Processing Area */}
-        {currentTask && !loadingTasks && (
+        {/* Main Content Area - conditional based on view mode */}
+        {viewMode === 'list' ? (
+          <ListView
+            tasks={activeQueue.map(id => masterTasks[id]).filter(Boolean)}
+            projects={projects}
+            labels={labels}
+            processingMode={processingMode}
+            projectMetadata={projectMetadata}
+            listViewState={listViewState}
+            onListViewStateChange={setListViewState}
+            onTaskUpdate={handleListViewTaskUpdate}
+            onTaskComplete={handleListViewTaskComplete}
+            onTaskProcess={handleListViewTaskProcess}
+            onViewModeChange={setViewMode}
+            currentUserId={currentUserId}
+            collaborators={projectCollaborators}
+            onOpenProjectOverlay={handleOpenProjectOverlay}
+            onOpenPriorityOverlay={handleOpenPriorityOverlay}
+            onOpenLabelOverlay={handleOpenLabelOverlay}
+            onOpenScheduledOverlay={handleOpenScheduledOverlay}
+            onOpenDeadlineOverlay={handleOpenDeadlineOverlay}
+            onOpenAssigneeOverlay={handleOpenAssigneeOverlay}
+          />
+        ) : currentTask && !loadingTasks ? (
           <div className="space-y-6">
             {/* Show if all tasks are processed */}
             {processedTaskIds.length === taskQueue.length && taskQueue.length > 0 && (
@@ -1654,10 +1764,10 @@ export default function TaskProcessor() {
               canGoPrevious={activeQueuePosition > 0}
             />
           </div>
-        )}
+        ) : null}
 
-        {/* Queue Preview */}
-        {queuedTasks.length > 0 && (
+        {/* Queue Preview - only show in processing mode */}
+        {viewMode === 'processing' && queuedTasks.length > 0 && (
           <div className="mt-8 flex flex-col items-center">
             <div className="w-full max-w-2xl p-4 bg-gray-50 rounded-lg">
               <h3 className="text-sm font-medium text-gray-700 mb-3 text-center">
@@ -1694,68 +1804,86 @@ export default function TaskProcessor() {
       )}
 
       {/* Priority Overlay */}
-      {currentTask && (
+      {overlayTask && (
         <PriorityOverlay
-          currentPriority={currentTask.priority}
+          currentPriority={overlayTask.priority}
           onPrioritySelect={handlePrioritySelect}
-          onClose={() => setShowPriorityOverlay(false)}
+          onClose={() => {
+            setShowPriorityOverlay(false)
+            setOverlayTaskId(null)
+          }}
           isVisible={showPriorityOverlay}
         />
       )}
 
       {/* Project Selection Overlay */}
-      {currentTask && (
+      {overlayTask && (
         <ProjectSelectionOverlay
-          key={`project-overlay-${currentTask.id}`}
+          key={`project-overlay-${overlayTask.id}`}
           projects={projects}
-          currentProjectId={currentTask.projectId}
-          currentTask={currentTask}
-          suggestions={currentTaskSuggestions}
+          currentProjectId={overlayTask.projectId}
+          currentTask={overlayTask}
+          suggestions={overlayTaskId ? [] : currentTaskSuggestions}
           onProjectSelect={handleProjectSelect}
-          onClose={() => setShowProjectOverlay(false)}
+          onClose={() => {
+            setShowProjectOverlay(false)
+            setOverlayTaskId(null)
+          }}
           isVisible={showProjectOverlay}
         />
       )}
 
       {/* Label Selection Overlay */}
-      {currentTask && (
+      {overlayTask && (
         <LabelSelectionOverlay
           labels={labels}
-          currentTask={currentTask}
+          currentTask={overlayTask}
           onLabelsChange={handleLabelsChange}
-          onClose={() => setShowLabelOverlay(false)}
+          onClose={() => {
+            setShowLabelOverlay(false)
+            setOverlayTaskId(null)
+          }}
           isVisible={showLabelOverlay}
         />
       )}
 
       {/* Scheduled Date Selector */}
-      {currentTask && (
+      {overlayTask && (
         <ScheduledDateSelector
-          currentTask={currentTask}
+          currentTask={overlayTask}
           onScheduledDateChange={handleScheduledDateChange}
-          onClose={() => setShowScheduledOverlay(false)}
+          onClose={() => {
+            setShowScheduledOverlay(false)
+            setOverlayTaskId(null)
+          }}
           isVisible={showScheduledOverlay}
         />
       )}
 
       {/* Deadline Selector */}
-      {currentTask && (
+      {overlayTask && (
         <DeadlineSelector
-          currentTask={currentTask}
+          currentTask={overlayTask}
           onDeadlineChange={handleDeadlineChange}
-          onClose={() => setShowDeadlineOverlay(false)}
+          onClose={() => {
+            setShowDeadlineOverlay(false)
+            setOverlayTaskId(null)
+          }}
           isVisible={showDeadlineOverlay}
         />
       )}
 
       {/* Assignee Selection Overlay */}
-      {currentTask && (
+      {overlayTask && (
         <AssigneeSelectionOverlay
           isVisible={showAssigneeOverlay}
-          onClose={() => setShowAssigneeOverlay(false)}
+          onClose={() => {
+            setShowAssigneeOverlay(false)
+            setOverlayTaskId(null)
+          }}
           onAssigneeSelect={handleAssigneeSelect}
-          currentAssigneeId={currentTask.assigneeId}
-          collaborators={projectCollaborators[currentTask.projectId] || []}
+          currentAssigneeId={overlayTask.assigneeId}
+          collaborators={projectCollaborators[overlayTask.projectId] || []}
         />
       )}
 
