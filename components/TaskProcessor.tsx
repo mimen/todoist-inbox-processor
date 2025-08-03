@@ -7,6 +7,7 @@ import { TodoistTask, TodoistProject, TodoistLabel, ProcessingState, TaskUpdate,
 import { generateMockSuggestions } from '@/lib/mock-data'
 import { suggestionsCache } from '@/lib/suggestions-cache'
 import { ProcessingMode, PROCESSING_MODE_OPTIONS } from '@/types/processing-mode'
+import { ViewMode, ListViewState, createDefaultListViewState } from '@/types/view-mode'
 import { filterTasksByMode, getTaskCountsForProjects } from '@/lib/task-filters'
 
 // Extract project metadata from special tasks marked with * prefix or project-metadata label
@@ -99,6 +100,32 @@ export default function TaskProcessor() {
   const [dateLoadingStates, setDateLoadingStates] = useState<Record<string, 'due' | 'deadline' | null>>({})
   // Removed showNextQueuePrompt as it's now integrated into empty state
   
+  // VIEW MODE STATE (for List View feature)
+  // Initialize from localStorage with SSR safety
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    if (typeof window === 'undefined') return 'processing'
+    try {
+      const saved = localStorage.getItem('todoist-view-mode')
+      return (saved === 'list' || saved === 'processing') ? saved : 'processing'
+    } catch {
+      return 'processing'
+    }
+  })
+  
+  // List view specific state
+  const [listViewState, setListViewState] = useState<ListViewState>(createDefaultListViewState)
+  
+  // Sync view mode to localStorage when it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('todoist-view-mode', viewMode)
+      } catch (error) {
+        console.error('Failed to save view mode preference:', error)
+      }
+    }
+  }, [viewMode])
+  
   // NEW QUEUE ARCHITECTURE STATE
   // 1. Master task store - continuously updated as changes are made
   const [masterTasks, setMasterTasks] = useState<Record<string, TodoistTask>>({})
@@ -157,6 +184,35 @@ export default function TaskProcessor() {
     
     return false
   }, [currentTask, projectCollaborators, collaboratorsData, currentUserId])
+  
+  // Helper functions for updating list view state
+  const updateListViewState = useCallback((updates: Partial<ListViewState>) => {
+    setListViewState(prev => ({ ...prev, ...updates }))
+  }, [])
+  
+  const toggleExpandedDescription = useCallback((taskId: string) => {
+    setListViewState(prev => {
+      const newExpanded = new Set(prev.expandedDescriptions)
+      if (newExpanded.has(taskId)) {
+        newExpanded.delete(taskId)
+      } else {
+        newExpanded.add(taskId)
+      }
+      return { ...prev, expandedDescriptions: newExpanded }
+    })
+  }, [])
+  
+  const toggleSelectedTask = useCallback((taskId: string) => {
+    setListViewState(prev => {
+      const newSelected = new Set(prev.selectedTaskIds)
+      if (newSelected.has(taskId)) {
+        newSelected.delete(taskId)
+      } else {
+        newSelected.add(taskId)
+      }
+      return { ...prev, selectedTaskIds: newSelected }
+    })
+  }, [])
 
   // Load initial data (projects and labels)
   useEffect(() => {
