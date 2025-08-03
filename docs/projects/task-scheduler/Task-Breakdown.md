@@ -12,14 +12,15 @@ This document provides a comprehensive task breakdown for implementing the task 
 **Dependencies**: None
 
 **Description**:
-Create the main calendar grid component that displays a week view with 30-minute time slots. The component should render a grid layout with days as columns and time slots as rows.
+Create the main calendar grid component that displays a day view with 15-minute time marks. The component should render a vertical timeline with 15-minute increments for precise positioning of 30-minute task blocks.
 
 **Acceptance Criteria**:
-- [ ] Calendar grid displays 7 days (current week by default)
-- [ ] Time slots are 30 minutes each (e.g., 9:00 AM, 9:30 AM, etc.)
-- [ ] Grid is responsive and fits within the application layout
-- [ ] Days display correct dates and day names
+- [ ] Calendar grid displays single day view (vertical timeline)
+- [ ] Time marks at 15-minute increments (e.g., 9:00, 9:15, 9:30, 9:45)
+- [ ] Grid shows 24-hour timeline (or configured working hours)
+- [ ] Current time indicator for today's view
 - [ ] Time labels are clearly visible on the left side
+- [ ] Only future time slots shown for current day
 
 **Technical Notes**:
 - Use CSS Grid or Flexbox for layout
@@ -40,14 +41,15 @@ Create the main calendar grid component that displays a week view with 30-minute
 **Dependencies**: None
 
 **Description**:
-Build individual time slot components that can display availability status, scheduled tasks, and handle selection states.
+Build time slot components that represent 15-minute positions where 30-minute tasks can be placed. Must handle validation for sufficient clearance.
 
 **Acceptance Criteria**:
-- [ ] Time slot shows different visual states (available, busy, selected, hover)
-- [ ] Can display task information when occupied
-- [ ] Supports click interactions
-- [ ] Shows calendar event information when busy
-- [ ] Accessibility attributes for screen readers
+- [ ] Slot represents 15-minute position on timeline
+- [ ] Visual states: available (30-min clear), unavailable, selected, preview
+- [ ] Shows task preview as 30-minute block when selected
+- [ ] Click positions any 15-minute mark
+- [ ] Keyboard navigation only highlights positions with 30-min clearance
+- [ ] Calendar events display side-by-side by default
 
 **Technical Notes**:
 - Component path: `components/TaskScheduler/TimeSlot.tsx`
@@ -63,20 +65,20 @@ Build individual time slot components that can display availability status, sche
 
 ---
 
-#### Task: [TS-003] - Create Task Scheduler Overlay
-**Complexity**: 5 points
+#### Task: [TS-003] - Integrate with Existing Overlay System
+**Complexity**: 4 points
 **Dependencies**: [TS-001], [TS-002]
 
 **Description**:
-Implement the main overlay component that contains the calendar grid and handles the overall scheduling interaction flow. Should follow existing overlay patterns in the application.
+Replace existing schedule/deadline overlays with the new task scheduler. Reuse existing overlay infrastructure and patterns.
 
 **Acceptance Criteria**:
-- [ ] Overlay opens/closes with smooth animation
-- [ ] Contains calendar grid and task information panel
+- [ ] Replaces DatePickerOverlay for schedule/deadline selection
+- [ ] Maintains same props interface for seamless integration
+- [ ] Uses existing overlay context and state management
 - [ ] Escape key closes the overlay
-- [ ] Click outside closes the overlay
-- [ ] Maintains focus trap when open
-- [ ] Shows current task being scheduled
+- [ ] Integrates with existing keyboard shortcut system
+- [ ] Shows task preview in selected time slot
 
 **Technical Notes**:
 - Component path: `components/TaskScheduler/SchedulerOverlay.tsx`
@@ -92,24 +94,25 @@ Implement the main overlay component that contains the calendar grid and handles
 
 ---
 
-#### Task: [TS-004] - Create Week Navigation Controls
+#### Task: [TS-004] - Create Day Navigation Controls
 **Complexity**: 2 points
 **Dependencies**: [TS-001]
 
 **Description**:
-Build controls for navigating between weeks, returning to current week, and displaying the current date range.
+Build controls for navigating between days and optional date picker for distant dates.
 
 **Acceptance Criteria**:
-- [ ] Previous/Next week buttons functional
-- [ ] "Today" button returns to current week
-- [ ] Current week date range displayed
-- [ ] Keyboard shortcuts for week navigation (e.g., Shift+Left/Right)
-- [ ] Visual indication when not on current week
+- [ ] Previous/Next day buttons functional
+- [ ] "Today" button returns to current day
+- [ ] Current date clearly displayed
+- [ ] Left/Right arrows or Tab/Shift+Tab for day navigation
+- [ ] Optional date picker ('d' key) for distant dates
+- [ ] Clear button (Shift+Delete) to remove date selection
 
 **Technical Notes**:
-- Component path: `components/TaskScheduler/WeekNavigation.tsx`
+- Component path: `components/TaskScheduler/DayNavigation.tsx`
 - Use date-fns for date calculations
-- Maintain week start preference (Sunday/Monday)
+- Integrate existing date picker component
 
 **Definition of Done**:
 - Navigation updates calendar grid correctly
@@ -121,21 +124,21 @@ Build controls for navigating between weeks, returning to current week, and disp
 
 ### Phase 2: Keyboard Navigation
 
-#### Task: [TS-005] - Implement Grid Keyboard Navigation
+#### Task: [TS-005] - Implement 15-Minute Grid Navigation
 **Complexity**: 8 points
 **Dependencies**: [TS-001], [TS-002], [TS-003]
 
 **Description**:
-Implement comprehensive keyboard navigation for the calendar grid, allowing users to navigate between available time slots using arrow keys and select slots with Enter/Space.
+Implement keyboard navigation that moves in 15-minute increments but only stops at positions with 30-minute clearance for task placement.
 
 **Acceptance Criteria**:
-- [ ] Arrow keys navigate between available slots only
-- [ ] Tab/Shift+Tab cycles through major UI sections
-- [ ] Enter/Space selects current slot
-- [ ] Home/End keys navigate to first/last slot of day
-- [ ] Page Up/Down navigates between days
-- [ ] Navigation skips busy/unavailable slots
-- [ ] Visual focus indicator follows keyboard navigation
+- [ ] Up/Down arrows move 15 minutes at a time
+- [ ] Navigation skips positions without 30-min clearance
+- [ ] First Enter shows task preview (30-min block)
+- [ ] Second Enter confirms selection
+- [ ] Visual indicator shows 30-min task at current position
+- [ ] Cannot keyboard navigate to positions with conflicts
+- [ ] Mouse can click any 15-min position
 
 **Technical Notes**:
 - Use React refs for focus management
@@ -151,19 +154,19 @@ Implement comprehensive keyboard navigation for the calendar grid, allowing user
 
 ---
 
-#### Task: [TS-006] - Add Keyboard Shortcut for Opening Scheduler
+#### Task: [TS-006] - Integrate Scheduler with Existing Shortcuts
 **Complexity**: 2 points
 **Dependencies**: [TS-003]
 
 **Description**:
-Add a keyboard shortcut to open the task scheduler overlay from the main task processing view.
+Integrate the task scheduler to open when using existing 's' (scheduled) and 'd' (deadline) shortcuts.
 
 **Acceptance Criteria**:
-- [ ] Shortcut key opens scheduler (e.g., 'S' or 'Cmd+S')
-- [ ] Shortcut only works when a task is selected
-- [ ] Visual hint in UI about shortcut availability
-- [ ] Shortcut respects other modal states
-- [ ] Customizable in keyboard shortcuts help
+- [ ] 's' key opens scheduler in scheduled mode
+- [ ] 'd' key opens scheduler in deadline mode
+- [ ] Replaces existing date picker overlays
+- [ ] Maintains backward compatibility
+- [ ] Help documentation updated
 
 **Technical Notes**:
 - Integrate with existing keyboard shortcut system
@@ -178,19 +181,20 @@ Add a keyboard shortcut to open the task scheduler overlay from the main task pr
 
 ---
 
-#### Task: [TS-007] - Implement Slot Selection Confirmation
+#### Task: [TS-007] - Implement Two-Step Confirmation Flow
 **Complexity**: 3 points
 **Dependencies**: [TS-005]
 
 **Description**:
-Create confirmation mechanism for slot selection with keyboard support, allowing users to confirm or cancel their selection.
+Create two-step confirmation mechanism: first action shows preview, second confirms.
 
 **Acceptance Criteria**:
-- [ ] Enter confirms selection
-- [ ] Escape cancels selection
-- [ ] Visual feedback for pending confirmation
-- [ ] Option to show task preview in selected slot
-- [ ] Smooth transition after confirmation
+- [ ] First Enter/click shows task preview in slot
+- [ ] Preview shows as 30-minute purple block
+- [ ] Second Enter/click confirms and saves
+- [ ] Escape cancels at any stage
+- [ ] No warning prompts for conflicts
+- [ ] Visual distinction between preview and confirmed state
 
 **Technical Notes**:
 - Implement optimistic UI updates
@@ -207,47 +211,48 @@ Create confirmation mechanism for slot selection with keyboard support, allowing
 
 ### Phase 3: Calendar Integration
 
-#### Task: [TS-008] - Set Up Google Calendar API Integration
-**Complexity**: 5 points
+#### Task: [TS-008] - Set Up Hardcoded Calendar Access
+**Complexity**: 3 points
 **Dependencies**: None
 
 **Description**:
-Implement Google Calendar API integration for read-only access to user's calendar events.
+Implement hardcoded Google Calendar API integration for MVP, similar to current Todoist approach.
 
 **Acceptance Criteria**:
-- [ ] OAuth2 flow for Google Calendar authorization
-- [ ] Secure token storage and refresh mechanism
+- [ ] Hardcoded API key/credentials in environment variables
 - [ ] API route for fetching calendar events
-- [ ] Handle authorization errors gracefully
-- [ ] Respect Google API rate limits
+- [ ] Support for multiple calendar IDs
+- [ ] Error handling for API failures
+- [ ] PST timezone locked for all times
 
 **Technical Notes**:
-- API route: `/api/calendar/auth` and `/api/calendar/events`
-- Use Google Calendar API v3
-- Store tokens securely (consider encryption)
-- Implement exponential backoff for rate limits
+- API route: `/api/calendar/config` and `/api/calendar/events`
+- Use Google Calendar API v3 with API key
+- Environment variables for credentials
+- Future: OAuth implementation documented
 
 **Definition of Done**:
-- OAuth flow works end-to-end
-- Tokens refresh automatically
-- Error messages are user-friendly
-- API responses are typed with TypeScript
+- Calendar events load successfully
+- API errors handled gracefully
+- TypeScript types for calendar data
+- Future OAuth path documented
 
 ---
 
-#### Task: [TS-009] - Create Calendar Event Fetching Service
+#### Task: [TS-009] - Create Calendar Service with Visibility Toggles
 **Complexity**: 5 points
 **Dependencies**: [TS-008]
 
 **Description**:
-Build service layer for fetching and caching calendar events, with support for multiple calendar sources.
+Build service layer for fetching calendar events with local storage for visibility preferences.
 
 **Acceptance Criteria**:
-- [ ] Fetch events for specified date range
+- [ ] Fetch events for current day view
 - [ ] Cache events to minimize API calls
-- [ ] Support filtering by calendar
-- [ ] Handle all-day events appropriately
-- [ ] Convert events to internal time slot format
+- [ ] Calendar visibility toggles with checkboxes
+- [ ] Visibility preferences persist in localStorage
+- [ ] All calendars visible by default
+- [ ] Show calendar colors and names
 
 **Technical Notes**:
 - Service path: `lib/calendar/CalendarService.ts`
@@ -263,19 +268,20 @@ Build service layer for fetching and caching calendar events, with support for m
 
 ---
 
-#### Task: [TS-010] - Integrate Calendar Data with UI
+#### Task: [TS-010] - Display Events Side-by-Side
 **Complexity**: 5 points
 **Dependencies**: [TS-009], [TS-001], [TS-002]
 
 **Description**:
-Connect calendar event data to the UI components, showing busy slots and event details.
+Display calendar events side-by-side by default, only overlapping when space-constrained.
 
 **Acceptance Criteria**:
-- [ ] Busy slots show calendar event information
-- [ ] Different visual treatment for different event types
-- [ ] Tooltip/hover shows event details
+- [ ] Events display side-by-side when possible
+- [ ] Compress width before overlapping
+- [ ] Calendar name shown on hover
+- [ ] Original calendar colors preserved
 - [ ] Loading states while fetching events
-- [ ] Error states for failed calendar fetch
+- [ ] Only future slots shown for current day
 
 **Technical Notes**:
 - Use React Query or SWR for data fetching
@@ -404,19 +410,19 @@ Implement system for estimating task duration and showing multi-slot tasks in th
 
 ### Phase 5: Polish and Edge Cases
 
-#### Task: [TS-015] - Implement Timezone Support
-**Complexity**: 5 points
-**Dependencies**: [TS-009], [TS-011]
+#### Task: [TS-015] - Add Clear Date Function
+**Complexity**: 2 points
+**Dependencies**: [TS-007]
 
 **Description**:
-Add proper timezone handling throughout the application, including display and scheduling.
+Implement ability to clear scheduled/deadline dates from tasks.
 
 **Acceptance Criteria**:
-- [ ] User timezone detected automatically
-- [ ] Option to change timezone in settings
-- [ ] All times displayed in user timezone
-- [ ] Calendar events respect their timezones
-- [ ] Scheduling preserves correct time
+- [ ] Shift+Delete keyboard shortcut clears date
+- [ ] Clear button visible in UI
+- [ ] Confirmation before clearing
+- [ ] Works for both scheduled and deadline
+- [ ] Updates task immediately
 
 **Technical Notes**:
 - Use Intl.DateTimeFormat for display
@@ -432,19 +438,19 @@ Add proper timezone handling throughout the application, including display and s
 
 ---
 
-#### Task: [TS-016] - Add Recurring Task Support
-**Complexity**: 5 points
-**Dependencies**: [TS-011], [TS-014]
+#### Task: [TS-016] - Implement Calendar Visibility UI
+**Complexity**: 3 points
+**Dependencies**: [TS-009]
 
 **Description**:
-Implement support for scheduling recurring tasks with various recurrence patterns.
+Create UI for toggling calendar visibility with persistent preferences.
 
 **Acceptance Criteria**:
-- [ ] Daily, weekly, monthly patterns
-- [ ] Custom recurrence rules
-- [ ] Visual indicator for recurring tasks
-- [ ] Edit single vs. all occurrences
-- [ ] Conflict detection for series
+- [ ] Checkbox list of all calendars
+- [ ] Calendar colors shown next to names
+- [ ] Toggle immediately hides/shows events
+- [ ] Preferences saved to localStorage
+- [ ] All calendars visible by default
 
 **Technical Notes**:
 - Use RRULE standard for patterns

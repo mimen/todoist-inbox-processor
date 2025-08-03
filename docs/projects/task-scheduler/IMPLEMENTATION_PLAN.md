@@ -27,25 +27,26 @@ This document outlines the phased implementation approach for the Task Scheduler
 **Goal:** Build the visual scheduling interface with mock data
 
 #### Tasks:
-1. Create `TaskSchedulerOverlay` component
-   - Implement overlay pattern matching existing modals
+1. Replace existing overlay system
+   - Reuse schedule/deadline overlay infrastructure
+   - Maintain props interface compatibility
    - Add keyboard context isolation
-   - Handle open/close animations
 
 2. Build `CalendarDayView` component
-   - 24-hour time grid with 30-minute slots
-   - Time labels and grid lines
-   - Responsive height calculation
+   - Vertical timeline with 15-minute marks
+   - Time labels on left side
+   - Only show future slots for current day
 
 3. Implement `TimeSlotGrid` interaction layer
-   - Slot selection state management
-   - Visual feedback for hovering/selection
-   - Available vs occupied slot styling
+   - 15-minute positioning system
+   - 30-minute task block visualization
+   - Available vs occupied position styling
+   - Task preview on selection
 
 4. Create mock data service
    - Generate sample calendar events
-   - Variety of overlap scenarios
-   - All-day events
+   - Side-by-side event display
+   - Test overlapping scenarios
 
 #### Success Criteria:
 - [ ] Overlay opens/closes smoothly
@@ -64,10 +65,10 @@ This document outlines the phased implementation approach for the Task Scheduler
    - Navigation state management
    - Shortcut definitions
 
-2. Implement slot navigation logic
-   - Up/Down through available slots only
-   - Skip occupied slots automatically
-   - Handle day boundaries
+2. Implement 15-minute navigation logic
+   - Up/Down moves in 15-minute increments
+   - Skip positions without 30-min clearance
+   - Show 30-minute task preview at position
 
 3. Add day navigation
    - Left/Right or Tab navigation between days
@@ -86,14 +87,14 @@ This document outlines the phased implementation approach for the Task Scheduler
 
 ---
 
-### Phase 3: Calendar Integration (4-5 days)
-**Goal:** Connect real Google Calendar data
+### Phase 3: Calendar Integration (3-4 days)
+**Goal:** Connect Google Calendar with hardcoded credentials
 
 #### Tasks:
-1. Implement OAuth2 flow
-   - Use existing auth patterns if available
-   - Store tokens securely
-   - Handle refresh automatically
+1. Implement hardcoded access (MVP)
+   - API key/credentials in environment
+   - Document future OAuth path
+   - PST timezone only
 
 2. Create `CalendarAPIService`
    - Fetch events for date range
@@ -101,9 +102,10 @@ This document outlines the phased implementation approach for the Task Scheduler
    - Handle API errors gracefully
 
 3. Build event rendering system
-   - Display events in original colors
-   - Handle overlapping events visually
-   - Show calendar source on hover
+   - Display events side-by-side by default
+   - Original calendar colors preserved
+   - Show calendar name on hover
+   - Calendar visibility toggles
 
 4. Implement caching layer
    - Cache events per day
@@ -127,20 +129,21 @@ This document outlines the phased implementation approach for the Task Scheduler
    - Maintain other task properties
    - Handle update failures
 
-2. Implement slot selection
-   - Keyboard selection of available slots
-   - Mouse selection of any slot
-   - Conflict warnings for occupied slots
+2. Implement two-step confirmation
+   - First Enter/click shows preview
+   - Second Enter/click confirms
+   - No conflict warnings needed
+   - Mouse can click any position
 
 3. Add visual feedback
-   - Selection confirmation animation
-   - Loading state during save
+   - Task preview as purple block
+   - Confirmation animation
    - Success feedback before close
 
-4. Build date picker integration
+4. Build date picker and clear function
    - 'd' key opens calendar picker
-   - Navigate to selected date
-   - Maintain keyboard focus
+   - Shift+Delete clears date
+   - Clear button in UI
 
 #### Success Criteria:
 - [ ] Tasks update correctly when scheduled
@@ -281,14 +284,13 @@ This document outlines the phased implementation approach for the Task Scheduler
 
 ## Timeline Summary
 
-**Total Duration:** 4-5 weeks of development + 3 weeks rollout
+**Total Duration:** 3-4 weeks of development + 3 weeks rollout
 
-- Week 1: Setup + Core UI
-- Week 2: Keyboard Navigation + Start Integration
-- Week 3: Complete Integration + Scheduling Logic
-- Week 4: Polish + Testing
-- Week 5: Documentation + Beta Prep
-- Weeks 6-8: Phased Rollout
+- Week 1: Setup + Core UI (with existing overlay reuse)
+- Week 2: Keyboard Navigation + Calendar Integration (hardcoded)
+- Week 3: Scheduling Logic + Polish
+- Week 4: Testing + Documentation
+- Weeks 5-7: Phased Rollout
 
 ## Next Steps
 
