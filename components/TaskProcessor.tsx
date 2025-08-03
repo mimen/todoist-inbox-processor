@@ -56,6 +56,7 @@ import Toast from './Toast'
 import AssigneeSelectionOverlay from './AssigneeSelectionOverlay'
 import ProjectMetadataDisplay from './ProjectMetadataDisplay'
 import AssigneeFilter, { AssigneeFilterType } from './AssigneeFilter'
+import QueueCompletionView from './QueueCompletionView'
 
 export default function TaskProcessor() {
   const searchParams = useSearchParams()
@@ -948,7 +949,7 @@ export default function TaskProcessor() {
       // Then update the API
       // Note: The API will parse the dateString and return the proper date format
       // autoSaveTask will update all task arrays with the response
-      const updates: any = { deadline: dateString || undefined }
+      const updates: any = { deadline: dateString || null }
       
       await autoSaveTask(taskId, updates)
       
@@ -1141,30 +1142,25 @@ export default function TaskProcessor() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Check if we're in empty state with a next queue available
-      if (!currentTask && totalTasks > 0 && processedTaskIds.length === taskQueue.length) {
+      // Check if we're in any empty/completed state (no current task)
+      if (!currentTask) {
         const queueState = processingModeSelectorRef.current?.queueState
+        const isQueueCompleted = totalTasks > 0 && processedTaskIds.length === taskQueue.length
+        const isQueueEmpty = totalTasks === 0
         
-        // Right arrow or Enter to continue to next queue
-        if (queueState?.hasNextQueue && (e.key === 'ArrowRight' || e.key === 'Enter')) {
+        // Right arrow or Enter to continue to next queue (works for both empty and completed queues)
+        if (queueState?.hasNextQueue && (e.key === 'ArrowRight' || e.key === 'Enter') && (isQueueCompleted || isQueueEmpty)) {
           e.preventDefault()
           handleProgressToNextQueue()
           return
         }
         
-        // R to refresh current queue
-        if (e.key === 'r' || e.key === 'R') {
+        // R to refresh current queue (works for both empty and completed queues)
+        if ((e.key === 'r' || e.key === 'R') && (isQueueCompleted || isQueueEmpty)) {
           e.preventDefault()
           loadTasksForMode(processingMode)
           return
         }
-      }
-      
-      // Also handle refresh in empty state with no tasks
-      if (!currentTask && totalTasks === 0 && (e.key === 'r' || e.key === 'R')) {
-        e.preventDefault()
-        loadTasksForMode(processingMode)
-        return
       }
       
       // Don't handle shortcuts when overlays are open - they handle their own keys
@@ -1398,68 +1394,24 @@ export default function TaskProcessor() {
                   </div>
                 )}
                 
-                {/* Queue Progression Options */}
-                {totalTasks > 0 && (() => {
+                {/* Queue Completion/Empty State */}
+                {(() => {
                   const queueState = processingModeSelectorRef.current?.queueState
-                  if (queueState?.hasNextQueue && queueState.nextQueue) {
-                    return (
-                      <div className="space-y-4">
-                        <div className="flex flex-col gap-3 items-center">
-                          <button
-                            onClick={handleProgressToNextQueue}
-                            className="px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center gap-2"
-                          >
-                            Continue to {queueState.nextQueue.label}
-                            {queueState.nextQueue.count && queueState.nextQueue.count > 0 && (
-                              <span className="text-green-200">({queueState.nextQueue.count} tasks)</span>
-                            )}
-                            <div className="flex items-center gap-1 ml-2">
-                              <kbd className="px-1.5 py-0.5 text-xs bg-green-700 rounded">→</kbd>
-                              <kbd className="px-1.5 py-0.5 text-xs bg-green-700 rounded">↵</kbd>
-                            </div>
-                          </button>
-                          <button
-                            onClick={() => loadTasksForMode(processingMode)}
-                            className="px-4 py-2 text-gray-700 border border-gray-300 bg-white rounded-md hover:bg-gray-50 transition-colors flex items-center gap-2"
-                          >
-                            Refresh Current Queue
-                            <kbd className="ml-1 px-1.5 py-0.5 text-xs bg-gray-100 rounded">R</kbd>
-                          </button>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-2">
-                          Queue {queueState.queueProgress.current} of {queueState.queueProgress.total} completed
-                        </p>
-                      </div>
-                    )
-                  } else {
-                    // Last queue or no next queue
-                    return (
-                      <div className="space-y-2">
-                        <p className="text-green-600 font-medium mb-4">
-                          🏁 Last queue completed!
-                        </p>
-                        <button
-                          onClick={() => loadTasksForMode(processingMode)}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center gap-2"
-                        >
-                          Refresh Tasks
-                          <kbd className="px-1.5 py-0.5 text-xs bg-blue-700 rounded">R</kbd>
-                        </button>
-                      </div>
-                    )
-                  }
+                  const isEmptyQueue = totalTasks === 0
+                  const isQueueCompleted = totalTasks > 0
+                  
+                  return (
+                    <QueueCompletionView
+                      isEmptyQueue={isEmptyQueue}
+                      hasNextQueue={queueState?.hasNextQueue || false}
+                      nextQueueLabel={queueState?.nextQueue?.label}
+                      nextQueueCount={queueState?.nextQueue?.count}
+                      queueProgress={queueState?.queueProgress}
+                      onContinue={handleProgressToNextQueue}
+                      onRefresh={() => loadTasksForMode(processingMode)}
+                    />
+                  )
                 })()}
-                
-                {/* Just show refresh for empty queues */}
-                {totalTasks === 0 && (
-                  <button
-                    onClick={() => loadTasksForMode(processingMode)}
-                    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center gap-2"
-                  >
-                    Refresh Tasks
-                    <kbd className="px-1.5 py-0.5 text-xs bg-blue-700 rounded">R</kbd>
-                  </button>
-                )}
               </div>
             </div>
           )}
