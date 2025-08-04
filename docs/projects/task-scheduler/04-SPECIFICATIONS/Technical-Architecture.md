@@ -157,22 +157,20 @@ TaskSchedulerOverlay
 
 ### Authentication Architecture
 
-#### MVP Approach: Hardcoded Credentials
+#### Current Implementation: OAuth 2.0 with Service Account Fallback
 
-For MVP, we'll use a hardcoded service account or API key to access a specific Google Calendar account:
+The system uses OAuth 2.0 for user authentication with automatic fallback to service account:
 
 ```typescript
 interface GoogleCalendarService {
-  // MVP: Direct API access with hardcoded credentials
-  fetchEvents(dateRange: DateRange): Promise<CalendarEvent[]>
-  listCalendars(): Promise<Calendar[]>
-}
-
-// Future: OAuth implementation
-interface GoogleAuthService {
-  authenticate(): Promise<GoogleAuthToken>
-  refreshToken(token: GoogleAuthToken): Promise<GoogleAuthToken>
-  revokeAccess(): Promise<void>
+  // OAuth 2.0 primary authentication
+  async initialize(): Promise<boolean>
+  async getEvents(date: Date): Promise<CalendarEvent[]>
+  isAuthorized(): boolean
+  getAuthUrl(): string
+  
+  // Token management with automatic refresh
+  private async callWithTokenRefresh<T>(apiCall: () => Promise<T>): Promise<T>
 }
 
 interface GoogleAuthToken {
@@ -183,40 +181,79 @@ interface GoogleAuthToken {
 }
 ```
 
+### Sync Token Architecture
+
+#### Redis-Based Incremental Sync
+
+The system uses Google Calendar sync tokens for efficient incremental synchronization:
+
+```typescript
+interface CalendarSyncService {
+  // Sync token-based incremental updates
+  async syncCalendar(calendarInfo: CalendarInfo): Promise<void>
+  async syncAllCalendars(): Promise<void>
+  
+  // Redis persistence with sync tokens
+  private async saveCalendarToCache(syncData: CalendarSyncData): Promise<void>
+  private async getCalendarFromCache(calendarId: string): Promise<CalendarSyncData | null>
+}
+
+interface CalendarSyncData {
+  calendarId: string
+  calendarName: string
+  syncToken?: string              // Google Calendar sync token
+  lastSync: number                // Timestamp
+  events: CalendarEvent[]         // All events for this calendar
+}
+```
+
+#### Sync Token Flow
+
+1. **Initial Sync**: Fetch all events within date range, receive sync token
+2. **Incremental Sync**: Use sync token to fetch only changes since last sync
+3. **Token Invalidation**: Automatic fallback to full sync when token expires
+4. **Event Processing**: Merge changes (create/update/delete) into Redis cache
+
 ### Calendar Data Service
 
 ```typescript
-class CalendarDataProvider {
-  private cache: CalendarCache
-  private rateLimiter: RateLimiter
+// Global in-memory event store for fast access
+class CalendarEventStore {
+  private events = new Map<string, CalendarEvent[]>()
+  private subscribers = new Set<(events: CalendarEvent[]) => void>()
   
-  async fetchEvents(params: {
-    calendarIds: string[]
-    timeMin: Date
-    timeMax: Date
-  }): Promise<CalendarEvent[]>
+  async initialize(): Promise<void>
+  async refresh(): Promise<void>
   
-  async listCalendars(): Promise<Calendar[]>
+  getEvents(startDate: Date, endDate: Date): CalendarEvent[]
+  subscribe(callback: (events: CalendarEvent[]) => void): () => void
+}
+
+// Backend sync service with Redis persistence
+class CalendarSyncService {
+  private redis: RedisClient
+  private syncInterval = 15 * 60 * 1000 // 15 minutes
   
-  private handleRateLimit(): Promise<void>
-  private cacheEvents(events: CalendarEvent[]): void
+  async startBackgroundSync(): Promise<void>
+  async syncAllCalendars(): Promise<void>
+  async getEventsForDateRange(start: Date, end: Date): Promise<CalendarEvent[]>
 }
 ```
 
 ### API Integration Flow
 
 ```
-1. Initial Load:
-   Client → Next.js API Route → Google Calendar API
+1. App Initialization:
+   App Start → CalendarEventStore.initialize() → Load from Redis → Subscribe to updates
    
-2. MVP Flow:
-   /api/calendar/events → Use hardcoded credentials → Fetch events → Transform
+2. Background Sync Flow:
+   Timer/Trigger → CalendarSyncService → Google Calendar API (with sync token) → Redis
    
-3. Future OAuth Flow:
-   /api/auth/google/login → Google OAuth → Callback → Store tokens
+3. Frontend Data Flow:
+   Component → useCalendarEvents → CalendarEventStore (memory) → Instant response
    
-3. Event Fetching:
-   /api/calendar/events → Validate token → Fetch events → Transform → Cache
+4. OAuth Flow:
+   /api/auth/google → Google OAuth → Callback → Store tokens → Start sync
 ```
 
 ### Data Models
@@ -248,6 +285,33 @@ interface CalendarVisibilityState {
   [calendarId: string]: boolean
 }
 ```
+
+## Sync Status UI
+
+### Real-time Sync Status Display
+
+The system provides real-time visibility into calendar synchronization status:
+
+```typescript
+interface SyncStatusProps {
+  lastSync: Date | null
+  syncInProgress: boolean
+  error: string | null
+}
+
+// SyncStatus component displays:
+// - Last sync time (e.g., "Synced 5m ago")
+// - Active sync indicator with spinner
+// - Error states with retry option
+// - Manual sync trigger button
+```
+
+### Sync Status Integration Points
+
+1. **Header/Navigation Bar**: Always visible sync status
+2. **Calendar View**: Inline status when viewing events
+3. **Settings Page**: Detailed sync history and controls
+4. **Toast Notifications**: Sync completion/failure alerts
 
 ## State Management Architecture
 

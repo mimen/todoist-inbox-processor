@@ -4,16 +4,18 @@
   "description": "A sleek Next.js interface for processing Todoist inbox tasks",
   "main": "index.js",
   "scripts": {
-    "dev": "next dev",
-    "dev:turbo": "next dev --turbo",
-    "dev:auto": "node scripts/dev-with-auto-clean.js",
+    "dev": "concurrently \"npm run redis\" \"next dev\" --names \"redis,next\" --prefix-colors \"red,blue\"",
+    "dev:turbo": "concurrently \"npm run redis\" \"next dev --turbo\" --names \"redis,next\" --prefix-colors \"red,blue\"",
+    "dev:auto": "concurrently \"npm run redis\" \"node scripts/dev-with-auto-clean.js\" --names \"redis,next\" --prefix-colors \"red,blue\"",
+    "dev:clean": "npm run clean && npm run dev",
+    "dev:next-only": "next dev",
+    "redis": "redis-server --port 6379 --loglevel notice",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "test": "echo \"Error: no test specified\" && exit 1",
     "clean": "rm -rf .next",
-    "dev:clean": "npm run clean && npm run dev",
-    "restart": "pkill -f 'next dev' || true && npm run dev:clean"
+    "restart": "pkill -f 'redis-server' || true && pkill -f 'next dev' || true && npm run dev:clean"
   },
   "keywords": [
     "todoist",
@@ -46,8 +48,12 @@
     "postcss": "^8.5.6",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "redis": "^5.7.0",
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^4.1.11",
     "typescript": "^5.8.3"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0"
   }
 }
