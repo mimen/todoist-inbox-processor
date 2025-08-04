@@ -25,12 +25,19 @@ export async function GET(request: NextRequest) {
 
     const { tokens } = await oauth2Client.getToken(code)
     
+    console.log('OAuth tokens received:', {
+      hasAccessToken: !!tokens.access_token,
+      hasRefreshToken: !!tokens.refresh_token,
+      expiryDate: tokens.expiry_date,
+      scope: tokens.scope
+    })
+    
     // For MVP, store tokens in a local file (in production, use a database)
     const tokenPath = path.join(process.cwd(), 'credentials', 'google-oauth-tokens.json')
     await writeFile(tokenPath, JSON.stringify(tokens, null, 2))
 
-    // Redirect to success page or back to app
-    return NextResponse.redirect(new URL('/auth/success', request.url))
+    // Redirect back to the main app with success indicator
+    return NextResponse.redirect(new URL('/?auth=success', request.url))
   } catch (error) {
     console.error('OAuth callback error:', error)
     return NextResponse.json({ 
