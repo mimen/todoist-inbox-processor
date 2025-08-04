@@ -45,12 +45,12 @@ export async function DELETE(
   try {
     const { taskId } = await params
     
-    await TodoistApiClient.closeTask(taskId)
+    await TodoistApiClient.deleteTask(taskId)
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('API Error:', error)
     return NextResponse.json(
-      { error: 'Failed to close task' },
+      { error: 'Failed to delete task' },
       { status: 500 }
     )
   }

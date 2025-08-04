@@ -705,6 +705,58 @@ export class TodoistApiClient {
         }
     }
 
+    // Delete (permanently remove) a task using Sync API
+    static async deleteTask(taskId: string): Promise<boolean> {
+        try {
+            const apiKey = process.env.TODOIST_API_KEY
+            if (!apiKey) {
+                throw new Error('TODOIST_API_KEY is not configured')
+            }
+
+            // Generate a unique UUID for the command
+            const uuid = crypto.randomUUID()
+
+            const response = await fetch('https://api.todoist.com/sync/v9/sync', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${apiKey}`,
+                },
+                body: JSON.stringify({
+                    commands: [
+                        {
+                            type: 'item_delete',
+                            args: {
+                                id: taskId,
+                            },
+                            uuid: uuid,
+                        },
+                    ],
+                }),
+            })
+
+            if (!response.ok) {
+                const errorText = await response.text()
+                console.error('Sync API error:', errorText)
+                throw new Error(`Sync API request failed: ${response.status}`)
+            }
+
+            const result = await response.json()
+            console.log('Delete task response:', result)
+
+            // Check if the command was successful
+            if (result.sync_status && result.sync_status[uuid] === 'ok') {
+                return true
+            } else {
+                console.error('Delete task command failed:', result.sync_status)
+                throw new Error('Failed to delete task')
+            }
+        } catch (error: any) {
+            console.error('Error deleting task:', error)
+            throw new Error(`Failed to delete task: ${error.message || 'Unknown error'}`)
+        }
+    }
+
     // Create a new task using Sync API
     static async createTask(
         content: string,
