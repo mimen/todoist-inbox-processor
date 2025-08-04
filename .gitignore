@@ -103,6 +103,13 @@ temp/
 .env.test.local
 .env.production.local
 
+# Credentials
+credentials/
+google-service-account.json
+*-service-account.json
+google-oauth-tokens.json
+*-oauth-tokens.json
+
 # Database
 *.db
 *.sqlite
