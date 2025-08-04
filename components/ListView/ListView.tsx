@@ -16,7 +16,7 @@ interface ListViewProps {
   projectMetadata: Record<string, any>
   listViewState: ListViewState
   onListViewStateChange: (state: ListViewState) => void
-  onTaskUpdate: (taskId: string, updates: TaskUpdate) => void
+  onTaskUpdate: (taskId: string, updates: TaskUpdate) => Promise<void>
   onTaskComplete: (taskId: string) => void
   onTaskProcess: (taskId: string) => void
   onViewModeChange: (mode: 'processing') => void

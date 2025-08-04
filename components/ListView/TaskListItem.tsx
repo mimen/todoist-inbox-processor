@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useCallback, memo } from 'react'
+import React, { useState, useCallback, memo, useEffect } from 'react'
 import { TodoistTask, TodoistProject, TodoistLabel, TaskUpdate } from '@/lib/types'
 import { DisplayContext } from '@/types/view-mode'
 // CRITICAL: Reuse existing UI components from Processing View
@@ -19,7 +19,7 @@ interface TaskListItemProps {
   onToggleExpand: () => void
   onToggleSelect: () => void
   onEdit: () => void
-  onUpdate: (taskId: string, updates: TaskUpdate) => void
+  onUpdate: (taskId: string, updates: TaskUpdate) => Promise<void>
   onComplete: () => void
   onProcess: () => void
   onClick: () => void
@@ -62,13 +62,34 @@ const TaskListItem: React.FC<TaskListItemProps> = ({
 }) => {
   const [editedContent, setEditedContent] = useState(task.content)
   const [isHovered, setIsHovered] = useState(false)
-
-  const handleContentSubmit = useCallback(() => {
-    if (editedContent.trim() && editedContent !== task.content) {
-      onUpdate(task.id, { content: editedContent.trim() })
+  const [isSaving, setIsSaving] = useState(false)
+  
+  // Update edited content if task content changes externally
+  useEffect(() => {
+    if (!isEditing) {
+      setEditedContent(task.content)
     }
-    setEditedContent(task.content) // Reset to original
-    onEdit() // Exit edit mode
+  }, [task.content, isEditing])
+
+  const handleContentSubmit = useCallback(async () => {
+    if (editedContent.trim() && editedContent !== task.content) {
+      setIsSaving(true)
+      try {
+        await onUpdate(task.id, { content: editedContent.trim() })
+        onEdit() // Exit edit mode on success
+      } catch (error) {
+        console.error('Failed to update task:', error)
+        // Reset to original content on error
+        setEditedContent(task.content)
+        // Optionally show an error toast or inline error
+      } finally {
+        setIsSaving(false)
+      }
+    } else {
+      // No changes, just exit edit mode
+      setEditedContent(task.content)
+      onEdit()
+    }
   }, [editedContent, task.content, task.id, onUpdate, onEdit])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -124,19 +145,34 @@ const TaskListItem: React.FC<TaskListItemProps> = ({
         <div className="flex-1 flex items-center gap-2 min-w-0">
           {/* Task content */}
           {isEditing ? (
-            <input
-              type="text"
-              value={editedContent}
-              onChange={(e) => setEditedContent(e.target.value)}
-              onBlur={handleContentSubmit}
-              onKeyDown={handleKeyDown}
-              className="flex-1 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              autoFocus
-            />
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                value={editedContent}
+                onChange={(e) => setEditedContent(e.target.value)}
+                onBlur={handleContentSubmit}
+                onKeyDown={handleKeyDown}
+                className={`
+                  w-full px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2
+                  ${isSaving 
+                    ? 'border-blue-300 bg-blue-50 dark:bg-blue-900/20' 
+                    : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+                  }
+                `}
+                autoFocus
+                disabled={isSaving}
+              />
+              {isSaving && (
+                <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                  <div className="animate-spin h-3 w-3 border-2 border-blue-500 border-t-transparent rounded-full" />
+                </div>
+              )}
+            </div>
           ) : (
             <span 
               className="flex-1 text-sm text-gray-900 dark:text-gray-100 truncate"
               onDoubleClick={onEdit}
+              title="Double-click to edit"
             >
               {task.content}
             </span>
