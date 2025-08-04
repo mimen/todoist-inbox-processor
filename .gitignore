@@ -123,3 +123,8 @@ google-oauth-tokens.json
 *.njsproj
 *.sln
 *.sw?
+
+
+# Redis
+dump.rdb
+*.rdb
