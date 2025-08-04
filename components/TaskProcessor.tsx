@@ -161,6 +161,8 @@ export default function TaskProcessor() {
   // Get the task for overlays - either from overlayTaskId (ListView) or currentTask (Processing)
   const overlayTask = overlayTaskId ? masterTasks[overlayTaskId] : currentTask
   
+  
+  
   const queuedTasks = useMemo((): TodoistTask[] => {
     return activeQueue.slice(activeQueuePosition + 1)
       .map(id => masterTasks[id])
@@ -817,6 +819,20 @@ export default function TaskProcessor() {
         }
       }))
       
+      // Close the overlay immediately after selection
+      setShowLabelOverlay(false)
+      setOverlayTaskId(null)
+      
+      // Return focus to ListView if in list mode
+      if (viewMode === 'list') {
+        setTimeout(() => {
+          const listView = document.querySelector('[data-list-view-container]') as HTMLElement
+          if (listView) {
+            listView.focus()
+          }
+        }, 100)
+      }
+      
       try {
         // Queue the auto-save
         await autoSaveTask(taskToUpdate.id, { labels })
@@ -831,7 +847,7 @@ export default function TaskProcessor() {
         }))
       }
     }
-  }, [overlayTask, autoSaveTask])
+  }, [overlayTask, autoSaveTask, viewMode])
 
   const handleDescriptionChange = useCallback(async (newDescription: string) => {
     if (currentTask) {
@@ -1122,13 +1138,42 @@ export default function TaskProcessor() {
   }, [currentTask, activeQueuePosition, activeQueue.length])
 
   const handleCompleteTask = useCallback(async () => {
-    if (!currentTask) return
+    // Use overlayTask if in list view, currentTask if in processing view
+    const taskToComplete = overlayTaskId ? masterTasks[overlayTaskId] : currentTask
+    if (!taskToComplete) return
     
     // Close the overlay immediately to prevent UI issues
     setShowCompleteConfirm(false)
     
     // Store the current task ID
-    const taskId = currentTask.id
+    const taskId = taskToComplete.id
+    
+    // If in list view, update the highlighted task before marking as processed
+    if (viewMode === 'list' && listViewState.highlightedTaskId === taskId) {
+      // Calculate next highlighted task
+      const currentTasks = activeQueue.filter(id => !processedTaskIds.includes(id))
+      const completedIndex = currentTasks.findIndex(id => id === taskId)
+      const remainingTasks = currentTasks.filter(id => id !== taskId)
+      
+      let nextHighlightedId: string | null = null
+      if (remainingTasks.length > 0) {
+        const nextIndex = Math.min(completedIndex, remainingTasks.length - 1)
+        nextHighlightedId = remainingTasks[nextIndex]
+      }
+      
+      setListViewState(prev => ({
+        ...prev,
+        highlightedTaskId: nextHighlightedId
+      }))
+      
+      // Return focus to ListView after a brief delay
+      setTimeout(() => {
+        const listView = document.querySelector('[data-list-view-container]') as HTMLElement
+        if (listView) {
+          listView.focus()
+        }
+      }, 100)
+    }
     
     // Mark as processed
     setProcessedTaskIds(prev => [...prev, taskId])
@@ -1136,10 +1181,13 @@ export default function TaskProcessor() {
     // Show optimistic success message
     setToast({ message: 'Task completed', type: 'success' })
     
-    // Handle position adjustment like in handleProcessTask
-    if (activeQueuePosition >= activeQueue.length - 1 && activeQueue.length > 1) {
+    // Handle position adjustment for processing view
+    if (viewMode === 'processing' && activeQueuePosition >= activeQueue.length - 1 && activeQueue.length > 1) {
       setActiveQueuePosition(prev => Math.max(0, prev - 1))
     }
+    
+    // Clear overlay task ID
+    setOverlayTaskId(null)
     
     setTaskKey(prev => prev + 1)
     
@@ -1159,7 +1207,7 @@ export default function TaskProcessor() {
         type: 'error' 
       })
     }
-  }, [currentTask, activeQueue.length])
+  }, [currentTask, overlayTaskId, masterTasks, viewMode, listViewState.highlightedTaskId, activeQueue, processedTaskIds, activeQueuePosition, setToast])
 
   const handleProgressToNextQueue = useCallback(() => {
     const queueState = processingModeSelectorRef.current?.queueState
@@ -1246,31 +1294,12 @@ export default function TaskProcessor() {
     await autoSaveTask(taskId, updates)
   }, [autoSaveTask])
 
-  // Handle task completion from ListView
-  const handleListViewTaskComplete = useCallback(async (taskId: string) => {
-    // Mark as processed
-    setProcessedTaskIds(prev => [...prev, taskId])
-    
-    // Show optimistic success message
-    setToast({ message: 'Task completed', type: 'success' })
-    
-    // Handle the API request in the background
-    try {
-      const response = await fetch(`/api/todoist/tasks/${taskId}`, {
-        method: 'DELETE',
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to complete task')
-      }
-    } catch (err) {
-      console.error('Error completing task:', err)
-      setToast({ 
-        message: err instanceof Error ? err.message : 'Failed to complete task', 
-        type: 'error' 
-      })
-    }
-  }, [setToast])
+  // Handle task completion from ListView - just show confirmation
+  const handleListViewTaskComplete = useCallback((taskId: string) => {
+    // Set the overlay task and show confirmation
+    setOverlayTaskId(taskId)
+    setShowCompleteConfirm(true)
+  }, [])
 
   // Handle task processing from ListView (switch to processing view)
   const handleListViewTaskProcess = useCallback((taskId: string) => {
@@ -1335,60 +1364,82 @@ export default function TaskProcessor() {
           break
         case 'p':
         case 'P':
-          // Only show priority overlay with shift+p, regular p switches to processing view
-          if (e.shiftKey) {
+          // Priority overlay with regular p (not shift)
+          if (!e.shiftKey && viewMode === 'processing') {
             e.preventDefault()
             setShowPriorityOverlay(true)
-          } else {
-            e.preventDefault()
-            setViewMode('processing')
           }
+          // Let List View handle 'p' key
           break
         case '#':
           e.preventDefault()
-          setShowProjectOverlay(true)
+          // Only handle in processing mode, list view has its own handler
+          if (viewMode === 'processing') {
+            setShowProjectOverlay(true)
+          }
           break
         case '@':
           e.preventDefault()
-          setShowLabelOverlay(true)
+          // Only handle in processing mode, list view has its own handler
+          if (viewMode === 'processing') {
+            setShowLabelOverlay(true)
+          }
           break
         case '+':
           e.preventDefault()
-          if (hasCollaboratorsForCurrentProject()) {
+          if (hasCollaboratorsForCurrentProject() && viewMode === 'processing') {
             setShowAssigneeOverlay(true)
           }
           break
         case 's':
         case 'S':
           e.preventDefault()
-          setShowScheduledOverlay(true)
+          // Only handle in processing mode, list view has its own handler
+          if (viewMode === 'processing') {
+            setShowScheduledOverlay(true)
+          }
           break
         case 'd':
         case 'D':
           e.preventDefault()
-          setShowDeadlineOverlay(true)
+          // Only handle in processing mode, list view has its own handler
+          if (viewMode === 'processing') {
+            setShowDeadlineOverlay(true)
+          }
           break
         case 'j':
         case 'J':
         case 'ArrowRight':
-          e.preventDefault()
-          navigateToNextTask()
+          // Only handle in processing mode
+          if (viewMode === 'processing') {
+            e.preventDefault()
+            navigateToNextTask()
+          }
           break
         case 'k':
         case 'K':
         case 'ArrowLeft':
-          e.preventDefault()
-          navigateToPrevTask()
+          // Only handle in processing mode
+          if (viewMode === 'processing') {
+            e.preventDefault()
+            navigateToPrevTask()
+          }
           break
         case 'e':
         case 'E':
-          e.preventDefault()
-          handleProcessTask()
+          // Only handle in processing mode, list view has its own handler
+          if (viewMode === 'processing') {
+            e.preventDefault()
+            handleProcessTask()
+          }
           break
         case 'c':
         case 'C':
-          e.preventDefault()
-          setShowCompleteConfirm(true)
+          // Only handle in processing mode, list view has its own handler
+          if (viewMode === 'processing') {
+            e.preventDefault()
+            setShowCompleteConfirm(true)
+          }
           break
         case '?':
           e.preventDefault()
@@ -1804,20 +1855,29 @@ export default function TaskProcessor() {
       )}
 
       {/* Priority Overlay */}
-      {overlayTask && (
+      {overlayTask && showPriorityOverlay && (
         <PriorityOverlay
           currentPriority={overlayTask.priority}
           onPrioritySelect={handlePrioritySelect}
           onClose={() => {
             setShowPriorityOverlay(false)
             setOverlayTaskId(null)
+            // Return focus to ListView if in list mode
+            if (viewMode === 'list') {
+              setTimeout(() => {
+                const listView = document.querySelector('[data-list-view-container]') as HTMLElement
+                if (listView) {
+                  listView.focus()
+                }
+              }, 100)
+            }
           }}
-          isVisible={showPriorityOverlay}
+          isVisible={true}
         />
       )}
 
       {/* Project Selection Overlay */}
-      {overlayTask && (
+      {overlayTask && showProjectOverlay && (
         <ProjectSelectionOverlay
           key={`project-overlay-${overlayTask.id}`}
           projects={projects}
@@ -1828,13 +1888,22 @@ export default function TaskProcessor() {
           onClose={() => {
             setShowProjectOverlay(false)
             setOverlayTaskId(null)
+            // Return focus to ListView if in list mode
+            if (viewMode === 'list') {
+              setTimeout(() => {
+                const listView = document.querySelector('[data-list-view-container]') as HTMLElement
+                if (listView) {
+                  listView.focus()
+                }
+              }, 100)
+            }
           }}
-          isVisible={showProjectOverlay}
+          isVisible={true}
         />
       )}
 
       {/* Label Selection Overlay */}
-      {overlayTask && (
+      {overlayTask && showLabelOverlay && (
         <LabelSelectionOverlay
           labels={labels}
           currentTask={overlayTask}
@@ -1842,44 +1911,80 @@ export default function TaskProcessor() {
           onClose={() => {
             setShowLabelOverlay(false)
             setOverlayTaskId(null)
+            // Return focus to ListView if in list mode
+            if (viewMode === 'list') {
+              setTimeout(() => {
+                const listView = document.querySelector('[data-list-view-container]') as HTMLElement
+                if (listView) {
+                  listView.focus()
+                }
+              }, 100)
+            }
           }}
-          isVisible={showLabelOverlay}
+          isVisible={true}
         />
       )}
 
       {/* Scheduled Date Selector */}
-      {overlayTask && (
+      {overlayTask && showScheduledOverlay && (
         <ScheduledDateSelector
           currentTask={overlayTask}
           onScheduledDateChange={handleScheduledDateChange}
           onClose={() => {
             setShowScheduledOverlay(false)
             setOverlayTaskId(null)
+            // Return focus to ListView if in list mode
+            if (viewMode === 'list') {
+              setTimeout(() => {
+                const listView = document.querySelector('[data-list-view-container]') as HTMLElement
+                if (listView) {
+                  listView.focus()
+                }
+              }, 100)
+            }
           }}
-          isVisible={showScheduledOverlay}
+          isVisible={true}
         />
       )}
 
       {/* Deadline Selector */}
-      {overlayTask && (
+      {overlayTask && showDeadlineOverlay && (
         <DeadlineSelector
           currentTask={overlayTask}
           onDeadlineChange={handleDeadlineChange}
           onClose={() => {
             setShowDeadlineOverlay(false)
             setOverlayTaskId(null)
+            // Return focus to ListView if in list mode
+            if (viewMode === 'list') {
+              setTimeout(() => {
+                const listView = document.querySelector('[data-list-view-container]') as HTMLElement
+                if (listView) {
+                  listView.focus()
+                }
+              }, 100)
+            }
           }}
-          isVisible={showDeadlineOverlay}
+          isVisible={true}
         />
       )}
 
       {/* Assignee Selection Overlay */}
-      {overlayTask && (
+      {overlayTask && showAssigneeOverlay && (
         <AssigneeSelectionOverlay
-          isVisible={showAssigneeOverlay}
+          isVisible={true}
           onClose={() => {
             setShowAssigneeOverlay(false)
             setOverlayTaskId(null)
+            // Return focus to ListView if in list mode
+            if (viewMode === 'list') {
+              setTimeout(() => {
+                const listView = document.querySelector('[data-list-view-container]') as HTMLElement
+                if (listView) {
+                  listView.focus()
+                }
+              }, 100)
+            }
           }}
           onAssigneeSelect={handleAssigneeSelect}
           currentAssigneeId={overlayTask.assigneeId}
@@ -1888,7 +1993,7 @@ export default function TaskProcessor() {
       )}
 
       {/* Complete Confirmation Dialog */}
-      {showCompleteConfirm && currentTask && (
+      {showCompleteConfirm && overlayTask && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
           onClick={() => setShowCompleteConfirm(false)}
@@ -1902,7 +2007,7 @@ export default function TaskProcessor() {
               Mark this task as completed. This action can be undone from your completed tasks.
             </p>
             <p className="text-sm font-medium text-gray-800 mb-6 p-3 bg-gray-50 rounded">
-              &ldquo;{currentTask.content}&rdquo;
+              &ldquo;{overlayTask.content}&rdquo;
             </p>
             <div className="flex gap-3">
               <button

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo, useCallback, memo } from 'react'
+import React, { useMemo, useCallback, memo, useEffect, useRef } from 'react'
 import { TodoistTask, TodoistProject, TodoistLabel, TaskUpdate, TodoistUser } from '@/lib/types'
 import { ProcessingMode } from '@/types/processing-mode'
 import { ListViewState, getDisplayContext } from '@/types/view-mode'
@@ -57,6 +57,8 @@ const ListView: React.FC<ListViewProps> = ({
   onOpenDeadlineOverlay,
   onOpenAssigneeOverlay,
 }) => {
+  const containerRef = useRef<HTMLDivElement>(null)
+  
   // Get display context for hiding redundant information
   const displayContext = useMemo(() => 
     getDisplayContext(processingMode), 
@@ -111,8 +113,54 @@ const ListView: React.FC<ListViewProps> = ({
     }
   }, [tasks, listViewState.sortBy])
 
+  // Auto-highlight first task if none selected
+  useEffect(() => {
+    if (!listViewState.highlightedTaskId && sortedTasks.length > 0) {
+      onListViewStateChange({
+        ...listViewState,
+        highlightedTaskId: sortedTasks[0].id
+      })
+    }
+  }, [sortedTasks.length, listViewState.highlightedTaskId, onListViewStateChange])
+
+  // Return focus to container when editing is finished
+  useEffect(() => {
+    if (!listViewState.editingTaskId && containerRef.current) {
+      containerRef.current.focus()
+    }
+  }, [listViewState.editingTaskId])
+
+  // Focus the container when component mounts or becomes visible
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.focus()
+    }
+  }, [])
+
+  // Scroll highlighted task into view
+  useEffect(() => {
+    if (listViewState.highlightedTaskId) {
+      const element = document.getElementById(`task-${listViewState.highlightedTaskId}`)
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      }
+    }
+  }, [listViewState.highlightedTaskId])
+
   // Handle keyboard navigation
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    const highlightedTask = sortedTasks.find(t => t.id === listViewState.highlightedTaskId)
+    
+    // Debug log for p key
+    if (e.key === 'p' || e.key === 'P') {
+      console.log('ListView handleKeyDown: p key pressed', { 
+        highlightedTask: !!highlightedTask,
+        editingTaskId: listViewState.editingTaskId,
+        shiftKey: e.shiftKey
+      })
+    }
+    
+    // Navigation
     if (e.key === 'ArrowDown' || e.key === 'j') {
       e.preventDefault()
       const currentIndex = sortedTasks.findIndex(t => t.id === listViewState.highlightedTaskId)
@@ -129,13 +177,93 @@ const ListView: React.FC<ListViewProps> = ({
         ...listViewState,
         highlightedTaskId: sortedTasks[prevIndex]?.id || null
       })
-    } else if (e.key === 'Enter' && listViewState.highlightedTaskId) {
-      e.preventDefault()
-      // Switch to processing view with this task
-      onViewModeChange('processing')
-      // TODO: Also need to navigate to this task in processing view
     }
-  }, [sortedTasks, listViewState, onListViewStateChange, onViewModeChange])
+    
+    // Task actions on highlighted task
+    if (highlightedTask && !listViewState.editingTaskId) {
+      switch (e.key) {
+        case '#':
+          e.preventDefault()
+          onOpenProjectOverlay(highlightedTask.id)
+          break
+          
+        case '@':
+          e.preventDefault()
+          onOpenLabelOverlay(highlightedTask.id)
+          break
+          
+        case 's':
+        case 'S':
+          e.preventDefault()
+          onOpenScheduledOverlay(highlightedTask.id)
+          break
+          
+        case 'd':
+        case 'D':
+          if (!e.metaKey && !e.ctrlKey) {
+            e.preventDefault()
+            onOpenDeadlineOverlay(highlightedTask.id)
+          }
+          break
+          
+        case 'p':
+        case 'P':
+          if (!e.shiftKey) {
+            e.preventDefault()
+            console.log('ListView: About to call onOpenPriorityOverlay with id:', highlightedTask.id)
+            onOpenPriorityOverlay(highlightedTask.id)
+          }
+          break
+          
+        case '+':
+          e.preventDefault()
+          onOpenAssigneeOverlay(highlightedTask.id)
+          break
+          
+        case 'c':
+          e.preventDefault()
+          // Don't complete directly, trigger the confirmation overlay
+          onTaskComplete(highlightedTask.id)
+          break
+          
+        case 'e':
+          if (!listViewState.editingTaskId) {
+            e.preventDefault()
+            onListViewStateChange({
+              ...listViewState,
+              editingTaskId: highlightedTask.id
+            })
+          }
+          break
+          
+        case ' ':
+          e.preventDefault()
+          const newExpanded = new Set(listViewState.expandedDescriptions)
+          if (newExpanded.has(highlightedTask.id)) {
+            newExpanded.delete(highlightedTask.id)
+          } else {
+            newExpanded.add(highlightedTask.id)
+          }
+          onListViewStateChange({
+            ...listViewState,
+            expandedDescriptions: newExpanded
+          })
+          break
+          
+        case 'Escape':
+          if (listViewState.editingTaskId) {
+            e.preventDefault()
+            onListViewStateChange({
+              ...listViewState,
+              editingTaskId: null
+            })
+          }
+          break
+      }
+    }
+  }, [sortedTasks, listViewState, onListViewStateChange, onTaskProcess, onTaskComplete,
+      onOpenProjectOverlay, onOpenPriorityOverlay, onOpenLabelOverlay, 
+      onOpenScheduledOverlay, onOpenDeadlineOverlay, onOpenAssigneeOverlay])
 
   // Empty state
   if (tasks.length === 0) {
@@ -158,6 +286,8 @@ const ListView: React.FC<ListViewProps> = ({
 
   return (
     <div 
+      ref={containerRef}
+      data-list-view-container
       className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden"
       onKeyDown={handleKeyDown}
       tabIndex={0}
@@ -205,12 +335,22 @@ const ListView: React.FC<ListViewProps> = ({
                 onListViewStateChange({ ...listViewState, selectedTaskIds: newSelected })
               }}
               onEdit={() => {
-                onListViewStateChange({ ...listViewState, editingTaskId: task.id })
+                // Toggle edit mode - if we're editing this task, stop; otherwise start
+                onListViewStateChange({ 
+                  ...listViewState, 
+                  editingTaskId: listViewState.editingTaskId === task.id ? null : task.id,
+                  highlightedTaskId: task.id 
+                })
               }}
               onUpdate={onTaskUpdate}
               onComplete={() => onTaskComplete(task.id)}
               onProcess={() => onTaskProcess(task.id)}
-              onDoubleClick={() => onViewModeChange('processing')}
+              onClick={() => {
+                onListViewStateChange({
+                  ...listViewState,
+                  highlightedTaskId: task.id
+                })
+              }}
               // Pass through overlay handlers
               onOpenProjectOverlay={() => onOpenProjectOverlay(task.id)}
               onOpenPriorityOverlay={() => onOpenPriorityOverlay(task.id)}

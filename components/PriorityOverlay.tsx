@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 interface PriorityOverlayProps {
   currentPriority: 1 | 2 | 3 | 4
@@ -10,6 +10,8 @@ interface PriorityOverlayProps {
 }
 
 export default function PriorityOverlay({ currentPriority, onPrioritySelect, onClose, isVisible }: PriorityOverlayProps) {
+  // Track the focused priority (1-4 for P4-P1)
+  const [focusedPriority, setFocusedPriority] = useState<1 | 2 | 3 | 4>(currentPriority)
   // Convert API priority (1-4) to UI priority (P4-P1)
   const getUIPriority = (apiPriority: number) => {
     return 5 - apiPriority // 4→P1, 3→P2, 2→P3, 1→P4
@@ -39,11 +41,15 @@ export default function PriorityOverlay({ currentPriority, onPrioritySelect, onC
   useEffect(() => {
     if (!isVisible) return
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      e.preventDefault()
-      e.stopPropagation()
+    let handleKeyDown: ((e: KeyboardEvent) => void) | null = null
 
-      switch (e.key) {
+    // Add a small delay to avoid catching the same keypress that opened the overlay
+    const timeoutId = setTimeout(() => {
+      handleKeyDown = (e: KeyboardEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+
+        switch (e.key) {
         case '1':
           onPrioritySelect(4) // P1 = API priority 4
           break
@@ -55,6 +61,20 @@ export default function PriorityOverlay({ currentPriority, onPrioritySelect, onC
           break
         case '4':
           onPrioritySelect(1) // P4 = API priority 1
+          break
+        case 'ArrowUp':
+        case 'ArrowLeft':
+          // Move to higher priority (lower number in UI, higher number in API)
+          setFocusedPriority(prev => Math.min(4, prev + 1) as 1 | 2 | 3 | 4)
+          break
+        case 'ArrowDown':
+        case 'ArrowRight':
+          // Move to lower priority (higher number in UI, lower number in API)
+          setFocusedPriority(prev => Math.max(1, prev - 1) as 1 | 2 | 3 | 4)
+          break
+        case 'Enter':
+        case ' ':
+          onPrioritySelect(focusedPriority)
           break
         case 'Delete':
         case 'Backspace':
@@ -71,26 +91,37 @@ export default function PriorityOverlay({ currentPriority, onPrioritySelect, onC
       }
     }
 
-    window.addEventListener('keydown', handleKeyDown)
+      window.addEventListener('keydown', handleKeyDown)
+    }, 50) // 50ms delay to avoid catching the opening keypress
 
     return () => {
-      window.removeEventListener('keydown', handleKeyDown)
+      clearTimeout(timeoutId)
+      if (handleKeyDown) {
+        window.removeEventListener('keydown', handleKeyDown)
+      }
     }
-  }, [isVisible, onPrioritySelect, onClose])
+  }, [isVisible, onPrioritySelect, onClose, focusedPriority])
 
   if (!isVisible) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl p-8 shadow-2xl max-w-lg w-full mx-4">
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white rounded-2xl p-8 shadow-2xl max-w-lg w-full mx-4"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Set Priority</h2>
-          <p className="text-gray-600 mb-8">Press 1, 2, 3, or 4 to select priority</p>
+          <p className="text-gray-600 mb-8">Use arrow keys and Enter, or press 1-4</p>
           
           <div className="grid grid-cols-2 gap-4">
             {[4, 3, 2, 1].map((apiPriority) => {
               const uiPriority = getUIPriority(apiPriority)
               const isSelected = currentPriority === apiPriority
+              const isFocused = focusedPriority === apiPriority
               
               return (
                 <button
@@ -100,8 +131,11 @@ export default function PriorityOverlay({ currentPriority, onPrioritySelect, onC
                     p-6 rounded-xl border-2 font-bold text-lg transition-all duration-200 transform
                     ${isSelected 
                       ? `${getPriorityColor(apiPriority)} scale-105 shadow-lg` 
+                      : isFocused
+                      ? 'bg-gray-200 border-gray-400 text-gray-800 scale-102 shadow-md'
                       : 'bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200 hover:scale-102'
                     }
+                    ${isFocused ? 'ring-2 ring-blue-500 ring-offset-2' : ''}
                   `}
                 >
                   <div className="text-3xl font-black mb-2">P{uiPriority}</div>

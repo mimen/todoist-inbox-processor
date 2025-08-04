@@ -22,7 +22,7 @@ interface TaskListItemProps {
   onUpdate: (taskId: string, updates: TaskUpdate) => void
   onComplete: () => void
   onProcess: () => void
-  onDoubleClick: () => void
+  onClick: () => void
   // Overlay handlers passed from parent
   onOpenProjectOverlay: () => void
   onOpenPriorityOverlay: () => void
@@ -52,7 +52,7 @@ const TaskListItem: React.FC<TaskListItemProps> = ({
   onUpdate,
   onComplete,
   onProcess,
-  onDoubleClick,
+  onClick,
   onOpenProjectOverlay,
   onOpenPriorityOverlay,
   onOpenLabelOverlay,
@@ -67,6 +67,7 @@ const TaskListItem: React.FC<TaskListItemProps> = ({
     if (editedContent.trim() && editedContent !== task.content) {
       onUpdate(task.id, { content: editedContent.trim() })
     }
+    setEditedContent(task.content) // Reset to original
     onEdit() // Exit edit mode
   }, [editedContent, task.content, task.id, onUpdate, onEdit])
 
@@ -75,6 +76,7 @@ const TaskListItem: React.FC<TaskListItemProps> = ({
       e.preventDefault()
       handleContentSubmit()
     } else if (e.key === 'Escape') {
+      e.preventDefault()
       setEditedContent(task.content)
       onEdit() // Exit edit mode
     }
@@ -95,15 +97,16 @@ const TaskListItem: React.FC<TaskListItemProps> = ({
 
   return (
     <div
+      id={`task-${task.id}`}
       className={`
         group relative transition-colors
-        ${isHighlighted ? 'bg-blue-50 dark:bg-blue-900/20' : ''}
-        ${isSelected ? 'bg-gray-50 dark:bg-gray-800/50' : ''}
+        ${isHighlighted ? 'bg-blue-50 dark:bg-blue-900/20 ring-2 ring-inset ring-blue-500' : ''}
+        ${isSelected && !isHighlighted ? 'bg-gray-50 dark:bg-gray-800/50' : ''}
         ${!isHighlighted && !isSelected ? 'hover:bg-gray-50 dark:hover:bg-gray-800/50' : ''}
       `}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onDoubleClick={onDoubleClick}
+      onClick={onClick}
     >
       {/* Main task row */}
       <div className="flex items-center gap-3 px-4 py-2 min-h-[36px]">
@@ -132,8 +135,8 @@ const TaskListItem: React.FC<TaskListItemProps> = ({
             />
           ) : (
             <span 
-              className="flex-1 text-sm text-gray-900 dark:text-gray-100 truncate cursor-text"
-              onClick={onEdit}
+              className="flex-1 text-sm text-gray-900 dark:text-gray-100 truncate"
+              onDoubleClick={onEdit}
             >
               {task.content}
             </span>
