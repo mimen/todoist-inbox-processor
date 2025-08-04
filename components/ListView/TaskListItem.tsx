@@ -214,29 +214,49 @@ const TaskListItem: React.FC<TaskListItemProps> = ({
           </div>
         </div>
         
-        {/* Action buttons - appear on hover */}
-        <div className={`
-          flex items-center gap-1 transition-opacity
-          ${isHovered || isHighlighted ? 'opacity-100' : 'opacity-0'}
-        `}>
-          {/* Description indicator/toggle */}
-          {task.description && (
+        {/* Description indicator - always visible if task has description */}
+        {task.description && (
+          <div className="flex items-center gap-1">
             <button
-              onClick={onToggleExpand}
-              className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation()
+                onToggleExpand()
+              }}
+              className={`
+                p-1 transition-all flex items-center gap-1
+                ${isExpanded 
+                  ? 'text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300' 
+                  : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                }
+              `}
               title={isExpanded ? 'Hide description' : 'Show description'}
             >
               <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
                 <path 
-                  d={isExpanded ? 'M4 6l4 4 4-4' : 'M6 4l4 4-4 4'} 
+                  d="M3 5h10M3 8h10M3 11h7" 
                   stroke="currentColor" 
                   strokeWidth="1.5" 
+                  strokeLinecap="round"
+                />
+              </svg>
+              <svg className="w-3 h-3" viewBox="0 0 16 16" fill="none">
+                <path 
+                  d={isExpanded ? 'M4 6l4 4 4-4' : 'M6 4l4 4-4 4'} 
+                  stroke="currentColor" 
+                  strokeWidth="2" 
                   strokeLinecap="round" 
                   strokeLinejoin="round"
                 />
               </svg>
             </button>
-          )}
+          </div>
+        )}
+        
+        {/* Action buttons - appear on hover */}
+        <div className={`
+          flex items-center gap-1 transition-opacity
+          ${isHovered || isHighlighted ? 'opacity-100' : 'opacity-0'}
+        `}>
           
           {/* Process button */}
           <button
@@ -262,12 +282,18 @@ const TaskListItem: React.FC<TaskListItemProps> = ({
         </div>
       </div>
       
-      {/* Expanded description */}
-      {isExpanded && task.description && (
-        <div className="px-4 py-2 ml-10 mr-4 text-sm text-gray-600 dark:text-gray-400 border-t border-gray-100 dark:border-gray-800">
-          {task.description}
-        </div>
-      )}
+      {/* Expanded description with animation */}
+      <div 
+        className={`overflow-hidden transition-all duration-200 ease-in-out ${
+          isExpanded && task.description ? 'max-h-96' : 'max-h-0'
+        }`}
+      >
+        {task.description && (
+          <div className="px-4 py-2 ml-10 mr-4 text-sm text-gray-600 dark:text-gray-400 border-t border-gray-100 dark:border-gray-800">
+            {task.description}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

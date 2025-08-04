@@ -160,7 +160,20 @@ const ListView: React.FC<ListViewProps> = ({
       })
     }
     
-    // Navigation
+    // If we're editing, only handle Escape to cancel editing
+    if (listViewState.editingTaskId) {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onListViewStateChange({
+          ...listViewState,
+          editingTaskId: null
+        })
+      }
+      // Don't process any other keys while editing
+      return
+    }
+    
+    // Navigation (only when not editing)
     if (e.key === 'ArrowDown' || e.key === 'j') {
       e.preventDefault()
       const currentIndex = sortedTasks.findIndex(t => t.id === listViewState.highlightedTaskId)
@@ -180,7 +193,7 @@ const ListView: React.FC<ListViewProps> = ({
     }
     
     // Task actions on highlighted task
-    if (highlightedTask && !listViewState.editingTaskId) {
+    if (highlightedTask) {
       switch (e.key) {
         case '#':
           e.preventDefault()
@@ -227,13 +240,11 @@ const ListView: React.FC<ListViewProps> = ({
           break
           
         case 'e':
-          if (!listViewState.editingTaskId) {
-            e.preventDefault()
-            onListViewStateChange({
-              ...listViewState,
-              editingTaskId: highlightedTask.id
-            })
-          }
+          e.preventDefault()
+          onListViewStateChange({
+            ...listViewState,
+            editingTaskId: highlightedTask.id
+          })
           break
           
         case ' ':
@@ -250,15 +261,6 @@ const ListView: React.FC<ListViewProps> = ({
           })
           break
           
-        case 'Escape':
-          if (listViewState.editingTaskId) {
-            e.preventDefault()
-            onListViewStateChange({
-              ...listViewState,
-              editingTaskId: null
-            })
-          }
-          break
       }
     }
   }, [sortedTasks, listViewState, onListViewStateChange, onTaskProcess, onTaskComplete,
