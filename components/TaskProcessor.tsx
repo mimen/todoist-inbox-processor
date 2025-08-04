@@ -140,6 +140,7 @@ export default function TaskProcessor() {
   const [queuePosition, setQueuePosition] = useState(0)
   const [processedTaskIds, setProcessedTaskIds] = useState<string[]>([])
   const [skippedTaskIds, setSkippedTaskIds] = useState<string[]>([])
+  const [slidingOutTaskIds, setSlidingOutTaskIds] = useState<string[]>([])
   
   const currentUserId = collaboratorsData?.currentUser?.id || '13801296' // Use dynamic user ID
   
@@ -1294,12 +1295,68 @@ export default function TaskProcessor() {
     await autoSaveTask(taskId, updates)
   }, [autoSaveTask])
 
-  // Handle task completion from ListView - just show confirmation
-  const handleListViewTaskComplete = useCallback((taskId: string) => {
-    // Set the overlay task and show confirmation
-    setOverlayTaskId(taskId)
-    setShowCompleteConfirm(true)
-  }, [])
+  // Handle task completion from ListView - complete directly without confirmation
+  const handleListViewTaskComplete = useCallback(async (taskId: string) => {
+    // Complete the task directly - the animation delay is the confirmation
+    const task = masterTasks[taskId]
+    if (!task) return
+    
+    try {
+      // Complete the task in Todoist immediately
+      const response = await fetch(`/api/todoist/tasks/${taskId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to complete task in Todoist')
+      }
+
+      // Start slide-out animation
+      setSlidingOutTaskIds(prev => [...prev, taskId])
+      
+      // After animation completes, mark as processed
+      setTimeout(() => {
+        setProcessedTaskIds(prev => {
+          if (prev.includes(taskId)) return prev
+          return [...prev, taskId]
+        })
+        
+        // Remove from sliding out state
+        setSlidingOutTaskIds(prev => prev.filter(id => id !== taskId))
+      }, 400) // Match the animation duration
+      
+      // Update list view highlighted task
+      if (listViewState.highlightedTaskId === taskId) {
+        // Calculate next highlighted task
+        const currentTasks = activeQueue.filter(id => !processedTaskIds.includes(id) && id !== taskId)
+        const completedIndex = activeQueue.findIndex(id => id === taskId)
+        
+        let nextHighlightedId: string | null = null
+        if (currentTasks.length > 0) {
+          // Try to highlight the task at the same position, or the last one if we're at the end
+          const nextIndex = Math.min(completedIndex, currentTasks.length - 1)
+          nextHighlightedId = currentTasks[nextIndex]
+        }
+        
+        setListViewState(prev => ({
+          ...prev,
+          highlightedTaskId: nextHighlightedId
+        }))
+      }
+
+      // Show success toast
+      setToast({
+        type: 'success',
+        message: 'Task completed',
+      })
+    } catch (error) {
+      console.error('Error completing task:', error)
+      setToast({
+        type: 'error',
+        message: 'Failed to complete task',
+      })
+    }
+  }, [masterTasks, activeQueue, processedTaskIds, listViewState.highlightedTaskId])
 
   // Handle task processing from ListView (switch to processing view)
   const handleListViewTaskProcess = useCallback((taskId: string) => {
@@ -1311,6 +1368,68 @@ export default function TaskProcessor() {
       setTaskKey(prev => prev + 1) // Force re-render
     }
   }, [activeQueue])
+
+  // Handle task deletion from ListView - permanently delete task
+  const handleListViewTaskDelete = useCallback(async (taskId: string) => {
+    const task = masterTasks[taskId]
+    if (!task) return
+    
+    try {
+      // Delete the task in Todoist permanently
+      const response = await fetch(`/api/todoist/tasks/${taskId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete task in Todoist')
+      }
+
+      // Start slide-out animation
+      setSlidingOutTaskIds(prev => [...prev, taskId])
+      
+      // After animation completes, mark as processed (removed from list)
+      setTimeout(() => {
+        setProcessedTaskIds(prev => {
+          if (prev.includes(taskId)) return prev
+          return [...prev, taskId]
+        })
+        
+        // Remove from sliding out state
+        setSlidingOutTaskIds(prev => prev.filter(id => id !== taskId))
+      }, 400) // Match the animation duration
+      
+      // Update list view highlighted task if needed
+      if (listViewState.highlightedTaskId === taskId) {
+        // Calculate next highlighted task
+        const currentTasks = activeQueue.filter(id => !processedTaskIds.includes(id) && id !== taskId)
+        const deletedIndex = activeQueue.findIndex(id => id === taskId)
+        
+        let nextHighlightedId: string | null = null
+        if (currentTasks.length > 0) {
+          // Try to highlight the task at the same position, or the last one if we're at the end
+          const nextIndex = Math.min(deletedIndex, currentTasks.length - 1)
+          nextHighlightedId = currentTasks[nextIndex]
+        }
+        
+        setListViewState(prev => ({
+          ...prev,
+          highlightedTaskId: nextHighlightedId
+        }))
+      }
+      
+      // Show success toast
+      setToast({
+        type: 'success',
+        message: 'Task deleted',
+      })
+    } catch (error) {
+      console.error('Error deleting task:', error)
+      setToast({
+        type: 'error',
+        message: 'Failed to delete task',
+      })
+    }
+  }, [masterTasks, activeQueue, processedTaskIds, listViewState.highlightedTaskId])
 
 
   // Keyboard shortcuts
@@ -1698,29 +1817,26 @@ export default function TaskProcessor() {
               </div>
             </div>
           )}
-          
-          {totalTasks > 0 && (
-            <ProgressIndicator
-              current={completedTasks}
-              total={totalTasks}
-              progress={progress}
-            />
-          )}
         </div>
 
         {/* Main Content Area - conditional based on view mode */}
         {viewMode === 'list' ? (
           <ListView
-            tasks={activeQueue.map(id => masterTasks[id]).filter(Boolean)}
+            tasks={activeQueue
+              .filter(id => !processedTaskIds.includes(id))
+              .map(id => masterTasks[id])
+              .filter(Boolean)}
             projects={projects}
             labels={labels}
             processingMode={processingMode}
             projectMetadata={projectMetadata}
             listViewState={listViewState}
+            slidingOutTaskIds={slidingOutTaskIds}
             onListViewStateChange={setListViewState}
             onTaskUpdate={handleListViewTaskUpdate}
             onTaskComplete={handleListViewTaskComplete}
             onTaskProcess={handleListViewTaskProcess}
+            onTaskDelete={handleListViewTaskDelete}
             onViewModeChange={setViewMode}
             currentUserId={currentUserId}
             collaborators={projectCollaborators}
@@ -1733,6 +1849,15 @@ export default function TaskProcessor() {
           />
         ) : currentTask && !loadingTasks ? (
           <div className="space-y-6">
+            {/* Progress Indicator - only in Processing View */}
+            {totalTasks > 0 && (
+              <ProgressIndicator
+                current={completedTasks}
+                total={totalTasks}
+                progress={progress}
+              />
+            )}
+            
             {/* Show if all tasks are processed */}
             {processedTaskIds.length === taskQueue.length && taskQueue.length > 0 && (
               <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-6 text-center">

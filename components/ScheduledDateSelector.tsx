@@ -4,6 +4,15 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { TodoistTask } from '@/lib/types'
 import SmartScheduleDateInput from './SmartScheduleDateInput'
 import { getDateColor, getDateTimeLabel } from '@/lib/date-colors'
+import dynamic from 'next/dynamic'
+
+// Lazy load the new scheduler to avoid loading calendar dependencies if not used
+const TaskSchedulerView = dynamic(() => import('./TaskSchedulerView'), {
+  ssr: false,
+  loading: () => <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+    <div className="text-white">Loading scheduler...</div>
+  </div>
+})
 
 interface ScheduledDateSelectorProps {
   currentTask: TodoistTask
@@ -25,8 +34,27 @@ export default function ScheduledDateSelector({
   currentTask,
   onScheduledDateChange, 
   onClose, 
-  isVisible 
+  isVisible,
+  isLoading
 }: ScheduledDateSelectorProps) {
+  // Check if we should use the new scheduler
+  const useNewScheduler = process.env.NEXT_PUBLIC_USE_NEW_SCHEDULER === 'true'
+  
+  // If using new scheduler, render it instead
+  if (useNewScheduler) {
+    return (
+      <TaskSchedulerView
+        currentTask={currentTask}
+        onScheduledDateChange={onScheduledDateChange}
+        onClose={onClose}
+        isVisible={isVisible}
+        isLoading={isLoading}
+        mode="scheduled"
+      />
+    )
+  }
+  
+  // Otherwise, continue with the original implementation
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
   const searchInputRef = useRef<HTMLInputElement>(null)
