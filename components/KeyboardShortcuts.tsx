@@ -52,9 +52,14 @@ export default function KeyboardShortcuts({ onClose }: KeyboardShortcutsProps) {
     ]},
   ]
 
+  // Split shortcuts into two columns
+  const midPoint = Math.ceil(shortcuts.length / 2)
+  const leftColumn = shortcuts.slice(0, midPoint)
+  const rightColumn = shortcuts.slice(midPoint)
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+      <div className="bg-white rounded-lg shadow-xl max-w-5xl w-full p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900">Keyboard Shortcuts</h2>
           <button
@@ -67,37 +72,70 @@ export default function KeyboardShortcuts({ onClose }: KeyboardShortcutsProps) {
           </button>
         </div>
         
-        <div className="space-y-4">
-          {shortcuts.map((section, sectionIndex) => (
-            <div key={sectionIndex}>
-              <h3 className="text-sm font-medium text-gray-900 mb-2">{section.category}</h3>
-              <div className="space-y-2">
-                {section.items.map((shortcut, index) => (
-                  <div key={index} className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">{shortcut.description}</span>
-                    <div className="flex items-center gap-1">
-                      {Array.isArray(shortcut.key) ? (
-                        shortcut.key.map((key, keyIndex) => (
-                          <div key={keyIndex} className="flex items-center">
-                            <span className="kbd">{key}</span>
-                            {keyIndex < shortcut.key.length - 1 && (
-                              <span className="mx-1 text-gray-400">/</span>
-                            )}
-                          </div>
-                        ))
-                      ) : (
-                        <span className="kbd">{shortcut.key}</span>
-                      )}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Left Column */}
+          <div className="space-y-4">
+            {leftColumn.map((section, sectionIndex) => (
+              <div key={sectionIndex}>
+                <h3 className="text-sm font-medium text-gray-900 mb-2">{section.category}</h3>
+                <div className="space-y-2">
+                  {section.items.map((shortcut, index) => (
+                    <div key={index} className="flex items-center justify-between gap-4">
+                      <span className="text-sm text-gray-600">{shortcut.description}</span>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        {Array.isArray(shortcut.key) ? (
+                          shortcut.key.map((key, keyIndex) => (
+                            <div key={keyIndex} className="flex items-center">
+                              <span className="kbd">{key}</span>
+                              {keyIndex < shortcut.key.length - 1 && (
+                                <span className="mx-1 text-gray-400">/</span>
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <span className="kbd">{shortcut.key}</span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+          
+          {/* Right Column */}
+          <div className="space-y-4">
+            {rightColumn.map((section, sectionIndex) => (
+              <div key={sectionIndex + midPoint}>
+                <h3 className="text-sm font-medium text-gray-900 mb-2">{section.category}</h3>
+                <div className="space-y-2">
+                  {section.items.map((shortcut, index) => (
+                    <div key={index} className="flex items-center justify-between gap-4">
+                      <span className="text-sm text-gray-600">{shortcut.description}</span>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        {Array.isArray(shortcut.key) ? (
+                          shortcut.key.map((key, keyIndex) => (
+                            <div key={keyIndex} className="flex items-center">
+                              <span className="kbd">{key}</span>
+                              {keyIndex < shortcut.key.length - 1 && (
+                                <span className="mx-1 text-gray-400">/</span>
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <span className="kbd">{shortcut.key}</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
         
         <div className="mt-6 pt-4 border-t border-gray-200">
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-500 text-center">
             Press <span className="kbd">?</span> anytime to toggle this help
           </p>
         </div>

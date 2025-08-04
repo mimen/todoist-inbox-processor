@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo, useCallback, memo, useEffect, useRef } from 'react'
+import React, { useMemo, useCallback, memo, useEffect, useRef, useState } from 'react'
 import { TodoistTask, TodoistProject, TodoistLabel, TaskUpdate, TodoistUser } from '@/lib/types'
 import { ProcessingMode } from '@/types/processing-mode'
 import { ListViewState, getDisplayContext } from '@/types/view-mode'
@@ -15,10 +15,12 @@ interface ListViewProps {
   processingMode: ProcessingMode
   projectMetadata: Record<string, any>
   listViewState: ListViewState
+  slidingOutTaskIds: string[]
   onListViewStateChange: (state: ListViewState) => void
   onTaskUpdate: (taskId: string, updates: TaskUpdate) => Promise<void>
   onTaskComplete: (taskId: string) => void
   onTaskProcess: (taskId: string) => void
+  onTaskDelete: (taskId: string) => void
   onViewModeChange: (mode: 'processing') => void
   currentUserId: string
   collaborators?: Record<string, TodoistUser[]>
@@ -43,10 +45,12 @@ const ListView: React.FC<ListViewProps> = ({
   processingMode,
   projectMetadata,
   listViewState,
+  slidingOutTaskIds,
   onListViewStateChange,
   onTaskUpdate,
   onTaskComplete,
   onTaskProcess,
+  onTaskDelete,
   onViewModeChange,
   currentUserId,
   collaborators = {},
@@ -58,6 +62,7 @@ const ListView: React.FC<ListViewProps> = ({
   onOpenAssigneeOverlay,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null)
+  const [isMetaKeyHeld, setIsMetaKeyHeld] = useState(false)
   
   // Get display context for hiding redundant information
   const displayContext = useMemo(() => 
@@ -136,6 +141,29 @@ const ListView: React.FC<ListViewProps> = ({
       containerRef.current.focus()
     }
   }, [])
+  
+  // Track meta key state
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey) {
+        setIsMetaKeyHeld(true)
+      }
+    }
+    
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (!e.metaKey && !e.ctrlKey) {
+        setIsMetaKeyHeld(false)
+      }
+    }
+    
+    window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('keyup', handleKeyUp)
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
+    }
+  }, [])
 
   // Scroll highlighted task into view
   useEffect(() => {
@@ -151,14 +179,6 @@ const ListView: React.FC<ListViewProps> = ({
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     const highlightedTask = sortedTasks.find(t => t.id === listViewState.highlightedTaskId)
     
-    // Debug log for p key
-    if (e.key === 'p' || e.key === 'P') {
-      console.log('ListView handleKeyDown: p key pressed', { 
-        highlightedTask: !!highlightedTask,
-        editingTaskId: listViewState.editingTaskId,
-        shiftKey: e.shiftKey
-      })
-    }
     
     // If we're editing, only handle Escape to cancel editing
     if (listViewState.editingTaskId) {
@@ -170,6 +190,41 @@ const ListView: React.FC<ListViewProps> = ({
         })
       }
       // Don't process any other keys while editing
+      return
+    }
+    
+    // List View specific shortcuts
+    if (e.key === 'l' || e.key === 'L') {
+      e.preventDefault()
+      onViewModeChange('processing')
+      return
+    }
+    
+    if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
+      e.preventDefault()
+      // Select all tasks
+      const allTaskIds = new Set(sortedTasks.map(t => t.id))
+      onListViewStateChange({
+        ...listViewState,
+        selectedTaskIds: allTaskIds
+      })
+      return
+    }
+    
+    if (e.key === 'Escape' && listViewState.selectedTaskIds.size > 0) {
+      e.preventDefault()
+      // Clear selection
+      onListViewStateChange({
+        ...listViewState,
+        selectedTaskIds: new Set()
+      })
+      return
+    }
+    
+    if (e.key === 'Enter' && highlightedTask) {
+      e.preventDefault()
+      // Switch to processing view with this task
+      onTaskProcess(highlightedTask.id)
       return
     }
     
@@ -222,9 +277,15 @@ const ListView: React.FC<ListViewProps> = ({
         case 'p':
         case 'P':
           if (!e.shiftKey) {
-            e.preventDefault()
-            console.log('ListView: About to call onOpenPriorityOverlay with id:', highlightedTask.id)
-            onOpenPriorityOverlay(highlightedTask.id)
+            if (e.metaKey || e.ctrlKey) {
+              // Cmd+P or Ctrl+P for priority overlay
+              e.preventDefault()
+              onOpenPriorityOverlay(highlightedTask.id)
+            } else if (!e.metaKey && !e.ctrlKey) {
+              // Regular P key
+              e.preventDefault()
+              onOpenPriorityOverlay(highlightedTask.id)
+            }
           }
           break
           
@@ -307,17 +368,23 @@ const ListView: React.FC<ListViewProps> = ({
           const project = projectMap[task.projectId]
           const taskLabels = labels.filter(l => task.labels.includes(l.name))
           
+          const isSliding = slidingOutTaskIds.includes(task.id)
+          
           return (
-            <TaskListItem
+            <div
               key={task.id}
-              task={task}
-              project={project}
-              labels={taskLabels}
-              displayContext={displayContext}
-              isExpanded={listViewState.expandedDescriptions.has(task.id)}
-              isSelected={listViewState.selectedTaskIds.has(task.id)}
-              isHighlighted={listViewState.highlightedTaskId === task.id}
-              isEditing={listViewState.editingTaskId === task.id}
+              className={isSliding ? 'animate-fade-out-task' : ''}
+            >
+              <TaskListItem
+                task={task}
+                project={project}
+                labels={taskLabels}
+                displayContext={displayContext}
+                isExpanded={listViewState.expandedDescriptions.has(task.id)}
+                isSelected={listViewState.selectedTaskIds.has(task.id)}
+                isHighlighted={listViewState.highlightedTaskId === task.id}
+                isEditing={listViewState.editingTaskId === task.id}
+                showSelectionCheckbox={isMetaKeyHeld || listViewState.selectedTaskIds.size > 0}
               onToggleExpand={() => {
                 const newExpanded = new Set(listViewState.expandedDescriptions)
                 if (newExpanded.has(task.id)) {
@@ -347,11 +414,50 @@ const ListView: React.FC<ListViewProps> = ({
               onUpdate={onTaskUpdate}
               onComplete={() => onTaskComplete(task.id)}
               onProcess={() => onTaskProcess(task.id)}
-              onClick={() => {
-                onListViewStateChange({
-                  ...listViewState,
-                  highlightedTaskId: task.id
-                })
+              onDelete={() => onTaskDelete(task.id)}
+              onClick={(e) => {
+                // Handle Shift+Click for range selection
+                if (e.shiftKey && listViewState.highlightedTaskId) {
+                  const startIndex = sortedTasks.findIndex(t => t.id === listViewState.highlightedTaskId)
+                  const endIndex = sortedTasks.findIndex(t => t.id === task.id)
+                  
+                  if (startIndex !== -1 && endIndex !== -1) {
+                    const start = Math.min(startIndex, endIndex)
+                    const end = Math.max(startIndex, endIndex)
+                    const rangeTaskIds = sortedTasks.slice(start, end + 1).map(t => t.id)
+                    
+                    const newSelected = new Set(listViewState.selectedTaskIds)
+                    rangeTaskIds.forEach(id => newSelected.add(id))
+                    
+                    onListViewStateChange({
+                      ...listViewState,
+                      selectedTaskIds: newSelected,
+                      highlightedTaskId: task.id
+                    })
+                  }
+                }
+                // Handle Cmd+Click for multi-selection
+                else if (e.metaKey || e.ctrlKey) {
+                  const newSelected = new Set(listViewState.selectedTaskIds)
+                  if (newSelected.has(task.id)) {
+                    newSelected.delete(task.id)
+                  } else {
+                    newSelected.add(task.id)
+                  }
+                  
+                  onListViewStateChange({
+                    ...listViewState,
+                    selectedTaskIds: newSelected,
+                    highlightedTaskId: task.id
+                  })
+                }
+                // Regular click
+                else {
+                  onListViewStateChange({
+                    ...listViewState,
+                    highlightedTaskId: task.id
+                  })
+                }
               }}
               // Pass through overlay handlers
               onOpenProjectOverlay={() => onOpenProjectOverlay(task.id)}
@@ -361,6 +467,7 @@ const ListView: React.FC<ListViewProps> = ({
               onOpenDeadlineOverlay={() => onOpenDeadlineOverlay(task.id)}
               onOpenAssigneeOverlay={() => onOpenAssigneeOverlay(task.id)}
             />
+            </div>
           )
         })}
       </div>

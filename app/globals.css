@@ -1,5 +1,41 @@
 @import "tailwindcss";
 
+/* Remove default browser focus outline to prevent interference with custom keyboard navigation */
+/* We have our own focus indicators for accessibility */
+*:focus {
+  outline: none !important;
+}
+
+/* Also remove for focus-visible which some browsers use */
+*:focus-visible {
+  outline: none !important;
+}
+
+/* Remove the focus ring on specific elements that might still show it */
+button:focus,
+a:focus,
+input:focus,
+select:focus,
+textarea:focus,
+[tabindex]:focus {
+  outline: none !important;
+}
+
+/* Remove Tailwind's ring utilities on focus if they're causing issues */
+button:focus,
+a:focus,
+input:focus,
+select:focus,
+textarea:focus,
+[tabindex]:focus {
+  --tw-ring-shadow: 0 0 transparent !important;
+}
+
+/* Special case for elements that might have focus-within */
+*:focus-within {
+  outline: none !important;
+}
+
 :root {
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 249, 250, 251;
@@ -49,13 +85,798 @@ body {
   animation: slideUp 0.3s ease-out;
 }
 
+/* Modern completion animations */
+@keyframes glow {
+  0% {
+    transform: scale(1);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+@keyframes draw {
+  0% {
+    stroke-dashoffset: 62.83;
+    opacity: 0.3;
+  }
+  50% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: -62.83;
+    opacity: 0.3;
+  }
+}
+
+@keyframes fillCircle {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(0.2);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(720deg);
+  }
+}
+
 .task-card-exit {
   animation: fadeOut 0.2s ease-in;
 }
 
+/* Animation Test Page Styles */
+
+/* 1. Pulse & Fill */
+@keyframes pulseGlow {
+  0%, 100% { transform: scale(1); opacity: 0; }
+  50% { transform: scale(1.5); opacity: 0.5; }
+}
+
+@keyframes pulseBorder {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+@keyframes fillCenter {
+  0% { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes checkFadeIn {
+  0% { opacity: 0; transform: scale(0.5); }
+  70% { opacity: 0; transform: scale(0.5); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* 2. Spiral Draw */
+@keyframes spiralDraw {
+  0% { stroke-dasharray: 0 100; opacity: 0.3; }
+  100% { stroke-dasharray: 100 0; opacity: 1; }
+}
+
+@keyframes spiralFill {
+  0% { transform: scale(0) rotate(0deg); opacity: 0; }
+  100% { transform: scale(1) rotate(360deg); opacity: 1; }
+}
+
+@keyframes checkRotateIn {
+  0% { opacity: 0; transform: rotate(-180deg) scale(0); }
+  70% { opacity: 0; transform: rotate(-180deg) scale(0); }
+  100% { opacity: 1; transform: rotate(0deg) scale(1); }
+}
+
+/* 3. Ripple Out */
+@keyframes ripple1 {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
+@keyframes ripple2 {
+  0% { transform: scale(1); opacity: 0.4; }
+  50% { transform: scale(1.5); opacity: 0.2; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
+@keyframes ripple3 {
+  0% { transform: scale(1); opacity: 0.2; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+@keyframes rippleFill {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(0.5); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes checkBounceIn {
+  0% { opacity: 0; transform: scale(0); }
+  70% { opacity: 0; transform: scale(0); }
+  85% { opacity: 1; transform: scale(1.2); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* 4. Morph & Check */
+@keyframes morphToCheck {
+  0% { stroke-dasharray: 88 0; }
+  50% { stroke-dasharray: 44 44; }
+  100% { stroke-dasharray: 0 88; }
+}
+
+@keyframes checkDraw {
+  0% { stroke-dasharray: 0 30; opacity: 0; }
+  50% { stroke-dasharray: 0 30; opacity: 0; }
+  100% { stroke-dasharray: 30 0; opacity: 1; }
+}
+
+/* 5. Particles */
+@keyframes particle {
+  0% { 
+    transform: translate(-50%, -50%) translateX(0) translateY(0) scale(0);
+    opacity: 1;
+  }
+  100% { 
+    transform: translate(-50%, -50%) translateX(calc(cos(var(--angle)) * 20px)) translateY(calc(sin(var(--angle)) * 20px)) scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes particleFill {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(0.5); opacity: 0.5; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* 6. Neon Trace */
+@keyframes neonTrace {
+  0% { stroke-dashoffset: 88; filter: drop-shadow(0 0 2px currentColor); }
+  100% { stroke-dashoffset: 0; filter: drop-shadow(0 0 8px currentColor); }
+}
+
+@keyframes neonGlow {
+  0% { opacity: 0; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.2); }
+  100% { opacity: 0; transform: scale(1.5); }
+}
+
+@keyframes neonFill {
+  0% { transform: scale(0); opacity: 0; }
+  70% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes checkFlashIn {
+  0% { opacity: 0; transform: scale(2); }
+  80% { opacity: 0; transform: scale(2); }
+  90% { opacity: 1; transform: scale(0.8); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* 7. Elastic Pop */
+@keyframes elasticScale {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.2); }
+  40% { transform: scale(0.9); }
+  60% { transform: scale(1.1); }
+  80% { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+@keyframes elasticFill {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.1); opacity: 0.8; }
+  70% { transform: scale(0.9); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes elasticCheck {
+  0% { opacity: 0; transform: scale(0) rotate(-45deg); }
+  70% { opacity: 0; transform: scale(0) rotate(-45deg); }
+  85% { opacity: 1; transform: scale(1.3) rotate(15deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+/* 8. Lightning Strike */
+@keyframes lightning {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; filter: brightness(2); }
+}
+
+@keyframes lightningFill {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(0.5); opacity: 0.5; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes checkZap {
+  0% { opacity: 0; transform: translateY(-10px); }
+  80% { opacity: 0; transform: translateY(-10px); }
+  90% { opacity: 1; transform: translateY(2px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* 9. Liquid Fill */
+@keyframes liquidFill {
+  0% { transform: translateY(100%); }
+  100% { transform: translateY(0); }
+}
+
+@keyframes liquidWave {
+  0% { transform: translateY(100%) translateX(0) scaleY(1); }
+  50% { transform: translateY(0) translateX(-10%) scaleY(1.1); }
+  100% { transform: translateY(0) translateX(0) scaleY(1); }
+}
+
+@keyframes checkFloat {
+  0% { opacity: 0; transform: translateY(10px); }
+  80% { opacity: 0; transform: translateY(10px); }
+  90% { opacity: 1; transform: translateY(-2px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* 10. Orbital Dots */
+@keyframes orbit {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg) translateX(var(--orbit-size)) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(360deg) translateX(0) rotate(-360deg) scale(0);
+    opacity: 0;
+  }
+}
+
+@keyframes orbitFill {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(0.5); opacity: 0.5; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes checkSpin {
+  0% { opacity: 0; transform: rotate(180deg) scale(0); }
+  70% { opacity: 0; transform: rotate(180deg) scale(0); }
+  85% { opacity: 1; transform: rotate(-20deg) scale(1.1); }
+  100% { opacity: 1; transform: rotate(0deg) scale(1); }
+}
+
+/* Utility animations */
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Apply animation classes */
+.animate-pulseGlow { animation: pulseGlow 1.5s ease-out infinite; }
+.animate-pulseBorder { animation: pulseBorder 1.5s ease-in-out; }
+.animate-fillCenter { animation: fillCenter 1s ease-out forwards; }
+.animate-checkFadeIn { animation: checkFadeIn 1.5s ease-out forwards; }
+
+.animate-spiralDraw { animation: spiralDraw 1s ease-out forwards; }
+.animate-spiralFill { animation: spiralFill 1s ease-out forwards; }
+.animate-checkRotateIn { animation: checkRotateIn 1.5s ease-out forwards; }
+
+.animate-ripple1 { animation: ripple1 1.5s ease-out; }
+.animate-ripple2 { animation: ripple2 1.5s ease-out 0.2s; }
+.animate-ripple3 { animation: ripple3 1.5s ease-out 0.4s; }
+.animate-rippleFill { animation: rippleFill 1s ease-out forwards; }
+.animate-checkBounceIn { animation: checkBounceIn 1.5s ease-out forwards; }
+
+.animate-morphToCheck { animation: morphToCheck 1.5s ease-in-out forwards; }
+.animate-checkDraw { animation: checkDraw 1.5s ease-out forwards; }
+
+.animate-particle { animation: particle 1s ease-out forwards; }
+.animate-particleFill { animation: particleFill 1.2s ease-out forwards; }
+
+.animate-neonTrace { animation: neonTrace 1s ease-out forwards; }
+.animate-neonGlow { animation: neonGlow 1.5s ease-out; }
+.animate-neonFill { animation: neonFill 1.2s ease-out forwards; }
+.animate-checkFlashIn { animation: checkFlashIn 1.5s ease-out forwards; }
+
+.animate-elasticScale { animation: elasticScale 1.5s ease-out; }
+.animate-elasticFill { animation: elasticFill 1s ease-out forwards; }
+.animate-elasticCheck { animation: elasticCheck 1.5s ease-out forwards; }
+
+.animate-lightning { animation: lightning 1.5s ease-out; }
+.animate-lightningFill { animation: lightningFill 1s ease-out forwards; }
+.animate-checkZap { animation: checkZap 1.5s ease-out forwards; }
+
+.animate-liquidFill { animation: liquidFill 1.2s ease-in-out forwards; }
+.animate-liquidWave { animation: liquidWave 1.5s ease-in-out; }
+.animate-checkFloat { animation: checkFloat 1.5s ease-out forwards; }
+
+.animate-orbit { animation: orbit 1.2s ease-in-out forwards; }
+.animate-orbitFill { animation: orbitFill 1s ease-out forwards 0.5s; }
+.animate-checkSpin { animation: checkSpin 1.5s ease-out forwards; }
+
+.animate-spin-slow { animation: spin-slow 2s linear infinite; }
+
+/* New Subtle Animations */
+
+/* 1. Subtle Fill */
+@keyframes subtleScale {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+@keyframes subtleFill {
+  0% { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes subtleCheck {
+  0% { opacity: 0; }
+  80% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* 2. Smooth Progress */
+@keyframes smoothProgress {
+  0% { stroke-dashoffset: 88; }
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes smoothFill {
+  0% { transform: scale(0); opacity: 0; }
+  70% { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes smoothCheck {
+  0% { opacity: 0; }
+  90% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* 3. Gentle Glow */
+@keyframes gentleGlow {
+  0% { transform: scale(1); opacity: 0; }
+  50% { transform: scale(1.3); opacity: 0.3; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+@keyframes gentleFill {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes gentleCheck {
+  0% { opacity: 0; transform: scale(0.8); }
+  80% { opacity: 0; transform: scale(0.8); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* 4. Draw & Fill */
+@keyframes drawRing {
+  0% { stroke-dashoffset: 88; }
+  60% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes drawFill {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes drawCheck {
+  0% { opacity: 0; }
+  85% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* 5. Fade Scale */
+@keyframes fadeScale {
+  0% { transform: scale(0.8); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes fadeCheck {
+  0% { opacity: 0; }
+  70% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* 6. Minimal Sweep */
+@keyframes minimalSweep {
+  0% { stroke-dashoffset: 88; }
+  80% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: 0; opacity: 0; }
+}
+
+@keyframes minimalFill {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(0); opacity: 0; }
+  80% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes minimalCheck {
+  0% { opacity: 0; }
+  85% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* 7. Soft Pulse */
+@keyframes softPulse {
+  0% { transform: scale(1); opacity: 0; }
+  20% { transform: scale(1.1); opacity: 0.2; }
+  40% { transform: scale(1.2); opacity: 0.1; }
+  100% { transform: scale(1.3); opacity: 0; }
+}
+
+@keyframes softFill {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(0.9); opacity: 0.9; }
+  70% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes softCheck {
+  0% { opacity: 0; }
+  75% { opacity: 0; }
+  85% { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+/* 8. Clean Check */
+@keyframes cleanFill {
+  0% { transform: scale(0.95); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes cleanCheck {
+  0% { stroke-dasharray: 0 30; }
+  60% { stroke-dasharray: 0 30; }
+  100% { stroke-dasharray: 30 0; }
+}
+
+/* 9. Modern Ring */
+@keyframes modernRing {
+  0% { transform: scale(0.8); opacity: 0; }
+  50% { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1); opacity: 0; }
+}
+
+@keyframes modernFill {
+  0% { transform: scale(0); opacity: 0; }
+  40% { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes modernCheck {
+  0% { opacity: 0; transform: translateY(2px); }
+  80% { opacity: 0; transform: translateY(2px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* 10. Smooth Complete */
+@keyframes smoothComplete {
+  0% { transform: scale(0); opacity: 0; }
+  40% { transform: scale(1.02); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes smoothCompleteCheck {
+  0% { opacity: 0; transform: scale(0.5); }
+  70% { opacity: 0; transform: scale(0.5); }
+  85% { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* New Professional Animations */
+
+/* 11. Elegant Fill */
+@keyframes elegantBorder {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.02); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 0; }
+}
+
+@keyframes elegantFill {
+  0% { clip-path: circle(0% at 50% 50%); }
+  100% { clip-path: circle(100% at 50% 50%); }
+}
+
+@keyframes elegantCheck {
+  0% { stroke-dasharray: 0 30; opacity: 0; }
+  80% { stroke-dasharray: 0 30; opacity: 0; }
+  100% { stroke-dasharray: 30 0; opacity: 1; }
+}
+
+/* 12. iOS Style */
+@keyframes iosScale {
+  0% { transform: scale(1); }
+  30% { transform: scale(0.95); }
+  60% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+@keyframes iosFill {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes iosCheck {
+  0% { stroke-dasharray: 0 30; opacity: 0; }
+  70% { stroke-dasharray: 0 30; opacity: 0; }
+  100% { stroke-dasharray: 30 0; opacity: 1; }
+}
+
+/* 13. Material Ripple */
+@keyframes materialRipple {
+  0% { transform: scale(0); opacity: 0.3; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
+@keyframes materialFill {
+  0% { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes materialCheck {
+  0% { transform: scale(0) rotate(45deg); opacity: 0; }
+  80% { transform: scale(0) rotate(45deg); opacity: 0; }
+  90% { transform: scale(1.2) rotate(0deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+/* 14. Smooth Morph */
+@keyframes morphBorder {
+  0% { stroke-dasharray: 88 0; stroke-dashoffset: 0; }
+  50% { stroke-dasharray: 0 88; stroke-dashoffset: -44; }
+  100% { stroke-dasharray: 0 88; stroke-dashoffset: -88; opacity: 0; }
+}
+
+@keyframes morphFill {
+  0% { transform: scale(0); opacity: 0; }
+  50% { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes morphCheck {
+  0% { opacity: 0; }
+  85% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* 15. Todoist Style */
+@keyframes todoistRing {
+  0% { stroke-dashoffset: 88; opacity: 0.3; }
+  50% { stroke-dashoffset: 44; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes todoistFill {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(0); opacity: 0; }
+  80% { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes todoistCheck {
+  0% { opacity: 0; transform: translateY(3px); }
+  85% { opacity: 0; transform: translateY(3px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* 16. Smooth Sweep */
+@keyframes sweepProgress {
+  0% { stroke-dashoffset: 88; }
+  70% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes sweepFill {
+  0% { opacity: 0; }
+  70% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes sweepCheck {
+  0% { opacity: 0; }
+  90% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* 17. Subtle Bounce */
+@keyframes subtleBounce {
+  0% { transform: scale(1); }
+  40% { transform: scale(0.9); }
+  60% { transform: scale(1.05); }
+  80% { transform: scale(0.98); }
+  100% { transform: scale(1); }
+}
+
+@keyframes subtleBounceFill {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes subtleBounceCheck {
+  0% { opacity: 0; transform: scale(0); }
+  80% { opacity: 0; transform: scale(0); }
+  90% { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* 18. Focus Ring */
+@keyframes focusRing {
+  0% { box-shadow: 0 0 0 0 currentColor; opacity: 0.3; }
+  50% { box-shadow: 0 0 0 4px currentColor; opacity: 0.1; }
+  100% { box-shadow: 0 0 0 8px currentColor; opacity: 0; }
+}
+
+@keyframes focusFill {
+  0% { transform: scale(0.8); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes focusCheck {
+  0% { opacity: 0; }
+  70% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* 19. Minimal Pop */
+@keyframes minimalPop {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes minimalPopCheck {
+  0% { opacity: 0; }
+  80% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* 20. Clean Transition */
+@keyframes cleanTransition {
+  0% { background-color: transparent; }
+  100% { background-color: currentColor; }
+}
+
+@keyframes cleanTransitionFill {
+  0% { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes cleanTransitionCheck {
+  0% { opacity: 0; }
+  60% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* Apply new animation classes */
+.animate-subtleScale { animation: subtleScale 1.5s ease-in-out; }
+.animate-subtleFill { animation: subtleFill 0.8s ease-out forwards; }
+.animate-subtleCheck { animation: subtleCheck 1.5s ease-out forwards; }
+
+.animate-smoothProgress { animation: smoothProgress 1s ease-out forwards; }
+.animate-smoothFill { animation: smoothFill 1.5s ease-out forwards; }
+.animate-smoothCheck { animation: smoothCheck 1.5s ease-out forwards; }
+
+.animate-gentleGlow { animation: gentleGlow 1.5s ease-out; }
+.animate-gentleFill { animation: gentleFill 1s ease-out forwards; }
+.animate-gentleCheck { animation: gentleCheck 1.5s ease-out forwards; }
+
+.animate-drawRing { animation: drawRing 1.5s ease-in-out forwards; }
+.animate-drawFill { animation: drawFill 1.5s ease-out forwards; }
+.animate-drawCheck { animation: drawCheck 1.5s ease-out forwards; }
+
+.animate-fadeScale { animation: fadeScale 0.8s ease-out forwards; }
+.animate-fadeCheck { animation: fadeCheck 1.5s ease-out forwards; }
+
+.animate-minimalSweep { animation: minimalSweep 1.5s ease-in-out forwards; }
+.animate-minimalFill { animation: minimalFill 1.5s ease-out forwards; }
+.animate-minimalCheck { animation: minimalCheck 1.5s ease-out forwards; }
+
+.animate-softPulse { animation: softPulse 1.5s ease-out; }
+.animate-softFill { animation: softFill 1s ease-out forwards; }
+.animate-softCheck { animation: softCheck 1.5s ease-out forwards; }
+
+.animate-cleanFill { animation: cleanFill 0.6s ease-out forwards; }
+.animate-cleanCheck { animation: cleanCheck 1.5s ease-out forwards; }
+
+.animate-modernRing { animation: modernRing 1s ease-out forwards; }
+.animate-modernFill { animation: modernFill 1.2s ease-out forwards; }
+.animate-modernCheck { animation: modernCheck 1.5s ease-out forwards; }
+
+.animate-smoothComplete { animation: smoothComplete 1s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+.animate-smoothCompleteCheck { animation: smoothCompleteCheck 1.5s ease-out forwards; }
+
+/* Apply new professional animation classes */
+.animate-elegantBorder { animation: elegantBorder 1.5s ease-out forwards; }
+.animate-elegantFill { animation: elegantFill 1s ease-out forwards; }
+.animate-elegantCheck { animation: elegantCheck 1.5s ease-out forwards; }
+
+.animate-iosScale { animation: iosScale 0.6s ease-out; }
+.animate-iosFill { animation: iosFill 0.6s ease-out forwards; }
+.animate-iosCheck { animation: iosCheck 1.5s ease-out forwards; }
+
+.animate-materialRipple { animation: materialRipple 0.6s ease-out; }
+.animate-materialFill { animation: materialFill 0.8s ease-out forwards; }
+.animate-materialCheck { animation: materialCheck 1.5s ease-out forwards; }
+
+.animate-morphBorder { animation: morphBorder 1.5s ease-in-out forwards; }
+.animate-morphFill { animation: morphFill 1.5s ease-out forwards; }
+.animate-morphCheck { animation: morphCheck 1.5s ease-out forwards; }
+
+.animate-todoistRing { animation: todoistRing 1s ease-out forwards; }
+.animate-todoistFill { animation: todoistFill 1.2s ease-out forwards; }
+.animate-todoistCheck { animation: todoistCheck 1.5s ease-out forwards; }
+
+.animate-sweepProgress { animation: sweepProgress 1.2s ease-in-out forwards; }
+.animate-sweepFill { animation: sweepFill 1.2s ease-out forwards; }
+.animate-sweepCheck { animation: sweepCheck 1.5s ease-out forwards; }
+
+.animate-subtleBounce { animation: subtleBounce 0.8s ease-out; }
+.animate-subtleBounceFill { animation: subtleBounceFill 0.8s ease-out forwards; }
+.animate-subtleBounceCheck { animation: subtleBounceCheck 1.5s ease-out forwards; }
+
+.animate-focusRing { animation: focusRing 1s ease-out; }
+.animate-focusFill { animation: focusFill 0.6s ease-out forwards; }
+.animate-focusCheck { animation: focusCheck 1.5s ease-out forwards; }
+
+.animate-minimalPop { animation: minimalPop 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards; }
+.animate-minimalPopCheck { animation: minimalPopCheck 1.5s ease-out forwards; }
+
+.animate-cleanTransition { animation: cleanTransition 0.3s ease-out forwards; }
+.animate-cleanTransitionFill { animation: cleanTransitionFill 0.8s ease-out forwards; }
+.animate-cleanTransitionCheck { animation: cleanTransitionCheck 1.5s ease-out forwards; }
+
 @keyframes fadeOut {
   from { opacity: 1; transform: scale(1); }
   to { opacity: 0; transform: scale(0.95); }
+}
+
+@keyframes fadeOutTask {
+  0% { 
+    opacity: 1; 
+    transform: scale(1); 
+  }
+  100% { 
+    opacity: 0; 
+    transform: scale(0.98); 
+  }
+}
+
+.animate-fade-out-task {
+  animation: fadeOutTask 0.4s ease-out forwards;
 }
 
 /* Keyboard shortcut hint styles */
