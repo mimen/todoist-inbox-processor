@@ -119,8 +119,8 @@ export class CalendarSyncService {
     const calendarList = await calendar.calendarList.list()
     const calendars = calendarList.data.items || []
     
-    // Limit to 10 calendars to avoid rate limits
-    return calendars.slice(0, 10).map(cal => ({
+    // Return all calendars (we'll handle rate limits with delays)
+    return calendars.map(cal => ({
       id: cal.id!,
       name: cal.summary || cal.summaryOverride || 'Untitled Calendar',
       color: cal.backgroundColor,
@@ -233,7 +233,7 @@ export class CalendarSyncService {
     }
   }
 
-  async syncAllCalendars(): Promise<void> {
+  async syncAllCalendars(fresh: boolean = false): Promise<void> {
     if (this.syncInProgress) {
       console.log('⏳ Sync already in progress, skipping')
       return
@@ -248,7 +248,27 @@ export class CalendarSyncService {
     const now = Date.now()
 
     try {
-      console.log('🔄 Starting calendar sync...')
+      console.log(fresh ? '🔄 Starting fresh calendar sync...' : '🔄 Starting calendar sync...')
+      
+      // If fresh sync requested, clear all sync tokens first
+      if (fresh) {
+        console.log('🧹 Clearing all sync tokens for fresh sync...')
+        const calendarKeys = await this.redis.keys('calendar:*')
+        for (const key of calendarKeys) {
+          if (!key.includes('lastFullSync') && !key.includes('lastError')) {
+            const data = await this.redis.get(key)
+            if (data) {
+              try {
+                const parsed = JSON.parse(data)
+                parsed.syncToken = undefined
+                await this.redis.set(key, JSON.stringify(parsed))
+              } catch (error) {
+                console.error(`Failed to clear sync token for ${key}`)
+              }
+            }
+          }
+        }
+      }
       
       // Get list of calendars
       const calendars = await this.getCalendarList()
@@ -260,7 +280,9 @@ export class CalendarSyncService {
         
         // Add delay between calendar syncs to avoid rate limits
         if (i > 0) {
-          await new Promise(resolve => setTimeout(resolve, 800)) // 800ms delay
+          // Increase delay every 5 calendars to be extra safe with rate limits
+          const delay = i % 5 === 0 ? 2000 : 1000
+          await new Promise(resolve => setTimeout(resolve, delay))
         }
         
         await this.syncCalendar(cal)

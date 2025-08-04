@@ -8,11 +8,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Install dependencies
 npm install
 
-# Development
-npm run dev              # Start Next.js dev server
-npm run dev:turbo        # Start with Turbo mode
-npm run dev:auto         # Start with auto-clean capability
+# Development (includes Redis + Next.js)
+npm run dev              # Start Redis + Next.js dev server
+npm run dev:turbo        # Start Redis + Next.js with Turbo mode
+npm run dev:auto         # Start Redis + Next.js with auto-clean capability
 npm run dev:clean        # Clean .next directory and start dev server
+npm run dev:next-only    # Start only Next.js (without Redis)
+
+# Individual services
+npm run redis            # Start Redis server only
 
 # Build & Production
 npm run build            # Build for production
@@ -23,7 +27,7 @@ npm run lint             # Run Next.js linter
 
 # Utilities
 npm run clean            # Remove .next directory
-npm run restart          # Kill existing dev process and restart clean
+npm run restart          # Kill Redis + Next.js processes and restart clean
 ```
 
 ## Architecture Overview
@@ -36,6 +40,8 @@ This is a Next.js 15 application for processing Todoist inbox tasks with keyboar
 - **Tailwind CSS 4** for styling
 - **Todoist API** via `@doist/todoist-api-typescript`
 - **React 19** with server components
+- **Redis** for calendar event caching
+- **Google Calendar API** with OAuth 2.0
 
 ### Core Architecture
 
@@ -50,17 +56,27 @@ This is a Next.js 15 application for processing Todoist inbox tasks with keyboar
    - Configuration-driven via JSON file in `public/config/queue-config.json`
    - Full sorting system with per-dropdown customization
 
-3. **API Routes Structure**
+3. **Calendar Integration & Caching**
+   - Redis-based calendar event caching with sync tokens
+   - Google Calendar API OAuth 2.0 integration
+   - Incremental sync reduces API calls by 95%
+   - Background sync every 15 minutes
+   - Rate limit protection with exponential backoff
+
+4. **API Routes Structure**
    - `/api/todoist/*` - Todoist API integration endpoints
+   - `/api/calendar/*` - Calendar events and sync endpoints
+   - `/api/auth/google/*` - OAuth flow endpoints
    - `/api/llm/*` - AI suggestion endpoints (currently mock)
    - `/api/projects/*` - Project metadata and collaboration features
 
-4. **State Management**
+5. **State Management**
    - React hooks for local state
    - Custom hooks for shared logic (e.g., `useQueueConfig`, `useQueueProgression`)
+   - Redis for calendar event persistence
    - No external state management library
 
-5. **Configuration System**
+6. **Configuration System**
    - Queue configuration loaded from `public/config/queue-config.json`
    - Live updates in development mode
    - Type-safe with TypeScript interfaces

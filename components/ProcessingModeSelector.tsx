@@ -52,6 +52,15 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
 }: ProcessingModeSelectorProps, ref) => {
   // Get queue config
   const queueConfig = useQueueConfig();
+  
+  // Track the selected processing type separately from the active processing mode
+  // This allows the UI to show the correct dropdown without changing the display name prematurely
+  const [selectedProcessingType, setSelectedProcessingType] = useState<ProcessingModeType>(mode.type as ProcessingModeType);
+  
+  // Sync selectedProcessingType when mode changes externally (e.g., when tasks are loaded)
+  React.useEffect(() => {
+    setSelectedProcessingType(mode.type as ProcessingModeType);
+  }, [mode.type]);
 
   // Refs for each dropdown
   const projectDropdownRef = useRef<any>(null);
@@ -98,31 +107,19 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
   });
 
   const handleModeTypeChange = (newType: ProcessingModeType) => {
-    // Change mode type and clear the value so tasks don't reload until user selects something
-    let emptyValue: string | string[];
-    let placeholderDisplayName: string;
+    // Only update the UI state for showing the correct dropdown
+    // Don't change the processing mode until user selects a specific value
+    // This prevents premature display name changes and metadata hiding
     
-    switch (newType) {
-      case 'label':
-        emptyValue = [];
-        placeholderDisplayName = 'Select labels...';
-        break;
-      default:
-        emptyValue = '';
-        placeholderDisplayName = `Select ${newType}...`;
-        break;
-    }
+    setSelectedProcessingType(newType);
     
     // Reset queue progression when changing modes
     if ('resetQueueProgress' in queueState && typeof queueState.resetQueueProgress === 'function') {
       queueState.resetQueueProgress();
     }
     
-    onModeChange({
-      type: newType,
-      value: emptyValue,
-      displayName: placeholderDisplayName
-    });
+    // Don't call onModeChange here - let the dropdown selection handle it
+    // The radio button selection just controls which dropdown is visible
   };
 
   // Helper function to open dropdown by type
@@ -202,6 +199,7 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
 
     onModeChange({
       ...mode,
+      type: selectedProcessingType,
       value,
       displayName
     });
@@ -218,7 +216,7 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
       <div className="space-y-4">
         <div className="flex items-center gap-6">
           <RadioGroup
-          value={mode.type}
+          value={selectedProcessingType}
           onValueChange={(value) => handleModeTypeChange(value as ProcessingModeType)}
           className="flex flex-row gap-6"
         >
@@ -238,7 +236,7 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
 
       <div className="flex items-center gap-4">        
         <div className="flex-1">
-          {mode.type === 'project' && (
+          {selectedProcessingType === 'project' && (
             <ProjectDropdown
               ref={projectDropdownRef}
               projects={projects}
@@ -251,7 +249,7 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
             />
           )}
 
-          {mode.type === 'priority' && (
+          {selectedProcessingType === 'priority' && (
             <PriorityDropdown
               ref={priorityDropdownRef}
               selectedPriority={mode.value as string}
@@ -262,10 +260,10 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
             />
           )}
 
-          {mode.type === 'label' && (
+          {selectedProcessingType === 'label' && (
             <LabelDropdown
               ref={labelDropdownRef}
-              selectedLabels={mode.value as string[]}
+              selectedLabels={Array.isArray(mode.value) ? mode.value : []}
               onLabelsChange={(labels, displayName) => {
                 handleValueChange(labels, displayName);
               }}
@@ -275,7 +273,7 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
             />
           )}
 
-          {mode.type === 'date' && (
+          {selectedProcessingType === 'date' && (
             <DateDropdown
               ref={dateDropdownRef}
               selectedDate={mode.value as string}
@@ -286,7 +284,7 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
             />
           )}
 
-          {mode.type === 'deadline' && (
+          {selectedProcessingType === 'deadline' && (
             <DeadlineDropdown
               ref={deadlineDropdownRef}
               selectedDeadline={mode.value as string}
@@ -297,7 +295,7 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
             />
           )}
 
-          {mode.type === 'preset' && (
+          {selectedProcessingType === 'preset' && (
             <PresetDropdown
               ref={presetDropdownRef}
               selectedPreset={mode.value as string}
@@ -324,7 +322,7 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
             />
           )}
 
-          {mode.type === 'all' && (
+          {selectedProcessingType === 'all' && (
             <AllTasksDropdown
               ref={allTasksDropdownRef}
               selectedSort={mode.value as string}
@@ -350,7 +348,7 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
             />
           )}
 
-          {mode.type === 'prioritized' && (
+          {selectedProcessingType === 'prioritized' && (
             <PrioritizedDropdown
               ref={prioritizedDropdownRef}
               selectedValue={mode.value as string}
