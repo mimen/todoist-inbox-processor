@@ -10,11 +10,7 @@ export default function CalendarStoreInitializer() {
       .then(() => {
         console.log('Calendar store initialized')
         
-        // Trigger initial sync
-        fetch('/api/calendar/sync', { method: 'POST' })
-          .then(res => res.json())
-          .then(data => console.log('Background sync started:', data))
-          .catch(err => console.error('Failed to start background sync:', err))
+        // Don't trigger sync here - let it be triggered by user action or other components
       })
       .catch(error => {
         console.error('Failed to initialize calendar store:', error)

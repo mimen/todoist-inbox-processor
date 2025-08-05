@@ -34,13 +34,13 @@ export async function GET() {
             calendarId: parsed.calendarId,
             calendarName: parsed.calendarName,
             eventCount,
-            syncToken: parsed.syncToken,
+            syncToken: parsed.syncToken || null,
             lastSync: parsed.lastSync ? new Date(parsed.lastSync).toISOString() : null,
             lastFullSync: parsed.lastFullSync ? new Date(parsed.lastFullSync).toISOString() : null,
             metadata: {
-              color: parsed.color,
-              timeZone: parsed.timeZone,
-              accessRole: parsed.accessRole
+              color: parsed.color || null,
+              timeZone: parsed.timeZone || null,
+              accessRole: parsed.accessRole || null
             }
           })
         }

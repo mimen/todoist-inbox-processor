@@ -219,6 +219,49 @@ export function filterTasksByMode(
   }
 }
 
+export function getActiveTasks(
+  tasks: TodoistTask[],
+  assigneeFilter: AssigneeFilterType = 'all',
+  currentUserId?: string
+): TodoistTask[] {
+  return tasks.filter(task => {
+    // Exclude archived tasks
+    if (task.content.startsWith('* ')) return false;
+    
+    // Exclude tasks with excluded labels
+    if (task.labels.some(label => isExcludedLabel(label))) return false;
+    
+    // Apply assignee filter
+    if (assigneeFilter !== 'all') {
+      switch (assigneeFilter) {
+        case 'unassigned':
+          return !task.assigneeId;
+        case 'assigned-to-me':
+          return task.assigneeId === currentUserId;
+        case 'assigned-to-others':
+          return task.assigneeId && task.assigneeId !== currentUserId;
+        case 'not-assigned-to-others':
+          return !task.assigneeId || task.assigneeId === currentUserId;
+        default:
+          return true;
+      }
+    }
+    
+    return true;
+  });
+}
+
+export function getQueueTaskCount(
+  tasks: TodoistTask[],
+  mode: ProcessingMode,
+  projectMetadata?: Record<string, any>,
+  assigneeFilter: AssigneeFilterType = 'all',
+  currentUserId?: string
+): number {
+  const filteredTasks = filterTasksByMode(tasks, mode, projectMetadata, assigneeFilter, currentUserId);
+  return filteredTasks.length;
+}
+
 export function getTaskCountsForProjects(
   tasks: TodoistTask[],
   projectIds: string[],

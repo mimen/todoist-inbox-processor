@@ -289,13 +289,14 @@ const UnifiedDropdown = forwardRef<UnifiedDropdownRef, UnifiedDropdownProps>(({
           aria-expanded={isOpen}
           aria-label={config.placeholder || 'Select option'}
         className={`
-          w-full flex items-center justify-between p-3
-          bg-gray-50 hover:bg-gray-100 border border-gray-200 
-          rounded-md transition-colors
+          w-full flex items-center justify-between px-3 py-2
+          text-sm font-medium text-gray-700 dark:text-gray-300
+          bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700
+          border border-gray-300 dark:border-gray-600 rounded-md transition-colors
           ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
         `}
       >
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center gap-1.5">
           {/* Show icon for selected option */}
           {hasValue && (() => {
             const selectedOption = config.selectionMode === 'multi' 
@@ -310,7 +311,7 @@ const UnifiedDropdown = forwardRef<UnifiedDropdownRef, UnifiedDropdownProps>(({
         
         <div className="flex items-center space-x-2">
           {config.showCounts && hasValue && (
-            <span className="text-sm text-gray-500 bg-gray-200 px-2 py-0.5 rounded">
+            <span className="text-xs text-gray-500 dark:text-gray-400">
               {getTotalCount()}
             </span>
           )}
@@ -324,12 +325,13 @@ const UnifiedDropdown = forwardRef<UnifiedDropdownRef, UnifiedDropdownProps>(({
         </button>
         
         {/* Sort Dropdown */}
-        {showSort && type && sortOptions && sortOptions.length > 0 && currentSort && (
+        {showSort && type && sortOptions && currentSort && (
           <SortDropdown
             ref={sortDropdownRef}
             options={sortOptions}
             value={currentSort}
             onChange={setCurrentSort}
+            disabled={sortOptions.length <= 1}
             onOpen={() => {
               setIsOpen(false)
               setSearchTerm('')

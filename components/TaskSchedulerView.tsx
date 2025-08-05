@@ -46,16 +46,7 @@ export default function TaskSchedulerView({
   // Use the calendar events hook for 3 days
   const { events: calendarEvents, loading: loadingCalendar, error: calendarError, authRequired, refresh } = useCalendarEvents(selectedDate, 3)
   
-  // Trigger calendar sync on component mount and when becoming visible
-  useEffect(() => {
-    if (isVisible) {
-      // Trigger background sync
-      fetch('/api/calendar/sync', { method: 'POST' })
-        .then(res => res.json())
-        .then(data => console.log('Calendar sync triggered:', data))
-        .catch(err => console.error('Failed to trigger sync:', err))
-    }
-  }, [isVisible])
+  // Remove automatic sync trigger - let the calendar service handle its own sync timing
 
   // Generate time slots for the day (15-minute increments)
   const generateTimeSlots = useCallback((date: Date, events: CalendarEvent[]): TimeSlot[] => {

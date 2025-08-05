@@ -4,7 +4,7 @@ import { DropdownOption } from '@/types/dropdown'
 
 export function useQueueProgression({
   mode,
-  dropdownOptions,
+  dropdownOptions = [],
   config
 }: UseQueueProgressionProps): QueueProgressionState {
   const [currentQueueIndex, setCurrentQueueIndex] = useState(0)
@@ -18,10 +18,11 @@ export function useQueueProgression({
 
   // Filter out empty queues if configured
   const activeQueues = useMemo(() => {
+    const options = dropdownOptions || []
     if (config?.behavior?.showEmptyQueues) {
-      return dropdownOptions
+      return options
     }
-    return dropdownOptions.filter(option => (option.count || 0) > 0)
+    return options.filter(option => (option.count || 0) > 0)
   }, [dropdownOptions, config])
 
   // Get current queue

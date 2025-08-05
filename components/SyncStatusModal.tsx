@@ -10,7 +10,8 @@ import {
   Clock,
   Database,
   Hash,
-  FileText
+  FileText,
+  Settings
 } from 'lucide-react'
 
 interface CalendarSyncInfo {
@@ -38,6 +39,8 @@ export default function SyncStatusModal({ isOpen, onClose }: SyncStatusModalProp
   const [error, setError] = useState<string | null>(null)
   const [syncing, setSyncing] = useState(false)
   const [freshSyncing, setFreshSyncing] = useState(false)
+  const [syncInterval, setSyncInterval] = useState<number>(15)
+  const [showSettings, setShowSettings] = useState(false)
   const [globalStats, setGlobalStats] = useState({
     totalEvents: 0,
     totalCalendars: 0,
@@ -74,6 +77,22 @@ export default function SyncStatusModal({ isOpen, onClose }: SyncStatusModalProp
   useEffect(() => {
     if (isOpen) {
       fetchSyncStatus()
+      // Load sync interval from localStorage and API
+      const savedInterval = localStorage.getItem('calendarSyncInterval')
+      if (savedInterval) {
+        setSyncInterval(parseInt(savedInterval))
+      }
+      
+      // Also fetch current interval from server
+      fetch('/api/calendar/sync/interval')
+        .then(res => res.json())
+        .then(data => {
+          if (data.interval && !savedInterval) {
+            setSyncInterval(data.interval)
+            localStorage.setItem('calendarSyncInterval', data.interval.toString())
+          }
+        })
+        .catch(console.error)
     }
   }, [isOpen])
 
@@ -94,6 +113,30 @@ export default function SyncStatusModal({ isOpen, onClose }: SyncStatusModalProp
       console.error('Manual sync failed:', error)
       setSyncing(false)
       setError('Manual sync failed')
+    }
+  }
+
+  const handleFreshSync = async () => {
+    if (!confirm('This will clear all sync tokens and perform a complete re-sync of all calendars. This may take a while. Continue?')) {
+      return
+    }
+    
+    setFreshSyncing(true)
+    try {
+      const response = await fetch('/api/calendar/sync/fresh', { method: 'POST' })
+      if (!response.ok) {
+        throw new Error('Fresh sync failed')
+      }
+      
+      // Wait longer for fresh sync then refresh the status
+      setTimeout(() => {
+        fetchSyncStatus()
+        setFreshSyncing(false)
+      }, 5000)
+    } catch (error) {
+      console.error('Fresh sync failed:', error)
+      setFreshSyncing(false)
+      setError('Fresh sync failed')
     }
   }
 
@@ -121,6 +164,26 @@ export default function SyncStatusModal({ isOpen, onClose }: SyncStatusModalProp
     if (!token) return 'No token'
     if (token.length <= 20) return token
     return `${token.substring(0, 8)}...${token.substring(token.length - 8)}`
+  }
+
+  const handleSyncIntervalChange = async (newInterval: number) => {
+    try {
+      const response = await fetch('/api/calendar/sync/interval', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ interval: newInterval })
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to update interval')
+      }
+      
+      setSyncInterval(newInterval)
+      localStorage.setItem('calendarSyncInterval', newInterval.toString())
+    } catch (error) {
+      console.error('Failed to update sync interval:', error)
+      setError('Failed to update sync interval')
+    }
   }
 
   if (!isOpen) return null
@@ -194,17 +257,63 @@ export default function SyncStatusModal({ isOpen, onClose }: SyncStatusModalProp
                     </div>
                   </div>
                   
-                  <div className="mt-4 flex justify-end">
+                  <div className="mt-4 flex justify-between items-center">
                     <button
-                      onClick={handleManualSync}
-                      disabled={syncing || globalStats.syncInProgress}
-                      className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      onClick={() => setShowSettings(!showSettings)}
+                      className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
                     >
-                      <RefreshCw className="w-4 h-4" />
-                      Sync All Calendars
+                      <Settings className="w-4 h-4" />
+                      Settings
                     </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleFreshSync}
+                        disabled={syncing || freshSyncing || globalStats.syncInProgress}
+                        className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-500 text-white rounded-md hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        title="Clear all sync tokens and perform a complete re-sync"
+                      >
+                        <RefreshCw className={`w-4 h-4 ${freshSyncing ? 'animate-spin' : ''}`} />
+                        Fresh Sync
+                      </button>
+                      <button
+                        onClick={handleManualSync}
+                        disabled={syncing || freshSyncing || globalStats.syncInProgress}
+                        className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+                        Sync Updates
+                      </button>
+                    </div>
                   </div>
                 </div>
+
+                {/* Settings Section */}
+                {showSettings && (
+                  <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <h4 className="text-sm font-medium text-gray-700 mb-3">Sync Settings</h4>
+                    <div className="flex items-center gap-4">
+                      <label className="text-sm text-gray-600">
+                        Sync Interval (minutes):
+                      </label>
+                      <select
+                        value={syncInterval}
+                        onChange={(e) => handleSyncIntervalChange(parseInt(e.target.value))}
+                        className="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="1">1 minute</option>
+                        <option value="5">5 minutes</option>
+                        <option value="10">10 minutes</option>
+                        <option value="15">15 minutes</option>
+                        <option value="30">30 minutes</option>
+                        <option value="60">1 hour</option>
+                        <option value="120">2 hours</option>
+                      </select>
+                      <span className="text-xs text-gray-500">
+                        Calendars will only sync if their last sync was older than this interval
+                      </span>
+                    </div>
+                  </div>
+                )}
 
                 {/* Calendar Details - Compact Table View */}
                 <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -307,6 +416,21 @@ export default function SyncStatusModal({ isOpen, onClose }: SyncStatusModalProp
                   )}
                 </div>
                 </div>
+
+                {/* Sync Progress Message */}
+                {(syncing || freshSyncing || globalStats.syncInProgress) && (
+                  <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center gap-2 text-sm text-blue-700">
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>
+                        {freshSyncing 
+                          ? 'Performing fresh sync of all calendars... This may take a while.'
+                          : 'Syncing calendar updates...'
+                        }
+                      </span>
+                    </div>
+                  </div>
+                )}
 
             {/* Footer */}
             <div className="mt-6 flex items-center justify-between text-xs text-gray-500">

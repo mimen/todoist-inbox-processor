@@ -211,31 +211,32 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
   ).sort();
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
-      <h3 className="text-sm font-medium text-gray-700 mb-3">Processing Options</h3>
-      <div className="space-y-4">
-        <div className="flex items-center gap-6">
-          <RadioGroup
+    <div className="px-4 py-2 space-y-2">
+      <div className="flex items-center">
+        <RadioGroup
           value={selectedProcessingType}
           onValueChange={(value) => handleModeTypeChange(value as ProcessingModeType)}
-          className="flex flex-row gap-6"
+          className="flex flex-row gap-2"
         >
           {PROCESSING_MODE_OPTIONS.map((option) => (
-            <div key={option.type} className="flex items-center space-x-2">
-              <RadioGroupItem value={option.type} id={option.type} />
+            <div key={option.type} className="flex items-center">
+              <RadioGroupItem value={option.type} id={option.type} className="peer sr-only" />
               <Label 
                 htmlFor={option.type} 
-                className="cursor-pointer font-normal flex items-center gap-1 text-gray-700"
+                className={`cursor-pointer px-3 py-1 text-xs font-medium rounded-full transition-all
+                         ${selectedProcessingType === option.type 
+                           ? 'bg-blue-500 dark:bg-blue-600 text-white hover:bg-blue-600 dark:hover:bg-blue-700' 
+                           : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
+                         }`}
               >
-                <span>{option.label}</span>
+                {option.label}
               </Label>
             </div>
           ))}
         </RadioGroup>
       </div>
-
-      <div className="flex items-center gap-4">        
-        <div className="flex-1">
+      
+      <div className="w-full">
           {selectedProcessingType === 'project' && (
             <ProjectDropdown
               ref={projectDropdownRef}
@@ -373,9 +374,6 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
               projects={projects}
             />
           )}
-        </div>
-        
-      </div>
       </div>
     </div>
   );

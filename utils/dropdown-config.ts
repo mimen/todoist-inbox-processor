@@ -18,7 +18,8 @@ export function getDropdownConfig(
     showCounts: true,
     showPriority: type === 'project' || type === 'prioritized',
     hierarchical: type === 'project',
-    placeholder: getPlaceholder(type)
+    placeholder: getPlaceholder(type),
+    showSort: getSortDefault(type)
   }
   
   return { ...baseConfig, ...overrides }
@@ -32,6 +33,20 @@ function getSearchDefault(type: ProcessingModeType | 'prioritized'): boolean {
     case 'project':
     case 'label':
     case 'prioritized':
+      return true
+    default:
+      return false
+  }
+}
+
+/**
+ * Get default sort setting for each dropdown type
+ */
+function getSortDefault(type: ProcessingModeType | 'prioritized'): boolean {
+  switch (type) {
+    case 'project':
+    case 'label':
+    case 'all':
       return true
     default:
       return false

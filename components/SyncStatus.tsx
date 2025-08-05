@@ -85,24 +85,24 @@ export default function SyncStatus() {
 
   return (
     <>
-      <div className="flex items-center gap-3 px-4 py-2 text-sm text-gray-600">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 px-3 py-2 text-xs">
+        <div className="flex items-center gap-1.5">
           {syncStatus.syncInProgress ? (
             <>
-              <RefreshCw className="w-4 h-4 animate-spin text-blue-500" />
-              <span>Syncing calendars...</span>
+              <RefreshCw className="w-3 h-3 animate-spin text-blue-500" />
+              <span className="text-gray-600 dark:text-gray-400">Syncing...</span>
             </>
           ) : syncStatus.error ? (
             <>
-              <AlertCircle className="w-4 h-4 text-red-500" />
-              <span className="text-red-600">{syncStatus.error}</span>
+              <AlertCircle className="w-3 h-3 text-red-500" />
+              <span className="text-red-600 dark:text-red-400">{syncStatus.error}</span>
             </>
           ) : (
             <>
-              <CheckCircle2 className="w-4 h-4 text-green-500" />
-              <span>
+              <CheckCircle2 className="w-3 h-3 text-green-500" />
+              <span className="text-gray-600 dark:text-gray-400">
                 {syncStatus.lastSync 
-                  ? `Synced ${formatRelativeTime(syncStatus.lastSync)}`
+                  ? `${formatRelativeTime(syncStatus.lastSync)}`
                   : 'Never synced'
                 }
               </span>
@@ -110,24 +110,22 @@ export default function SyncStatus() {
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <button
             onClick={handleManualSync}
             disabled={syncStatus.syncInProgress}
-            className="flex items-center gap-1 px-2 py-1 text-xs rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             title="Manually sync calendars"
           >
             <RefreshCw className="w-3 h-3" />
-            <span>Sync</span>
           </button>
           
           <button
             onClick={() => setShowModal(true)}
-            className="flex items-center gap-1 px-2 py-1 text-xs rounded hover:bg-gray-100 transition-colors"
+            className="p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
             title="View detailed sync status"
           >
             <Info className="w-3 h-3" />
-            <span>Details</span>
           </button>
         </div>
       </div>

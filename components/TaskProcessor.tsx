@@ -60,6 +60,7 @@ import AssigneeFilter, { AssigneeFilterType } from './AssigneeFilter'
 import QueueCompletionView from './QueueCompletionView'
 import ViewModeToggle from './ViewModeToggle'
 import ListView from './ListView/ListView'
+import SyncStatus from './SyncStatus'
 
 export default function TaskProcessor() {
   const searchParams = useSearchParams()
@@ -1648,32 +1649,40 @@ export default function TaskProcessor() {
     const displayName = processingMode.displayName || 'Tasks'
     
     return (
-      <div className="min-h-screen p-4">
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h1 className="text-3xl font-bold text-gray-900">Task Processor</h1>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+        {/* Modern Header Section */}
+        <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+          <div className="max-w-4xl mx-auto">
+            {/* Compact Top Bar */}
+            <div className="px-4 py-2 flex items-center justify-between">
+              {/* Left side - View Toggle & Assignee Filter */}
               <div className="flex items-center gap-3">
+                <ViewModeToggle
+                  mode={viewMode}
+                  onModeChange={setViewMode}
+                  taskCount={activeQueue.length}
+                />
+                <div className="h-5 w-px bg-gray-300 dark:bg-gray-700" />
                 <AssigneeFilter
                   value={assigneeFilter}
                   onChange={setAssigneeFilter}
                   tasks={allTasksGlobal}
                   currentUserId={currentUserId}
                 />
-                <div className="w-px h-6 bg-gray-300" />
-                <Link
-                  href="/projects"
-                  className="px-3 py-1 text-sm bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 rounded-md transition-colors"
-                >
-                  Projects
-                </Link>
-                <button
-                  onClick={() => setShowShortcuts(!showShortcuts)}
-                  className="px-3 py-1 text-sm bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 rounded-md transition-colors"
-                >
-                  Shortcuts
-                </button>
+              </div>
+              
+              {/* Right side - Queue info and Sync Status */}
+              <div className="flex items-center gap-3">
+                {totalTasks > 0 && (
+                  <>
+                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                      <span className="font-medium">{completedTasks}/{totalTasks}</span>
+                      <span className="text-xs">completed</span>
+                    </div>
+                    <div className="h-5 w-px bg-gray-300 dark:bg-gray-700" />
+                  </>
+                )}
+                <SyncStatus />
               </div>
             </div>
             
@@ -1691,17 +1700,20 @@ export default function TaskProcessor() {
               currentUserId={currentUserId}
               assigneeFilter={assigneeFilter}
             />
-            
-            {/* Loading State for Task Switching */}
-            {loadingTasks && (
-              <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
-                <div className="flex items-center justify-center space-x-3">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-todoist-blue"></div>
-                  <span className="text-gray-600">Loading tasks...</span>
-                </div>
-              </div>
-            )}
           </div>
+        </div>
+        
+        {/* Loading State for Task Switching */}
+        {loadingTasks && (
+          <div className="bg-white rounded-lg border border-gray-200 p-4 my-4 mx-6">
+            <div className="flex items-center justify-center space-x-3">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-todoist-blue"></div>
+              <span className="text-gray-600">Loading tasks...</span>
+            </div>
+          </div>
+        )}
+        
+        <div className="max-w-4xl mx-auto p-4">
 
           {/* Empty State */}
           {!loadingTasks && (
@@ -1757,39 +1769,40 @@ export default function TaskProcessor() {
   }
 
   return (
-    <div className="min-h-screen p-4">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-3xl font-bold text-gray-900">Task Processor</h1>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+      {/* Modern Header Section */}
+      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+        <div className="max-w-4xl mx-auto">
+          {/* Compact Top Bar */}
+          <div className="px-4 py-2 flex items-center justify-between">
+            {/* Left side - View Toggle & Assignee Filter */}
             <div className="flex items-center gap-3">
+              <ViewModeToggle
+                mode={viewMode}
+                onModeChange={setViewMode}
+                taskCount={activeQueue.length}
+              />
+              <div className="h-5 w-px bg-gray-300 dark:bg-gray-700" />
               <AssigneeFilter
                 value={assigneeFilter}
                 onChange={setAssigneeFilter}
                 tasks={allTasksGlobal}
                 currentUserId={currentUserId}
               />
-              <div className="w-px h-6 bg-gray-300" />
-              <ViewModeToggle
-                mode={viewMode}
-                onModeChange={setViewMode}
-                taskCount={activeQueue.length}
-                isLoading={loadingTasks}
-              />
-              <div className="w-px h-6 bg-gray-300" />
-              <Link
-                href="/projects"
-                className="px-3 py-1 text-sm bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 rounded-md transition-colors"
-              >
-                Projects
-              </Link>
-              <button
-                onClick={() => setShowShortcuts(!showShortcuts)}
-                className="px-3 py-1 text-sm bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 rounded-md transition-colors"
-              >
-                Shortcuts
-              </button>
+            </div>
+            
+            {/* Right side - Queue info and Sync Status */}
+            <div className="flex items-center gap-3">
+              {totalTasks > 0 && (
+                <>
+                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                    <span className="font-medium">{completedTasks}/{totalTasks}</span>
+                    <span className="text-xs">completed</span>
+                  </div>
+                  <div className="h-5 w-px bg-gray-300 dark:bg-gray-700" />
+                </>
+              )}
+              <SyncStatus />
             </div>
           </div>
           
@@ -1807,18 +1820,20 @@ export default function TaskProcessor() {
             currentUserId={currentUserId}
             assigneeFilter={assigneeFilter}
           />
-          
-          {/* Loading State for Task Switching */}
-          {loadingTasks && (
-            <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
-              <div className="flex items-center justify-center space-x-3">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-todoist-blue"></div>
-                <span className="text-gray-600">Loading tasks...</span>
-              </div>
-            </div>
-          )}
         </div>
+      </div>
+        
+        {/* Loading State for Task Switching */}
+        {loadingTasks && (
+          <div className="bg-white rounded-lg border border-gray-200 p-4 my-4 mx-6">
+            <div className="flex items-center justify-center space-x-3">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-todoist-blue"></div>
+              <span className="text-gray-600">Loading tasks...</span>
+            </div>
+          </div>
+        )}
 
+      <div className="max-w-4xl mx-auto p-4">
         {/* Main Content Area - conditional based on view mode */}
         {viewMode === 'list' ? (
           <ListView
@@ -2152,19 +2167,6 @@ export default function TaskProcessor() {
         </div>
       )}
       
-      {/* Debug Mode */}
-      {isDebugMode && (
-        <div className="fixed top-20 right-4 z-50">
-          <button
-            onClick={() => setShowDebug(!showDebug)}
-            className="text-xs px-2 py-1 bg-gray-900 hover:bg-gray-800 rounded text-gray-100 font-mono"
-            title="Toggle debug view"
-          >
-            {showDebug ? 'Hide' : 'Show'} Debug
-          </button>
-        </div>
-      )}
-
 
       {/* Toast Notification */}
       {toast && (

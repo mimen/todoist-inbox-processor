@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from 'redis'
+import { calendarSyncService } from '@/lib/calendar-sync-service'
 
 export async function GET() {
   const redis = createClient({
@@ -20,6 +21,12 @@ export async function GET() {
     const errorKey = await redis.get('calendar:lastError')
     
     await redis.disconnect()
+
+    // If no sync has happened yet, start background sync
+    if (!lastSync) {
+      console.log('No previous sync found, starting background sync...')
+      calendarSyncService.startBackgroundSync()
+    }
 
     return NextResponse.json({
       lastSync: lastSync ? new Date(parseInt(lastSync)).toISOString() : null,

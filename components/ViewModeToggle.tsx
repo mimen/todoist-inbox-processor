@@ -22,14 +22,14 @@ export default function ViewModeToggle({
   isLoading = false 
 }: ViewModeToggleProps) {
   return (
-    <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+    <div className="flex items-center bg-gray-100 dark:bg-gray-800 p-0.5 rounded-md">
       <button
         onClick={() => onModeChange('processing')}
         disabled={isLoading}
         title="Processing View (P)"
         aria-label="Switch to Processing View"
         className={`
-          px-3 py-1.5 text-sm font-medium rounded transition-colors
+          px-2.5 py-1 text-xs font-medium rounded transition-all duration-200
           ${mode === 'processing' 
             ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' 
             : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
@@ -38,9 +38,9 @@ export default function ViewModeToggle({
           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1
         `}
       >
-        <span className="flex items-center gap-2">
+        <span className="flex items-center gap-1.5">
           {/* Processing icon - single square */}
-          <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
             <rect x="3" y="3" width="10" height="10" rx="2" stroke="currentColor" strokeWidth="1.5"/>
             <rect x="6" y="6" width="4" height="4" rx="0.5" fill="currentColor"/>
           </svg>
@@ -54,7 +54,7 @@ export default function ViewModeToggle({
         title="List View (L)"
         aria-label="Switch to List View"
         className={`
-          px-3 py-1.5 text-sm font-medium rounded transition-colors
+          px-2.5 py-1 text-xs font-medium rounded transition-all duration-200
           ${mode === 'list' 
             ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' 
             : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
@@ -63,15 +63,15 @@ export default function ViewModeToggle({
           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1
         `}
       >
-        <span className="flex items-center gap-2">
+        <span className="flex items-center gap-1.5">
           {/* List icon - three lines */}
-          <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M3 4.5h10M3 8h10M3 11.5h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
           <span>List</span>
           {taskCount > 0 && (
-            <span className="text-xs text-gray-500 dark:text-gray-400">
-              ({taskCount})
+            <span className="text-[10px] ml-1 px-1 py-0 bg-gray-200 dark:bg-gray-600 rounded-full">
+              {taskCount}
             </span>
           )}
         </span>
