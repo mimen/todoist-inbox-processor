@@ -242,7 +242,7 @@ const TaskListItem: React.FC<TaskListItemProps> = ({
       onTouchStart={() => setIsTapped(true)}
     >
       {/* Main task row */}
-      <div className="flex items-center gap-3 px-4 py-2 min-h-[32px]">
+      <div className="flex items-start gap-3 px-4 py-2 min-h-[32px]">
         {/* Selection checkbox - shown when multi-selecting */}
         {showSelectionCheckbox && (
           <input
@@ -253,7 +253,7 @@ const TaskListItem: React.FC<TaskListItemProps> = ({
               onToggleSelect()
             }}
             onClick={(e) => e.stopPropagation()}
-            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mt-0.5"
             aria-label={`Select ${task.content}`}
           />
         )}
@@ -264,7 +264,7 @@ const TaskListItem: React.FC<TaskListItemProps> = ({
             e.stopPropagation()
             handleComplete()
           }}
-          className="relative w-[18px] h-[18px] flex-shrink-0 group/checkbox"
+          className="relative w-[18px] h-[18px] flex-shrink-0 group/checkbox mt-0.5"
           aria-label={`${isCompleting ? 'Cancel completion of' : 'Complete'} ${task.content}`}
         >
           {isCompleting ? (
@@ -349,7 +349,7 @@ const TaskListItem: React.FC<TaskListItemProps> = ({
         </button>
         
         {/* Task content and metadata */}
-        <div className="flex-1 flex items-center gap-2 min-w-0">
+        <div className="flex-1 flex items-start gap-2 min-w-0">
           {/* Task content */}
           {isEditing ? (
             <div className="flex-1 relative">
@@ -377,9 +377,9 @@ const TaskListItem: React.FC<TaskListItemProps> = ({
             </div>
           ) : (
             <span 
-              className="flex-1 text-sm text-gray-900 dark:text-gray-100 truncate"
+              className="flex-1 text-sm text-gray-900 dark:text-gray-100 line-clamp-2"
               onDoubleClick={onEdit}
-              title="Double-click to edit"
+              title={task.content}
             >
               {task.content}
             </span>
@@ -524,7 +524,7 @@ const TaskListItem: React.FC<TaskListItemProps> = ({
                 if (!showMoreMenu && moreButtonRef.current) {
                   const rect = moreButtonRef.current.getBoundingClientRect()
                   setMenuPosition({
-                    top: rect.top - 10, // 10px above the button
+                    top: rect.bottom + 5, // 5px below the button
                     left: rect.right - 160 // Align menu right edge with button
                   })
                 }
@@ -546,8 +546,7 @@ const TaskListItem: React.FC<TaskListItemProps> = ({
                 className="fixed w-40 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-[9999] max-h-80 overflow-y-auto"
                 style={{ 
                   top: `${menuPosition.top}px`, 
-                  left: `${menuPosition.left}px`,
-                  transform: 'translateY(-100%)'
+                  left: `${menuPosition.left}px`
                 }}
               >
                 <div className="py-1">
@@ -559,7 +558,9 @@ const TaskListItem: React.FC<TaskListItemProps> = ({
                     }}
                     className="w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
                   >
-                    <div className="w-3 h-3 flex-shrink-0">⚡</div>
+                    <svg className="w-3 h-3 flex-shrink-0" viewBox="0 0 16 16" fill="none">
+                      <path d="M8 1L3 9h5v6l5-8H8V1z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
                     <span>Process task</span>
                   </button>
                   
@@ -571,7 +572,7 @@ const TaskListItem: React.FC<TaskListItemProps> = ({
                     }}
                     className="w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
                   >
-                    <div className="w-3 h-3 flex-shrink-0">#</div>
+                    <div className="w-3 h-3 flex-shrink-0 flex items-center justify-center text-xs">#</div>
                     <span>Move to project</span>
                   </button>
                   
@@ -583,7 +584,7 @@ const TaskListItem: React.FC<TaskListItemProps> = ({
                     }}
                     className="w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
                   >
-                    <div className="w-3 h-3 flex-shrink-0">@</div>
+                    <div className="w-3 h-3 flex-shrink-0 flex items-center justify-center text-xs">@</div>
                     <span>Edit labels</span>
                   </button>
                   

@@ -295,9 +295,12 @@ const ListView: React.FC<ListViewProps> = ({
           break
           
         case 'c':
-          e.preventDefault()
-          // Don't complete directly, trigger the confirmation overlay
-          onTaskComplete(highlightedTask.id)
+          // Check for modifier keys to avoid interfering with browser shortcuts
+          if (!e.metaKey && !e.ctrlKey) {
+            e.preventDefault()
+            // Don't complete directly, trigger the confirmation overlay
+            onTaskComplete(highlightedTask.id)
+          }
           break
           
         case 'e':
