@@ -35,6 +35,9 @@ interface UnifiedDropdownProps {
   loading?: boolean
   error?: string | null
   showSort?: boolean
+  // Sort management props
+  currentSort?: SortOption | null
+  onSortChange?: (sort: SortOption) => void
   // TODO: Future enhancements:
   // sortable?: boolean // Enable drag-and-drop reordering
   // groupBy?: string // Group options by a metadata field
@@ -59,17 +62,33 @@ const UnifiedDropdown = forwardRef<UnifiedDropdownRef, UnifiedDropdownProps>(({
   disabled = false,
   loading = false,
   error = null,
-  showSort = true
+  showSort = true,
+  currentSort: externalSort,
+  onSortChange
 }, ref) => {
   // State
   const [isOpen, setIsOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [keyboardSelectedIndex, setKeyboardSelectedIndex] = useState(0)
   
-  // Sort state
+  // Sort state - use external state if provided, otherwise internal state
   const sortOptions = type ? DROPDOWN_SORT_OPTIONS[type] : []
   const defaultSort = type ? getDefaultSortOption(type) : null
-  const [currentSort, setCurrentSort] = useState(defaultSort)
+  const [internalSort, setInternalSort] = useState(defaultSort)
+  
+  // Use external sort if provided, otherwise use internal
+  const currentSort = externalSort || internalSort
+  
+  // Handle sort changes
+  const handleSortChange = (newSort: SortOption) => {
+    if (onSortChange) {
+      // Use external sort management
+      onSortChange(newSort)
+    } else {
+      // Use internal sort management
+      setInternalSort(newSort)
+    }
+  }
   
   // Refs
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -289,7 +308,7 @@ const UnifiedDropdown = forwardRef<UnifiedDropdownRef, UnifiedDropdownProps>(({
           aria-expanded={isOpen}
           aria-label={config.placeholder || 'Select option'}
         className={`
-          w-full flex items-center justify-between px-3 py-2
+          flex-1 flex items-center justify-between px-3 py-2
           text-sm font-medium text-gray-700 dark:text-gray-300
           bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700
           border border-gray-300 dark:border-gray-600 rounded-md transition-colors
@@ -330,7 +349,7 @@ const UnifiedDropdown = forwardRef<UnifiedDropdownRef, UnifiedDropdownProps>(({
             ref={sortDropdownRef}
             options={sortOptions}
             value={currentSort}
-            onChange={setCurrentSort}
+            onChange={handleSortChange}
             disabled={sortOptions.length <= 1}
             onOpen={() => {
               setIsOpen(false)
