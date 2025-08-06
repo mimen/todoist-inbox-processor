@@ -6,12 +6,11 @@ import UnifiedDropdown from './UnifiedDropdown';
 import { UnifiedDropdownRef } from '@/types/dropdown';
 import { useLabelOptions } from '@/hooks/useLabelOptions';
 import { useQueueConfig } from '@/hooks/useQueueConfig';
-import { useDropdownAdapter } from '@/hooks/useDropdownAdapter';
 import { getDropdownConfig } from '@/utils/dropdown-config';
 
 interface LabelDropdownProps {
-  selectedLabels: string[];
-  onLabelsChange: (labels: string[], displayName: string) => void;
+  selectedLabels: string[]; // For backward compatibility with ProcessingModeSelector
+  onLabelsChange: (labels: string[], displayName: string) => void; // For backward compatibility
   availableLabels: string[];
   allTasks: TodoistTask[];
   labelObjects?: TodoistLabel[];
@@ -41,29 +40,25 @@ const LabelDropdown = forwardRef<any, LabelDropdownProps>(({
     }
   }));
 
-  // Convert label names to IDs for value
-  const selectedLabelIds = selectedLabels.map(labelName => {
-    const labelObj = labelObjects.find(l => l.name === labelName);
-    return labelObj?.id || labelName;
-  });
-
   // Get config first to ensure consistency
   const config = getDropdownConfig('label', queueConfig);
-  const isMultiSelect = config.selectionMode === 'multi';
 
-  // Use adapter to handle single/multi select standardization
-  const { dropdownValue, handleDropdownChange } = useDropdownAdapter(
-    isMultiSelect,
-    selectedLabelIds,
-    (ids, displayName) => {
-      // Convert IDs back to names
-      const names = ids.map(id => {
-        const labelObj = labelObjects.find(l => l.id === id);
-        return labelObj?.name || id;
-      });
-      onLabelsChange(names, displayName);
+  // Convert single label name to ID for dropdown
+  const selectedLabelId = selectedLabels[0] || '';
+  const selectedLabelObj = labelObjects.find(l => l.name === selectedLabelId);
+  const dropdownValue = selectedLabelObj?.id || selectedLabelId;
+
+  // Handle dropdown changes - convert back to label name array
+  const handleDropdownChange = (value: string | string[], displayName: string) => {
+    const singleValue = Array.isArray(value) ? value[0] : value;
+    if (singleValue) {
+      const labelObj = labelObjects.find(l => l.id === singleValue);
+      const labelName = labelObj?.name || singleValue;
+      onLabelsChange([labelName], displayName);
+    } else {
+      onLabelsChange([], displayName);
     }
-  );
+  };
 
   return (
     <UnifiedDropdown

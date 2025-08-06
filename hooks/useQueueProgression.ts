@@ -1,21 +1,13 @@
-import { useState, useMemo, useCallback, useEffect } from 'react'
-import { QueueState, QueueProgressionState, UseQueueProgressionProps } from '@/types/queue'
+import { useMemo, useCallback } from 'react'
+import { QueueProgressionState, UseQueueProgressionProps } from '@/types/queue'
 import { DropdownOption } from '@/types/dropdown'
 
 export function useQueueProgression({
-  mode,
+  currentValue,
   dropdownOptions = [],
   config
 }: UseQueueProgressionProps): QueueProgressionState {
-  const [currentQueueIndex, setCurrentQueueIndex] = useState(0)
-  const [completedQueues, setCompletedQueues] = useState<string[]>([])
   
-  // Reset queue position when mode changes
-  useEffect(() => {
-    setCurrentQueueIndex(0)
-    setCompletedQueues([])
-  }, [mode])
-
   // Filter out empty queues if configured
   const activeQueues = useMemo(() => {
     const options = dropdownOptions || []
@@ -25,13 +17,61 @@ export function useQueueProgression({
     return options.filter(option => (option.count || 0) > 0)
   }, [dropdownOptions, config])
 
+  // Find current queue index by comparing values
+  const currentQueueIndex = useMemo(() => {
+    if (!currentValue || activeQueues.length === 0) return 0
+    
+    // Special handling for prioritized mode (JSON string values)
+    let compareValue = currentValue
+    if (typeof currentValue === 'string' && currentValue.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(currentValue)
+        // For prioritized mode, we need to find by the filterValue
+        compareValue = parsed.filterValue
+        
+        // Special case for inbox
+        if (parsed.filterType === 'project' && parsed.filterValue) {
+          // Check if any queue has id 'inbox' and this filterValue matches an inbox project
+          const inboxQueue = activeQueues.find(q => q.id === 'inbox')
+          if (inboxQueue) {
+            // We might be looking for the inbox
+            compareValue = 'inbox'
+          }
+        }
+      } catch (e) {
+        // Not JSON, use as-is
+      }
+    }
+    
+    const index = activeQueues.findIndex(queue => {
+      const queueId = queue.id
+      const currentVal = compareValue
+      
+      // Handle string comparison
+      if (typeof queueId === 'string' && typeof currentVal === 'string') {
+        return queueId === currentVal
+      }
+      
+      // Convert both to strings as fallback
+      return String(queueId) === String(currentVal)
+    })
+    
+    console.log('[useQueueProgression] Finding queue index:', {
+      originalValue: currentValue,
+      compareValue,
+      activeQueuesLength: activeQueues.length,
+      foundIndex: index,
+      returnedIndex: index === -1 ? 0 : index,
+      queueIds: activeQueues.map(q => ({ id: q.id, label: q.label }))
+    })
+    
+    return index === -1 ? 0 : index
+  }, [currentValue, activeQueues])
+
   // Get current queue
   const currentQueue = useMemo(() => {
     if (activeQueues.length === 0) return null
-    if (currentQueueIndex >= activeQueues.length) {
-      return activeQueues[0]
-    }
-    return activeQueues[currentQueueIndex]
+    return activeQueues[currentQueueIndex] || null
   }, [activeQueues, currentQueueIndex])
 
   // Get next queue
@@ -39,6 +79,15 @@ export function useQueueProgression({
     if (activeQueues.length === 0) return null
     const nextIndex = currentQueueIndex + 1
     if (nextIndex >= activeQueues.length) return null
+    
+    console.log('[useQueueProgression] Calculating next queue:', {
+      currentQueueIndex,
+      nextIndex,
+      totalQueues: activeQueues.length,
+      hasNext: nextIndex < activeQueues.length,
+      nextQueue: activeQueues[nextIndex]?.label
+    })
+    
     return activeQueues[nextIndex]
   }, [activeQueues, currentQueueIndex])
 
@@ -47,30 +96,16 @@ export function useQueueProgression({
     return nextQueue !== null
   }, [nextQueue])
 
-  // Move to next queue
+  // Move to next queue - returns the next queue for the parent to handle
   const moveToNextQueue = useCallback(() => {
-    const newIndex = currentQueueIndex + 1
-    if (newIndex >= activeQueues.length) {
-      // Stay at current if no next queue (last queue edge case)
+    if (!nextQueue) {
       console.log('Already at last queue')
-      return
-    }
-
-    // Mark current queue as completed
-    const currentQueueId = activeQueues[currentQueueIndex]?.id
-    if (currentQueueId) {
-      setCompletedQueues(prev => [...prev, currentQueueId])
+      return null
     }
     
-    setCurrentQueueIndex(newIndex)
-    
-    // TODO: Future enhancements:
-    // - Emit analytics event for queue completion
-    // - Save state to localStorage if persistState is enabled
-    // - Check for conditional progression rules
-    // - Auto-skip empty queues if configured
-    // - Show celebration animation for milestones
-  }, [activeQueues, currentQueueIndex])
+    // Return the next queue so parent can update the mode
+    return nextQueue
+  }, [nextQueue])
 
   // Calculate progress
   const queueProgress = useMemo(() => ({
@@ -78,40 +113,13 @@ export function useQueueProgression({
     total: activeQueues.length
   }), [currentQueueIndex, activeQueues])
 
-  // Additional methods for future use
-  const resetQueueProgress = useCallback(() => {
-    setCurrentQueueIndex(0)
-    setCompletedQueues([])
-  }, [])
-
-  const jumpToQueue = useCallback((index: number) => {
-    if (index >= 0 && index < activeQueues.length) {
-      setCurrentQueueIndex(index)
-    }
-  }, [activeQueues])
-
-  const markCurrentAsCompleted = useCallback(() => {
-    const currentQueueId = currentQueue?.id
-    if (currentQueueId && !completedQueues.includes(currentQueueId)) {
-      setCompletedQueues(prev => [...prev, currentQueueId])
-    }
-  }, [currentQueue, completedQueues])
-
-  // Store additional methods on the state object for future use
-  // @ts-ignore - Adding extra properties for internal use
-  const state: QueueProgressionState & {
-    resetQueueProgress: () => void
-    jumpToQueue: (index: number) => void
-    markCurrentAsCompleted: () => void
-  } = {
+  // Simplified state object
+  const state: QueueProgressionState = {
     currentQueue,
     nextQueue,
     hasNextQueue,
     moveToNextQueue,
-    queueProgress,
-    resetQueueProgress,
-    jumpToQueue,
-    markCurrentAsCompleted
+    queueProgress
   }
 
   return state

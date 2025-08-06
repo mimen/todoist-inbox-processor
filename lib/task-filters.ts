@@ -71,7 +71,11 @@ export function filterTasksByMode(
       return filtered.filter(task => task.priority === priority);
 
     case 'label':
-      const selectedLabels = mode.value as string[];
+      // Handle both single string (new) and array (legacy) formats
+      const labelValue = mode.value;
+      if (!labelValue) return [];
+      
+      const selectedLabels = Array.isArray(labelValue) ? labelValue : [labelValue as string];
       if (selectedLabels.length === 0) return [];
       
       // OR logic - task must have at least one of the selected labels
