@@ -135,7 +135,7 @@ export interface QueueBehavior {
  * Props for queue progression hook
  */
 export interface UseQueueProgressionProps {
-  mode: ProcessingModeType | `custom:${string}`
+  currentValue: string | string[] // The actual current value (e.g., project ID, priority level, JSON string)
   dropdownOptions: DropdownOption[]
   config?: QueueConfiguration
 }
@@ -147,7 +147,7 @@ export interface QueueProgressionState {
   currentQueue: DropdownOption | null
   nextQueue: DropdownOption | null
   hasNextQueue: boolean
-  moveToNextQueue: () => void
+  moveToNextQueue: () => DropdownOption | null
   queueProgress: {
     current: number
     total: number
