@@ -11,6 +11,8 @@ interface CalendarGridProps {
   previewMode: boolean
   taskDuration?: number // in minutes, default 30
   daysToShow?: number // default 1
+  mode?: 'scheduled' | 'deadline'
+  taskContent?: string
 }
 
 interface EventPosition {
@@ -29,10 +31,12 @@ export default function CalendarGrid({
   currentDate,
   previewMode,
   taskDuration = 30,
-  daysToShow = 3
+  daysToShow = 1,
+  mode = 'scheduled',
+  taskContent = ''
 }: CalendarGridProps) {
-  const gridRef = useRef<HTMLDivElement>(null)
-  const hoursRef = useRef<HTMLDivElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const selectedSlotRef = useRef<HTMLDivElement>(null)
   
   // Generate dates for multi-day view
   const dates = useMemo(() => {
@@ -62,7 +66,7 @@ export default function CalendarGrid({
     return { allDayEvents: allDay, timedEvents: timed }
   }, [events])
   
-  // Calculate positions for timed events with multi-day support
+  // Calculate positions for timed events
   const eventPositions = useMemo((): EventPosition[] => {
     const positions: EventPosition[] = []
     
@@ -85,7 +89,7 @@ export default function CalendarGrid({
         let column = 0
         let maxColumns = 1
         
-        // Check for overlaps within the same day
+        // Check for overlaps
         for (let i = 0; i < index; i++) {
           const prevEvent = sortedEvents[i]
           const prevPos = positions.find(p => p.event === prevEvent && p.day === dayIndex)
@@ -138,20 +142,66 @@ export default function CalendarGrid({
     return positions
   }, [timedEvents, dates])
   
-  // Sync scroll between time labels and grid
+  // Scroll to selected time slot when it changes
   useEffect(() => {
-    const grid = gridRef.current
-    const hours = hoursRef.current
+    if (!scrollContainerRef.current || !selectedSlot) return
     
-    if (!grid || !hours) return
+    const container = scrollContainerRef.current
+    const slotTop = getPositionFromTime(selectedSlot)
+    const taskHeight = (taskDuration / 60) * 60
     
-    const handleScroll = () => {
-      hours.scrollTop = grid.scrollTop
+    // Get container dimensions
+    const containerHeight = container.clientHeight
+    const scrollTop = container.scrollTop
+    const maxScroll = container.scrollHeight - containerHeight
+    
+    // Calculate visible area (middle half of container)
+    const visibleTop = scrollTop + containerHeight * 0.25
+    const visibleBottom = scrollTop + containerHeight * 0.75
+    
+    // Check if slot is outside visible area
+    const slotBottom = slotTop + taskHeight
+    let newScrollTop = scrollTop
+    
+    if (slotTop < visibleTop) {
+      // Slot is above visible area - scroll up to center it
+      newScrollTop = slotTop - containerHeight * 0.25
+    } else if (slotBottom > visibleBottom) {
+      // Slot is below visible area - scroll down to center it
+      newScrollTop = slotTop + taskHeight - containerHeight * 0.75
     }
     
-    grid.addEventListener('scroll', handleScroll)
-    return () => grid.removeEventListener('scroll', handleScroll)
-  }, [])
+    // Clamp to valid scroll range
+    newScrollTop = Math.max(0, Math.min(newScrollTop, maxScroll))
+    
+    // Only scroll if needed
+    if (Math.abs(newScrollTop - scrollTop) > 1) {
+      container.scrollTo({
+        top: newScrollTop,
+        behavior: 'smooth'
+      })
+    }
+  }, [selectedSlot, taskDuration])
+  
+  // Scroll to initial position on mount
+  useEffect(() => {
+    if (!scrollContainerRef.current) return
+    
+    const container = scrollContainerRef.current
+    const containerHeight = container.clientHeight
+    
+    // Use selected slot if available, otherwise use current time
+    const targetTime = selectedSlot || new Date()
+    const targetTop = getPositionFromTime(targetTime)
+    
+    // Center the target time in view
+    const scrollTop = targetTop - containerHeight / 2 + 30 // Add 30px to account for task height
+    
+    // Set initial scroll position
+    setTimeout(() => {
+      container.scrollTop = Math.max(0, Math.min(scrollTop, container.scrollHeight - containerHeight))
+    }, 0)
+  }, []) // Only on mount
   
   const formatTime = (hour: number): string => {
     if (hour === 0) return '12 AM'
@@ -177,15 +227,6 @@ export default function CalendarGrid({
     return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
   }
   
-  const getTimeFromPosition = (y: number): Date => {
-    const hourHeight = 60 // 60px per hour
-    const hour = Math.floor(y / hourHeight)
-    const minutes = Math.floor((y % hourHeight) / (hourHeight / 4)) * 15
-    
-    const time = new Date(currentDate)
-    time.setHours(hour, minutes, 0, 0)
-    return time
-  }
   
   const getPositionFromTime = (time: Date): number => {
     const hours = time.getHours()
@@ -194,19 +235,28 @@ export default function CalendarGrid({
   }
   
   const handleGridClick = (e: React.MouseEvent<HTMLDivElement>, dayIndex: number) => {
-    const rect = e.currentTarget.getBoundingClientRect()
-    const y = e.clientY - rect.top + e.currentTarget.scrollTop
-    const time = getTimeFromPosition(y)
+    const container = scrollContainerRef.current
+    if (!container) return
     
-    // Set the correct date
+    // Get the click position relative to the scrollable container
+    const containerRect = container.getBoundingClientRect()
+    const clickY = e.clientY - containerRect.top + container.scrollTop
+    
+    // Calculate the time based on the click position
+    const hourHeight = 60 // 60px per hour
+    const totalMinutes = Math.floor(clickY / hourHeight) * 60 + Math.floor((clickY % hourHeight) / (hourHeight / 4)) * 15
+    const hours = Math.floor(totalMinutes / 60)
+    const minutes = totalMinutes % 60
+    
+    // Clamp to valid time range (0-23 hours)
+    const clampedHours = Math.max(0, Math.min(23, hours))
+    const clampedMinutes = Math.max(0, Math.min(45, Math.floor(minutes / 15) * 15)) // Round to 15-minute increments
+    
+    // Create the time with the correct date
     const clickedDate = new Date(dates[dayIndex])
-    time.setFullYear(clickedDate.getFullYear(), clickedDate.getMonth(), clickedDate.getDate())
+    clickedDate.setHours(clampedHours, clampedMinutes, 0, 0)
     
-    // Round to nearest 15 minutes
-    const minutes = Math.round(time.getMinutes() / 15) * 15
-    time.setMinutes(minutes)
-    
-    onSlotClick(time)
+    onSlotClick(clickedDate)
   }
   
   const isCurrentTime = (date: Date) => {
@@ -219,14 +269,11 @@ export default function CalendarGrid({
     return getPositionFromTime(now)
   }
   
-  // Check if time slot has enough space for task (excluding all-day events)
   const hasConflict = (time: Date): boolean => {
     const taskEnd = new Date(time)
     taskEnd.setMinutes(taskEnd.getMinutes() + taskDuration)
     
-    // Only check events on the same day as the task
     return timedEvents.some(event => {
-      // Only check timed events, not all-day events
       const eventStart = new Date(event.start)
       const eventEnd = new Date(event.end)
       
@@ -241,9 +288,9 @@ export default function CalendarGrid({
   
   return (
     <div className="flex flex-col flex-1 h-full bg-white">
-      {/* All-day events header */}
+      {/* All-day events header - Fixed */}
       {allDayEvents.length > 0 && (
-        <div className="border-b border-gray-200 bg-gray-50">
+        <div className="border-b border-gray-200 bg-gray-50 flex-shrink-0">
           <div className="flex">
             <div className="w-16 flex-shrink-0 px-2 py-1 text-xs text-gray-500 border-r border-gray-200">
               All day
@@ -277,141 +324,167 @@ export default function CalendarGrid({
         </div>
       )}
       
-      {/* Day headers */}
-      <div className="flex border-b border-gray-200 bg-white sticky top-0 z-10">
-        <div className="w-16 flex-shrink-0" />
-        {dates.map((date, index) => (
-          <div 
-            key={index} 
-            className="flex-1 text-center py-2 border-r border-gray-200 last:border-r-0"
-          >
-            <div className="text-sm font-medium">{formatDate(date)}</div>
-            <div className="text-xs text-gray-500">
-              {date.toLocaleDateString('en-US', { weekday: 'short' })}
-            </div>
-          </div>
-        ))}
-      </div>
-      
-      <div className="flex flex-1 overflow-hidden">
-        {/* Time labels */}
-        <div 
-          ref={hoursRef}
-          className="w-16 flex-shrink-0 border-r border-gray-200 overflow-hidden"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-        >
-          <div className="relative">
-            {Array.from({ length: 24 }, (_, hour) => (
-              <div key={hour} className="h-[60px] relative">
-                <span className="absolute -top-2 right-2 text-xs text-gray-500">
-                  {formatTime(hour)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-        
-        {/* Calendar grids */}
-        <div className="flex-1 flex overflow-y-auto overflow-x-hidden" ref={gridRef}>
-          {dates.map((date, dayIndex) => (
+      {/* Day headers - Fixed */}
+      {daysToShow > 1 && (
+        <div className="flex border-b border-gray-200 bg-white flex-shrink-0">
+          <div className="w-16 flex-shrink-0" />
+          {dates.map((date, index) => (
             <div 
-              key={dayIndex}
-              className="flex-1 relative border-r border-gray-200 last:border-r-0"
-              onClick={(e) => handleGridClick(e, dayIndex)}
+              key={index} 
+              className="flex-1 text-center py-2 border-r border-gray-200 last:border-r-0"
             >
-              <div className="relative" style={{ height: '1440px' }}>
-                {/* Hour lines */}
-                {Array.from({ length: 24 }, (_, hour) => (
-                  <div
-                    key={hour}
-                    className="absolute w-full border-t border-gray-100"
-                    style={{ top: `${hour * 60}px` }}
-                  />
-                ))}
-                
-                {/* Current time line */}
-                {isCurrentTime(date) && getCurrentTimePosition() !== null && (
-                  <div
-                    className="absolute w-full border-t-2 border-red-500 z-20"
-                    style={{ top: `${getCurrentTimePosition()}px` }}
-                  >
-                    <div className="absolute -left-1 -top-1 w-2 h-2 bg-red-500 rounded-full" />
-                  </div>
-                )}
-                
-                {/* Events for this day */}
-                {eventPositions
-                  .filter(pos => pos.day === dayIndex)
-                  .map((pos, index) => {
-                    const top = getPositionFromTime(new Date(pos.event.start))
-                    const height = Math.max(
-                      20,
-                      getPositionFromTime(new Date(pos.event.end)) - top
-                    )
-                    
-                    return (
-                      <div
-                        key={pos.event.id}
-                        className="absolute px-1 overflow-hidden rounded-md border cursor-default"
-                        style={{
-                          top: `${top}px`,
-                          height: `${height}px`,
-                          left: `${pos.left}%`,
-                          width: `calc(${pos.width}% - 2px)`,
-                          backgroundColor: pos.event.color ? `${pos.event.color}20` : '#3b82f620',
-                          borderColor: pos.event.color || '#3b82f6',
-                          borderLeftWidth: '3px'
-                        }}
-                        title={`${pos.event.title}\n${new Date(pos.event.start).toLocaleTimeString()} - ${new Date(pos.event.end).toLocaleTimeString()}`}
-                      >
-                        <div className="text-xs font-medium truncate" style={{ color: pos.event.color || '#3b82f6' }}>
-                          {pos.event.title}
-                        </div>
-                        {height > 30 && (
-                          <div className="text-xs text-gray-600">
-                            {new Date(pos.event.start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                
-                {/* Task preview for this day */}
-                {selectedSlot && 
-                 selectedSlot.toDateString() === date.toDateString() && (
-                  <div
-                    className={`absolute px-2 py-1 rounded-md border-2 transition-all ${
-                      previewMode 
-                        ? 'bg-blue-100 border-blue-500 shadow-lg' 
-                        : 'bg-blue-50 border-blue-300 opacity-75'
-                    } ${
-                      hasConflict(selectedSlot) ? 'border-dashed' : ''
-                    }`}
-                    style={{
-                      top: `${getPositionFromTime(selectedSlot)}px`,
-                      height: `${(taskDuration / 60) * 60}px`,
-                      left: '0',
-                      right: '0',
-                      zIndex: 10
-                    }}
-                  >
-                    <div className="text-sm font-medium text-blue-900">
-                      {previewMode ? 'Task Preview' : 'New Task'}
-                    </div>
-                    <div className="text-xs text-blue-700">
-                      {selectedSlot.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} - 
-                      {new Date(selectedSlot.getTime() + taskDuration * 60000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                    </div>
-                    {hasConflict(selectedSlot) && (
-                      <div className="text-xs text-orange-600 mt-1">
-                        ⚠️ Conflicts with existing event
-                      </div>
-                    )}
-                  </div>
-                )}
+              <div className="text-sm font-medium">{formatDate(date)}</div>
+              <div className="text-xs text-gray-500">
+                {date.toLocaleDateString('en-US', { weekday: 'short' })}
               </div>
             </div>
           ))}
+        </div>
+      )}
+      
+      {/* Scrollable container for time grid */}
+      <div 
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto overflow-x-hidden"
+        style={{ 
+          scrollbarWidth: 'none', 
+          msOverflowStyle: 'none'
+        } as React.CSSProperties}
+      >
+        <style jsx>{`
+          div::-webkit-scrollbar {
+            display: none;
+          }
+        `}</style>
+        
+        <div className="flex min-h-full">
+          {/* Time labels - Part of scrollable content */}
+          <div className="w-16 flex-shrink-0 border-r border-gray-200">
+            <div className="relative" style={{ height: '1440px' }}>
+              {Array.from({ length: 24 }, (_, hour) => (
+                <div key={hour} className="h-[60px] relative">
+                  <span className="absolute -top-2 right-2 text-xs text-gray-500">
+                    {formatTime(hour)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          {/* Calendar grids */}
+          <div className="flex-1 flex">
+            {dates.map((date, dayIndex) => (
+              <div 
+                key={dayIndex}
+                className="flex-1 relative border-r border-gray-200 last:border-r-0"
+                onClick={(e) => handleGridClick(e, dayIndex)}
+              >
+                <div className="relative" style={{ height: '1440px' }}>
+                  {/* Hour lines */}
+                  {Array.from({ length: 24 }, (_, hour) => (
+                    <div
+                      key={hour}
+                      className="absolute w-full border-t border-gray-100"
+                      style={{ top: `${hour * 60}px` }}
+                    />
+                  ))}
+                  
+                  {/* Current time line */}
+                  {isCurrentTime(date) && getCurrentTimePosition() !== null && (
+                    <div
+                      className="absolute w-full border-t-2 border-red-500 z-20"
+                      style={{ top: `${getCurrentTimePosition()}px` }}
+                    >
+                      <div className="absolute -left-1 -top-1 w-2 h-2 bg-red-500 rounded-full" />
+                    </div>
+                  )}
+                  
+                  {/* Events */}
+                  {eventPositions
+                    .filter(pos => pos.day === dayIndex)
+                    .map((pos) => {
+                      const top = getPositionFromTime(new Date(pos.event.start))
+                      const height = Math.max(
+                        20,
+                        getPositionFromTime(new Date(pos.event.end)) - top
+                      )
+                      
+                      return (
+                        <div
+                          key={pos.event.id}
+                          className="absolute px-1 overflow-hidden rounded-md border cursor-default"
+                          style={{
+                            top: `${top}px`,
+                            height: `${height}px`,
+                            left: `${pos.left}%`,
+                            width: `calc(${pos.width}% - 2px)`,
+                            backgroundColor: pos.event.color ? `${pos.event.color}20` : '#3b82f620',
+                            borderColor: pos.event.color || '#3b82f6',
+                            borderLeftWidth: '3px'
+                          }}
+                          title={`${pos.event.title}\n${new Date(pos.event.start).toLocaleTimeString()} - ${new Date(pos.event.end).toLocaleTimeString()}`}
+                        >
+                          <div className="text-xs font-medium truncate" style={{ color: pos.event.color || '#3b82f6' }}>
+                            {pos.event.title}
+                          </div>
+                          {height > 30 && (
+                            <div className="text-xs text-gray-600">
+                              {new Date(pos.event.start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  
+                  {/* Task preview */}
+                  {selectedSlot && 
+                   selectedSlot.toDateString() === date.toDateString() && (
+                    <div
+                      ref={selectedSlotRef}
+                      className={`absolute px-2 py-1 rounded-md border-2 transition-all ${
+                        previewMode 
+                          ? mode === 'deadline'
+                            ? 'bg-red-100 border-red-500 shadow-lg' 
+                            : 'bg-blue-100 border-blue-500 shadow-lg'
+                          : mode === 'deadline'
+                            ? 'bg-red-50 border-red-300 opacity-75'
+                            : 'bg-blue-50 border-blue-300 opacity-75'
+                      } ${
+                        hasConflict(selectedSlot) ? 'border-dashed' : ''
+                      }`}
+                      style={{
+                        top: `${getPositionFromTime(selectedSlot)}px`,
+                        height: `${(taskDuration / 60) * 60}px`,
+                        left: '0',
+                        right: '0',
+                        zIndex: 10
+                      }}
+                    >
+                      <div className={`text-sm font-medium truncate ${
+                        mode === 'deadline' ? 'text-red-900' : 'text-blue-900'
+                      }`}>
+                        {taskContent || (mode === 'deadline' 
+                          ? (previewMode ? 'Deadline Preview' : 'New Deadline')
+                          : (previewMode ? 'Task Preview' : 'New Task')
+                        )}
+                      </div>
+                      <div className={`text-xs ${
+                        mode === 'deadline' ? 'text-red-700' : 'text-blue-700'
+                      }`}>
+                        {selectedSlot.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} - 
+                        {new Date(selectedSlot.getTime() + taskDuration * 60000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                      </div>
+                      {hasConflict(selectedSlot) && (
+                        <div className="text-xs text-orange-600 mt-1">
+                          ⚠️ Conflicts with existing event
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

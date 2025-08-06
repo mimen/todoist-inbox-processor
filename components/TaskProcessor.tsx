@@ -1215,12 +1215,9 @@ export default function TaskProcessor() {
     const queueState = processingModeSelectorRef.current?.queueState
     if (!queueState?.hasNextQueue) return
     
-    // Get the next queue option BEFORE moving
-    const nextQueue = queueState.nextQueue
+    // Move to next queue and get the result
+    const nextQueue = queueState.moveToNextQueue()
     if (!nextQueue) return
-    
-    // Move to next queue
-    queueState.moveToNextQueue()
     
     // Create processing mode from the next queue
     let newMode: ProcessingMode
@@ -1556,7 +1553,8 @@ export default function TaskProcessor() {
         case 'c':
         case 'C':
           // Only handle in processing mode, list view has its own handler
-          if (viewMode === 'processing') {
+          // Also check for modifier keys to avoid interfering with browser shortcuts
+          if (viewMode === 'processing' && !e.metaKey && !e.ctrlKey) {
             e.preventDefault()
             setShowCompleteConfirm(true)
           }

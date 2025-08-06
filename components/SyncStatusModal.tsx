@@ -96,6 +96,18 @@ export default function SyncStatusModal({ isOpen, onClose }: SyncStatusModalProp
     }
   }, [isOpen])
 
+  // Handle escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose()
+      }
+    }
+
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [isOpen, onClose])
+
   const handleManualSync = async () => {
     setSyncing(true)
     try {
@@ -315,7 +327,7 @@ export default function SyncStatusModal({ isOpen, onClose }: SyncStatusModalProp
                   </div>
                 )}
 
-                {/* Calendar Details - Compact Table View */}
+                {/* Calendar Details - Grouped by Ownership */}
                 <div className="border border-gray-200 rounded-lg overflow-hidden">
                 <div className="max-h-[400px] overflow-auto">
                   {loading ? (
@@ -333,87 +345,161 @@ export default function SyncStatusModal({ isOpen, onClose }: SyncStatusModalProp
                     <div className="text-center py-8 text-gray-500">
                       No calendars synced yet
                     </div>
-                  ) : (
-                    <table className="w-full text-sm">
-                      <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
-                        <tr>
-                          <th className="text-left px-3 py-2 font-medium text-gray-700 bg-gray-50">Calendar</th>
-                          <th className="text-center px-2 py-2 font-medium text-gray-700 bg-gray-50">Events</th>
-                          <th className="text-left px-3 py-2 font-medium text-gray-700 bg-gray-50">Last Sync</th>
-                          <th className="text-left px-3 py-2 font-medium text-gray-700 bg-gray-50">Sync Token</th>
-                          <th className="text-center px-2 py-2 font-medium text-gray-700 bg-gray-50">Info</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {calendars.map((calendar) => (
-                          <tr key={calendar.calendarId} className="hover:bg-gray-50 transition-colors">
-                            <td className="px-3 py-1.5">
-                              <div className="flex items-center gap-2">
-                                <div
-                                  className="w-3 h-3 rounded-sm flex-shrink-0"
-                                  style={{ 
-                                    backgroundColor: calendar.metadata.color || '#4285f4',
-                                    border: '1px solid rgba(0,0,0,0.15)'
-                                  }}
-                                />
-                                <div className="min-w-0">
-                                  <div className="font-medium text-gray-900 truncate text-sm" title={calendar.calendarName}>
-                                    {calendar.calendarName}
-                                  </div>
-                                  <div className="text-xs text-gray-500 truncate" title={calendar.calendarId}>
-                                    {calendar.calendarId.split('@')[0]}
-                                  </div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-2 py-1.5 text-center">
-                              <span className="inline-flex items-center justify-center min-w-[2rem] px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
-                                {calendar.eventCount}
-                              </span>
-                            </td>
-                            <td className="px-3 py-1.5">
-                              <div className="text-sm text-gray-900">{formatDate(calendar.lastSync)}</div>
-                              {calendar.lastFullSync && (
-                                <div className="text-xs text-gray-500">
-                                  Full: {formatDate(calendar.lastFullSync)}
-                                </div>
-                              )}
-                            </td>
-                            <td className="px-3 py-1.5">
-                              <div className="flex items-center gap-1">
-                                <code className="font-mono text-xs bg-gray-100 px-1 py-0.5 rounded text-gray-600">
-                                  {truncateSyncToken(calendar.syncToken)}
-                                </code>
-                                {calendar.syncToken && (
-                                  <button
-                                    onClick={() => navigator.clipboard.writeText(calendar.syncToken!)}
-                                    className="text-gray-400 hover:text-gray-600 p-0.5"
-                                    title="Copy full token"
-                                  >
-                                    <FileText className="w-3 h-3" />
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                            <td className="px-2 py-1.5 text-center">
-                              <div className="flex items-center justify-center gap-1">
-                                {calendar.metadata.timeZone && (
-                                  <span className="text-xs text-gray-500" title={`Timezone: ${calendar.metadata.timeZone}`}>
-                                    <Clock className="w-3.5 h-3.5" />
-                                  </span>
-                                )}
-                                {calendar.metadata.accessRole && (
-                                  <span className="text-xs text-gray-500" title={`Access: ${calendar.metadata.accessRole}`}>
-                                    {calendar.metadata.accessRole === 'owner' ? '👑' : '👤'}
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
+                  ) : (() => {
+                    // Group calendars by ownership
+                    const myCalendars = calendars.filter(cal => cal.metadata.accessRole === 'owner')
+                    const otherCalendars = calendars.filter(cal => cal.metadata.accessRole !== 'owner')
+                    
+                    return (
+                      <>
+                        {/* My Calendars */}
+                        {myCalendars.length > 0 && (
+                          <>
+                            <div className="px-3 py-2 bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
+                              <h4 className="text-sm font-medium text-gray-700">My Calendars</h4>
+                            </div>
+                            <table className="w-full text-sm">
+                              <thead className="bg-gray-50 border-b border-gray-200">
+                                <tr>
+                                  <th className="text-left px-3 py-2 font-medium text-gray-600 text-xs">Calendar</th>
+                                  <th className="text-center px-2 py-2 font-medium text-gray-600 text-xs">Events</th>
+                                  <th className="text-left px-3 py-2 font-medium text-gray-600 text-xs">Last Sync</th>
+                                  <th className="text-left px-3 py-2 font-medium text-gray-600 text-xs">Sync Token</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100">
+                                {myCalendars.map((calendar) => (
+                                  <tr key={calendar.calendarId} className="hover:bg-gray-50 transition-colors">
+                                    <td className="px-3 py-1.5">
+                                      <div className="flex items-center gap-2">
+                                        <div
+                                          className="w-3 h-3 rounded-sm flex-shrink-0"
+                                          style={{ 
+                                            backgroundColor: calendar.metadata.color || '#4285f4',
+                                            border: '1px solid rgba(0,0,0,0.15)'
+                                          }}
+                                        />
+                                        <div className="min-w-0">
+                                          <div className="font-medium text-gray-900 truncate text-sm" title={calendar.calendarName}>
+                                            {calendar.calendarName}
+                                          </div>
+                                          <div className="text-xs text-gray-500 truncate" title={calendar.calendarId}>
+                                            {calendar.calendarId.split('@')[0]}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </td>
+                                    <td className="px-2 py-1.5 text-center">
+                                      <span className="inline-flex items-center justify-center min-w-[2rem] px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                                        {calendar.eventCount}
+                                      </span>
+                                    </td>
+                                    <td className="px-3 py-1.5">
+                                      <div className="text-sm text-gray-900">{formatDate(calendar.lastSync)}</div>
+                                      {calendar.lastFullSync && (
+                                        <div className="text-xs text-gray-500">
+                                          Full: {formatDate(calendar.lastFullSync)}
+                                        </div>
+                                      )}
+                                    </td>
+                                    <td className="px-3 py-1.5">
+                                      <div className="flex items-center gap-1">
+                                        <code className="font-mono text-xs bg-gray-100 px-1 py-0.5 rounded text-gray-600">
+                                          {truncateSyncToken(calendar.syncToken)}
+                                        </code>
+                                        {calendar.syncToken && (
+                                          <button
+                                            onClick={() => navigator.clipboard.writeText(calendar.syncToken!)}
+                                            className="text-gray-400 hover:text-gray-600 p-0.5"
+                                            title="Copy full token"
+                                          >
+                                            <FileText className="w-3 h-3" />
+                                          </button>
+                                        )}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </>
+                        )}
+                        
+                        {/* Other Calendars */}
+                        {otherCalendars.length > 0 && (
+                          <>
+                            <div className="px-3 py-2 bg-gray-50 border-b border-gray-200 sticky top-0 z-10 mt-4">
+                              <h4 className="text-sm font-medium text-gray-700">Other Calendars</h4>
+                            </div>
+                            <table className="w-full text-sm">
+                              <thead className="bg-gray-50 border-b border-gray-200">
+                                <tr>
+                                  <th className="text-left px-3 py-2 font-medium text-gray-600 text-xs">Calendar</th>
+                                  <th className="text-center px-2 py-2 font-medium text-gray-600 text-xs">Events</th>
+                                  <th className="text-left px-3 py-2 font-medium text-gray-600 text-xs">Last Sync</th>
+                                  <th className="text-left px-3 py-2 font-medium text-gray-600 text-xs">Sync Token</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100">
+                                {otherCalendars.map((calendar) => (
+                                  <tr key={calendar.calendarId} className="hover:bg-gray-50 transition-colors">
+                                    <td className="px-3 py-1.5">
+                                      <div className="flex items-center gap-2">
+                                        <div
+                                          className="w-3 h-3 rounded-sm flex-shrink-0"
+                                          style={{ 
+                                            backgroundColor: calendar.metadata.color || '#4285f4',
+                                            border: '1px solid rgba(0,0,0,0.15)'
+                                          }}
+                                        />
+                                        <div className="min-w-0">
+                                          <div className="font-medium text-gray-900 truncate text-sm" title={calendar.calendarName}>
+                                            {calendar.calendarName}
+                                          </div>
+                                          <div className="text-xs text-gray-500 truncate" title={calendar.calendarId}>
+                                            {calendar.calendarId.split('@')[0]}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </td>
+                                    <td className="px-2 py-1.5 text-center">
+                                      <span className="inline-flex items-center justify-center min-w-[2rem] px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                                        {calendar.eventCount}
+                                      </span>
+                                    </td>
+                                    <td className="px-3 py-1.5">
+                                      <div className="text-sm text-gray-900">{formatDate(calendar.lastSync)}</div>
+                                      {calendar.lastFullSync && (
+                                        <div className="text-xs text-gray-500">
+                                          Full: {formatDate(calendar.lastFullSync)}
+                                        </div>
+                                      )}
+                                    </td>
+                                    <td className="px-3 py-1.5">
+                                      <div className="flex items-center gap-1">
+                                        <code className="font-mono text-xs bg-gray-100 px-1 py-0.5 rounded text-gray-600">
+                                          {truncateSyncToken(calendar.syncToken)}
+                                        </code>
+                                        {calendar.syncToken && (
+                                          <button
+                                            onClick={() => navigator.clipboard.writeText(calendar.syncToken!)}
+                                            className="text-gray-400 hover:text-gray-600 p-0.5"
+                                            title="Copy full token"
+                                          >
+                                            <FileText className="w-3 h-3" />
+                                          </button>
+                                        )}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </>
+                        )}
+                      </>
+                    )
+                  })()}
                 </div>
                 </div>
 

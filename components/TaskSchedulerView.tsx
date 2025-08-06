@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { TodoistTask } from '@/lib/types'
 import { useCalendarEvents } from '@/hooks/useCalendarEvents'
 import type { CalendarEvent } from '@/hooks/useCalendarEvents'
 import CalendarGrid from './CalendarGrid'
+import { parseDate } from 'chrono-node'
+import { Calendar, Clock, AlertCircle, RefreshCw } from 'lucide-react'
 
 interface TaskSchedulerViewProps {
   currentTask: TodoistTask
@@ -22,6 +24,10 @@ interface TimeSlot {
   events: CalendarEvent[]
 }
 
+interface CalendarVisibility {
+  [calendarId: string]: boolean
+}
+
 export default function TaskSchedulerView({
   currentTask,
   onScheduledDateChange,
@@ -30,349 +36,302 @@ export default function TaskSchedulerView({
   isLoading,
   mode = 'scheduled'
 }: TaskSchedulerViewProps) {
+  // Helper to get existing date from task
+  const getExistingTaskDate = (): Date | null => {
+    const existingDate = mode === 'deadline' ? currentTask.deadline : currentTask.due
+    if (!existingDate?.datetime && !existingDate?.date) return null
+    
+    try {
+      const dateStr = existingDate.datetime || existingDate.date
+      const parsed = new Date(dateStr)
+      
+      // Check if date is valid and not overdue
+      if (isNaN(parsed.getTime())) return null
+      
+      const now = new Date()
+      if (parsed < now) return null // Overdue
+      
+      return parsed
+    } catch {
+      return null
+    }
+  }
+
   const [selectedDate, setSelectedDate] = useState(() => {
+    const existingDate = getExistingTaskDate()
+    if (existingDate) {
+      const date = new Date(existingDate)
+      date.setHours(0, 0, 0, 0)
+      return date
+    }
+    
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     return today
   })
-  const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null)
-  const [previewMode, setPreviewMode] = useState(false)
-  const [currentTimeSlotIndex, setCurrentTimeSlotIndex] = useState(0)
-  const [showDatePicker, setShowDatePicker] = useState(false)
   
-  const timeGridRef = useRef<HTMLDivElement>(null)
-  const selectedSlotRef = useRef<HTMLDivElement>(null)
-
-  // Use the calendar events hook for 3 days
-  const { events: calendarEvents, loading: loadingCalendar, error: calendarError, authRequired, refresh } = useCalendarEvents(selectedDate, 3)
-  
-  // Remove automatic sync trigger - let the calendar service handle its own sync timing
-
-  // Generate time slots for the day (15-minute increments)
-  const generateTimeSlots = useCallback((date: Date, events: CalendarEvent[]): TimeSlot[] => {
-    const slots: TimeSlot[] = []
-    const startHour = 0
-    const endHour = 24
-    const now = new Date()
+  const [selectedTime, setSelectedTime] = useState<Date>(() => {
+    const existingDate = getExistingTaskDate()
+    if (existingDate) {
+      // Round existing time to nearest 15-minute increment
+      const minutes = existingDate.getMinutes()
+      const roundedMinutes = Math.round(minutes / 15) * 15
+      
+      existingDate.setMinutes(roundedMinutes)
+      existingDate.setSeconds(0)
+      existingDate.setMilliseconds(0)
+      
+      return existingDate
+    }
     
-    for (let hour = startHour; hour < endHour; hour++) {
-      for (let minute = 0; minute < 60; minute += 15) {
-        const slotTime = new Date(date)
-        slotTime.setHours(hour, minute, 0, 0)
+    // No existing date or overdue - will be updated to first available slot when events load
+    const now = new Date()
+    const minutes = now.getMinutes()
+    const roundedMinutes = Math.ceil(minutes / 15) * 15
+    
+    if (roundedMinutes === 60) {
+      now.setHours(now.getHours() + 1)
+      now.setMinutes(0)
+    } else {
+      now.setMinutes(roundedMinutes)
+    }
+    
+    now.setSeconds(0)
+    now.setMilliseconds(0)
+    return now
+  })
+  const [dateInput, setDateInput] = useState('')
+  const [previewMode, setPreviewMode] = useState(false)
+  const [calendarVisibility, setCalendarVisibility] = useState<CalendarVisibility>({})
+  const [isTyping, setIsTyping] = useState(false)
+  
+  const containerRef = useRef<HTMLDivElement>(null)
+  const dateInputRef = useRef<HTMLInputElement>(null)
+
+  // Use the calendar events hook for 1 day
+  const { events: calendarEvents, loading: loadingCalendar, error: calendarError, authRequired, refresh } = useCalendarEvents(selectedDate, 1)
+  
+  // Initialize calendar visibility
+  useEffect(() => {
+    if (calendarEvents.length > 0 && Object.keys(calendarVisibility).length === 0) {
+      const uniqueCalendars = Array.from(new Set(calendarEvents.map(e => e.calendarId)))
+      const visibility: CalendarVisibility = {}
+      uniqueCalendars.forEach(id => {
+        visibility[id] = true
+      })
+      setCalendarVisibility(visibility)
+    }
+  }, [calendarEvents, calendarVisibility])
+
+  // Filter events based on visibility
+  const visibleEvents = calendarEvents.filter(event => 
+    calendarVisibility[event.calendarId] !== false
+  )
+
+  // Check if a specific time slot has conflicts
+  const hasTimeConflict = (time: Date, events: CalendarEvent[]): boolean => {
+    const slotEnd = new Date(time)
+    slotEnd.setMinutes(slotEnd.getMinutes() + 30) // 30-minute task duration
+    
+    return events.some(event => {
+      if (event.isAllDay) return false // Ignore all-day events
+      
+      const eventStart = new Date(event.start)
+      const eventEnd = new Date(event.end)
+      
+      // Skip events not on the same day
+      if (eventStart.toDateString() !== time.toDateString()) {
+        return false
+      }
+      
+      return (time < eventEnd && slotEnd > eventStart)
+    })
+  }
+
+  // Find the first available 30-minute slot
+  const findFirstAvailableSlot = (events: CalendarEvent[], startTime: Date): Date => {
+    const now = new Date()
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    
+    // For current day, start from current time. For future days, start from beginning of day.
+    const isToday = startTime.toDateString() === now.toDateString()
+    let currentSlot = new Date(isToday ? Math.max(startTime.getTime(), now.getTime()) : startTime.getTime())
+    
+    const minutes = currentSlot.getMinutes()
+    const roundedMinutes = Math.ceil(minutes / 15) * 15
+    
+    if (roundedMinutes === 60) {
+      currentSlot.setHours(currentSlot.getHours() + 1)
+      currentSlot.setMinutes(0)
+    } else {
+      currentSlot.setMinutes(roundedMinutes)
+    }
+    currentSlot.setSeconds(0)
+    currentSlot.setMilliseconds(0)
+    
+    // Check each 15-minute slot until we find one that's free
+    const endOfDay = new Date(today)
+    endOfDay.setHours(23, 45, 0, 0)
+    
+    while (currentSlot <= endOfDay) {
+      const slotEnd = new Date(currentSlot)
+      slotEnd.setMinutes(slotEnd.getMinutes() + 30) // 30-minute task duration
+      
+      // Check if this slot conflicts with any events
+      const hasConflict = events.some(event => {
+        if (event.isAllDay) return false // Ignore all-day events
         
-        // Skip past times for today
-        if (date.toDateString() === now.toDateString() && slotTime < now) {
-          continue
+        const eventStart = new Date(event.start)
+        const eventEnd = new Date(event.end)
+        
+        // Skip events not on the same day
+        if (eventStart.toDateString() !== currentSlot.toDateString()) {
+          return false
         }
         
-        // Check for conflicts with calendar events
-        const slotEnd = new Date(slotTime)
-        slotEnd.setMinutes(slotEnd.getMinutes() + 30) // 30-minute task duration
-        
-        const conflictingEvents = events.filter(event => {
-          const eventStart = new Date(event.start)
-          const eventEnd = new Date(event.end)
-          return (slotTime < eventEnd && slotEnd > eventStart)
-        })
-        
-        // Determine if slot has enough time (30 minutes) without conflicts
-        const hasEnoughTime = !events.some(event => {
-          const eventStart = new Date(event.start)
-          return eventStart >= slotTime && eventStart < slotEnd
-        })
-        
-        slots.push({
-          time: slotTime,
-          available: hasEnoughTime && conflictingEvents.length === 0,
-          hasConflict: conflictingEvents.length > 0,
-          events: conflictingEvents
-        })
+        return (currentSlot < eventEnd && slotEnd > eventStart)
+      })
+      
+      if (!hasConflict) {
+        return currentSlot
       }
+      
+      // Move to next 15-minute slot
+      currentSlot.setMinutes(currentSlot.getMinutes() + 15)
     }
     
-    return slots
-  }, [])
-
-  // Generate time slots when date or events change
-  const timeSlots = generateTimeSlots(selectedDate, calendarEvents)
-
-  // Find next available slot index
-  const findNextAvailableSlot = (startIndex: number): number => {
-    for (let i = startIndex + 1; i < timeSlots.length; i++) {
-      if (timeSlots[i].available) return i
-    }
-    // Wrap around to beginning
-    for (let i = 0; i < startIndex; i++) {
-      if (timeSlots[i].available) return i
-    }
-    return startIndex
+    // If no slot found today, return the original start time
+    return startTime
   }
 
-  // Find previous available slot index
-  const findPrevAvailableSlot = (startIndex: number): number => {
-    for (let i = startIndex - 1; i >= 0; i--) {
-      if (timeSlots[i].available) return i
-    }
-    // Wrap around to end
-    for (let i = timeSlots.length - 1; i > startIndex; i--) {
-      if (timeSlots[i].available) return i
-    }
-    return startIndex
-  }
+  // Get unique calendars with colors
+  const uniqueCalendars = Array.from(
+    new Map(calendarEvents.map(e => [e.calendarId, { 
+      id: e.calendarId, 
+      name: e.calendarName,
+      color: e.color 
+    }])).values()
+  )
 
-  // Reset state when opening
+  // Update to first available slot when calendar events load (only if no existing valid date)
   useEffect(() => {
-    if (isVisible) {
-      // Only reset date if it's not already today
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      const currentDateReset = new Date(selectedDate)
-      currentDateReset.setHours(0, 0, 0, 0)
+    if (calendarEvents.length > 0 && !isTyping) {
+      const existingDate = getExistingTaskDate()
       
-      if (currentDateReset.getTime() !== today.getTime()) {
-        setSelectedDate(today)
+      // Only find first available slot if there's no existing valid date
+      if (!existingDate) {
+        const firstAvailable = findFirstAvailableSlot(visibleEvents, selectedTime)
+        if (firstAvailable.getTime() !== selectedTime.getTime()) {
+          setSelectedTime(firstAvailable)
+        }
       }
-      
-      setSelectedSlot(null)
-      setPreviewMode(false)
-      setCurrentTimeSlotIndex(0)
+    }
+  }, [calendarEvents, visibleEvents]) // Only run when events change
+
+  // Update date input when selected time changes (but not while typing)
+  useEffect(() => {
+    if (!isTyping && dateInput !== '') {
+      setDateInput(formatDateTimeForDisplay(selectedTime))
+    }
+  }, [selectedTime, isTyping, dateInput])
+
+  // Focus date input on mount
+  useEffect(() => {
+    if (isVisible && dateInputRef.current) {
+      setTimeout(() => {
+        dateInputRef.current?.focus()
+      }, 100)
     }
   }, [isVisible])
 
-  // Find first available slot when time slots change
-  useEffect(() => {
-    if (isVisible && timeSlots.length > 0 && !selectedSlot) {
-      const now = new Date()
-      let startTime = new Date(selectedDate)
+
+  // Debounced parsing of date input
+  const parseTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
+  
+  // Handle date input changes
+  const handleDateInputChange = (value: string) => {
+    setDateInput(value)
+    setIsTyping(true)
+    
+    // Clear any existing timeout
+    if (parseTimeoutRef.current) {
+      clearTimeout(parseTimeoutRef.current)
+    }
+    
+    // Set a new timeout for parsing
+    parseTimeoutRef.current = setTimeout(() => {
+      setIsTyping(false)
       
-      // If today, start from next 15-minute slot
-      if (selectedDate.toDateString() === now.toDateString()) {
-        startTime = new Date(now)
-        startTime.setMinutes(Math.ceil(startTime.getMinutes() / 15) * 15, 0, 0)
-      } else {
-        // Otherwise start at 9 AM
-        startTime.setHours(9, 0, 0, 0)
-      }
-      
-      setSelectedSlot({
-        time: startTime,
-        available: true,
-        hasConflict: false,
-        events: []
-      })
-    }
-  }, [isVisible, selectedDate])
-
-  // Auto-scroll to selected slot
-  useEffect(() => {
-    if (selectedSlotRef.current && timeGridRef.current) {
-      const container = timeGridRef.current
-      const element = selectedSlotRef.current
-      const elementTop = element.offsetTop
-      const elementBottom = elementTop + element.offsetHeight
-      const containerTop = container.scrollTop
-      const containerBottom = containerTop + container.clientHeight
-
-      if (elementTop < containerTop || elementBottom > containerBottom) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      }
-    }
-  }, [currentTimeSlotIndex])
-
-  // Keyboard navigation
-  useEffect(() => {
-    if (!isVisible) return
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      switch (e.key) {
-        case 'ArrowDown':
-          e.preventDefault()
-          if (selectedSlot) {
-            const newTime = new Date(selectedSlot.time)
-            newTime.setMinutes(newTime.getMinutes() + 15)
-            // Skip past times
-            const now = new Date()
-            if (selectedDate.toDateString() === now.toDateString() && newTime < now) {
-              newTime.setTime(now.getTime())
-              newTime.setMinutes(Math.ceil(newTime.getMinutes() / 15) * 15)
-            }
-            setSelectedSlot({
-              time: newTime,
-              available: true,
-              hasConflict: false,
-              events: []
-            })
-          } else {
-            setCurrentTimeSlotIndex(findNextAvailableSlot(currentTimeSlotIndex))
-          }
-          break
-        case 'ArrowUp':
-          e.preventDefault()
-          if (selectedSlot) {
-            const newTime = new Date(selectedSlot.time)
-            newTime.setMinutes(newTime.getMinutes() - 15)
-            // Don't go before current time
-            const now = new Date()
-            if (selectedDate.toDateString() === now.toDateString() && newTime < now) {
-              return
-            }
-            setSelectedSlot({
-              time: newTime,
-              available: true,
-              hasConflict: false,
-              events: []
-            })
-          } else {
-            setCurrentTimeSlotIndex(findPrevAvailableSlot(currentTimeSlotIndex))
-          }
-          break
-        case 'ArrowLeft':
-          e.preventDefault()
-          setSelectedDate(prev => {
-            const newDate = new Date(prev)
-            newDate.setDate(newDate.getDate() - 1)
-            newDate.setHours(0, 0, 0, 0)
+      // Try to parse the date
+      const parsed = parseDate(value)
+      if (parsed) {
+        const newDate = new Date(parsed)
+        
+        // Update selected date (day)
+        const dayDate = new Date(newDate)
+        dayDate.setHours(0, 0, 0, 0)
+        setSelectedDate(dayDate)
+        
+        // Update selected time
+        if (newDate.getHours() !== 0 || newDate.getMinutes() !== 0) {
+          // User specified a time
+          newDate.setSeconds(0)
+          newDate.setMilliseconds(0)
+          setSelectedTime(newDate)
+        } else {
+          // No time specified, round to next 15 minute increment
+          const newTime = new Date(newDate)
+          const now = new Date()
+          
+          // If the new date is today, use the current time rounded up
+          if (newDate.toDateString() === now.toDateString()) {
+            const minutes = now.getMinutes()
+            const roundedMinutes = Math.ceil(minutes / 15) * 15
             
-            // Move selected slot to the new date, keeping the same time
-            if (selectedSlot) {
-              const newSlotTime = new Date(selectedSlot.time)
-              newSlotTime.setFullYear(newDate.getFullYear(), newDate.getMonth(), newDate.getDate())
-              setSelectedSlot({
-                time: newSlotTime,
-                available: true,
-                hasConflict: false,
-                events: []
-              })
+            if (roundedMinutes === 60) {
+              newTime.setHours(now.getHours() + 1, 0, 0, 0)
             } else {
-              // If no slot selected, create one at 9 AM on the new date
-              const defaultTime = new Date(newDate)
-              defaultTime.setHours(9, 0, 0, 0)
-              setSelectedSlot({
-                time: defaultTime,
-                available: true,
-                hasConflict: false,
-                events: []
-              })
+              newTime.setHours(now.getHours(), roundedMinutes, 0, 0)
             }
-            
-            // Shift calendar view left to keep the selected date visible
-            return newDate
-          })
-          break
-        case 'ArrowRight':
-          e.preventDefault()
-          setSelectedDate(prev => {
-            const newDate = new Date(prev)
-            newDate.setDate(newDate.getDate() + 1)
-            newDate.setHours(0, 0, 0, 0)
-            
-            // Move selected slot to the new date, keeping the same time
-            if (selectedSlot) {
-              const newSlotTime = new Date(selectedSlot.time)
-              newSlotTime.setFullYear(newDate.getFullYear(), newDate.getMonth(), newDate.getDate())
-              setSelectedSlot({
-                time: newSlotTime,
-                available: true,
-                hasConflict: false,
-                events: []
-              })
-            } else {
-              // If no slot selected, create one at 9 AM on the new date
-              const defaultTime = new Date(newDate)
-              defaultTime.setHours(9, 0, 0, 0)
-              setSelectedSlot({
-                time: defaultTime,
-                available: true,
-                hasConflict: false,
-                events: []
-              })
-            }
-            
-            // Check if we need to shift the calendar view to keep selected date visible
-            const currentViewEnd = new Date(prev)
-            currentViewEnd.setDate(currentViewEnd.getDate() + 2) // 3-day view (0, 1, 2)
-            currentViewEnd.setHours(0, 0, 0, 0)
-            
-            if (newDate.getTime() > currentViewEnd.getTime()) {
-              // Shift view right: new date becomes day 2 of the 3-day view
-              const newViewStart = new Date(newDate)
-              newViewStart.setDate(newViewStart.getDate() - 1)
-              return newViewStart
-            }
-            
-            return prev // Keep current view if new date is still visible
-          })
-          break
-        case 'Enter':
-          e.preventDefault()
-          if (!previewMode && timeSlots[currentTimeSlotIndex]?.available) {
-            // First Enter: Show preview
-            setSelectedSlot(timeSlots[currentTimeSlotIndex])
-            setPreviewMode(true)
-          } else if (previewMode && selectedSlot) {
-            // Second Enter: Confirm selection
-            handleConfirmSelection()
-          }
-          break
-        case 'Escape':
-          e.preventDefault()
-          if (previewMode) {
-            setPreviewMode(false)
-            setSelectedSlot(null)
           } else {
-            onClose()
+            // For future dates, use the same time as currently selected
+            newTime.setHours(selectedTime.getHours(), selectedTime.getMinutes(), 0, 0)
           }
-          break
-        case 'Delete':
-          if (e.shiftKey) {
-            e.preventDefault()
-            handleClearDate()
-          }
-          break
-        case 'd':
-          e.preventDefault()
-          // Future: Open date picker
-          break
+          
+          setSelectedTime(newTime)
+        }
       }
-    }
+    }, 500) // Wait 500ms after user stops typing
+  }
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isVisible, currentTimeSlotIndex, selectedDate, previewMode, selectedSlot, timeSlots])
-
-  const handleSlotClick = (slot: TimeSlot, index: number) => {
-    if (!previewMode) {
-      setSelectedSlot(slot)
-      setCurrentTimeSlotIndex(index)
-      setPreviewMode(true)
-    } else if (selectedSlot === slot) {
-      handleConfirmSelection()
+  // Format date/time for display
+  const formatDateTimeForDisplay = (date: Date): string => {
+    const now = new Date()
+    const tomorrow = new Date(now)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    
+    const time = date.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    }).toLowerCase()
+    
+    if (date.toDateString() === now.toDateString()) {
+      return `today at ${time}`
+    } else if (date.toDateString() === tomorrow.toDateString()) {
+      return `tomorrow at ${time}`
     } else {
-      setSelectedSlot(slot)
-      setCurrentTimeSlotIndex(index)
+      const dateStr = date.toLocaleDateString('en-US', { 
+        weekday: 'short',
+        month: 'short', 
+        day: 'numeric' 
+      })
+      return `${dateStr} at ${time}`
     }
   }
 
-  const handleConfirmSelection = () => {
-    if (selectedSlot) {
-      const dateString = formatDateForTodoist(selectedSlot.time)
-      onScheduledDateChange(dateString)
-      onClose()
-    }
-  }
-
-  const handleClearDate = () => {
-    onScheduledDateChange('')
-    onClose()
-  }
-
-  const handleDatePickerSelect = (date: Date) => {
-    setSelectedDate(date)
-    setShowDatePicker(false)
-    setSelectedSlot(null) // Clear any selected slot when changing dates
-    setPreviewMode(false)
-  }
-
+  // Format date for Todoist API
   const formatDateForTodoist = (date: Date): string => {
     const now = new Date()
     const tomorrow = new Date(now)
@@ -397,322 +356,467 @@ export default function TaskSchedulerView({
     }
   }
 
-  const formatTime = (date: Date): string => {
-    return date.toLocaleTimeString('en-US', { 
-      hour: 'numeric', 
-      minute: '2-digit',
-      hour12: true 
-    })
+  // Handle keyboard navigation
+  useEffect(() => {
+    if (!isVisible) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Handle shift+delete/backspace first - should work regardless of focus
+      if ((e.key === 'Delete' || e.key === 'Backspace') && e.shiftKey) {
+        e.preventDefault()
+        handleClearDate()
+        return
+      }
+
+      // Handle navigation keys even when input is focused
+      const isNavigationKey = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)
+      
+      // Special handling when input is focused
+      if (document.activeElement === dateInputRef.current) {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          setPreviewMode(true)
+          dateInputRef.current?.blur() // Blur input so user can immediately confirm
+          return
+        } else if (e.key === 'Escape') {
+          e.preventDefault()
+          dateInputRef.current?.blur()
+          return
+        } else if (!isNavigationKey) {
+          // Let other keys work normally in input
+          return
+        }
+        // Continue to handle navigation keys below
+      }
+
+      // Allow simultaneous navigation and typing
+      const isModifierKey = e.ctrlKey || e.metaKey || e.altKey
+      const isActionKey = ['Enter', 'Escape'].includes(e.key)
+      
+      if (isNavigationKey || isActionKey) {
+        e.preventDefault()
+        
+        switch (e.key) {
+          case 'ArrowDown':
+            setSelectedTime(prev => {
+              const endOfDay = new Date(prev)
+              endOfDay.setHours(23, 45, 0, 0)
+              
+              let newTime = new Date(prev)
+              const currentMinutes = newTime.getMinutes()
+              
+              // Find the next 15-minute increment
+              const nextIncrement = Math.ceil(currentMinutes / 15) * 15
+              
+              if (nextIncrement === 60) {
+                // Move to next hour
+                newTime.setHours(newTime.getHours() + 1)
+                newTime.setMinutes(0)
+              } else if (nextIncrement === currentMinutes) {
+                // Already on a 15-minute mark, go to next one
+                newTime.setMinutes(currentMinutes + 15)
+              } else {
+                // Snap to next 15-minute increment
+                newTime.setMinutes(nextIncrement)
+              }
+              
+              // If we go past midnight, stay at 11:45 PM
+              if (newTime.getDate() !== prev.getDate()) {
+                newTime.setDate(prev.getDate())
+                newTime.setHours(23, 45, 0, 0)
+              }
+              
+              newTime.setSeconds(0)
+              newTime.setMilliseconds(0)
+              
+              // Skip over conflicts by continuing to move forward
+              while (newTime <= endOfDay && hasTimeConflict(newTime, visibleEvents)) {
+                newTime.setMinutes(newTime.getMinutes() + 15)
+                if (newTime.getMinutes() === 0 && newTime.getHours() === 0) {
+                  // Went past midnight, reset to end of day
+                  newTime.setDate(prev.getDate())
+                  newTime.setHours(23, 45, 0, 0)
+                  break
+                }
+              }
+              
+              return newTime
+            })
+            break
+          case 'ArrowUp':
+            setSelectedTime(prev => {
+              const startOfDay = new Date(prev)
+              startOfDay.setHours(0, 0, 0, 0)
+              
+              let newTime = new Date(prev)
+              const currentMinutes = newTime.getMinutes()
+              
+              // Find the previous 15-minute increment
+              const prevIncrement = Math.floor(currentMinutes / 15) * 15
+              
+              if (prevIncrement === currentMinutes && currentMinutes > 0) {
+                // Already on a 15-minute mark, go to previous one
+                newTime.setMinutes(currentMinutes - 15)
+              } else if (currentMinutes === 0) {
+                // At top of hour, go to previous hour's :45
+                newTime.setHours(newTime.getHours() - 1)
+                newTime.setMinutes(45)
+              } else {
+                // Snap to previous 15-minute increment
+                newTime.setMinutes(prevIncrement)
+              }
+              
+              // Don't go before midnight
+              if (newTime.getDate() !== prev.getDate()) {
+                newTime.setDate(prev.getDate())
+                newTime.setHours(0, 0, 0, 0)
+              }
+              
+              newTime.setSeconds(0)
+              newTime.setMilliseconds(0)
+              
+              // Skip over conflicts by continuing to move backward
+              while (newTime >= startOfDay && hasTimeConflict(newTime, visibleEvents)) {
+                newTime.setMinutes(newTime.getMinutes() - 15)
+                if (newTime < startOfDay) {
+                  // Went before start of day, reset to start of day
+                  newTime = new Date(startOfDay)
+                  break
+                }
+              }
+              
+              return newTime
+            })
+            break
+          case 'ArrowLeft':
+            const prevDate = new Date(selectedDate)
+            prevDate.setDate(prevDate.getDate() - 1)
+            setSelectedDate(prevDate)
+            
+            // Update selected time to same time on new date
+            setSelectedTime(prev => {
+              const newTime = new Date(prevDate)
+              newTime.setHours(prev.getHours(), prev.getMinutes(), 0, 0)
+              return newTime
+            })
+            break
+          case 'ArrowRight':
+            const nextDate = new Date(selectedDate)
+            nextDate.setDate(nextDate.getDate() + 1)
+            setSelectedDate(nextDate)
+            
+            // Update selected time to same time on new date
+            setSelectedTime(prev => {
+              const newTime = new Date(nextDate)
+              newTime.setHours(prev.getHours(), prev.getMinutes(), 0, 0)
+              return newTime
+            })
+            break
+          case 'Enter':
+            if (!previewMode) {
+              setPreviewMode(true)
+            } else {
+              handleConfirmSelection()
+            }
+            break
+          case 'Escape':
+            if (previewMode) {
+              setPreviewMode(false)
+            } else {
+              onClose()
+            }
+            break
+        }
+      } else if (!isModifierKey && e.key.length === 1 && dateInputRef.current) {
+        // Single character key - focus input and type
+        dateInputRef.current.focus()
+        // Let the default behavior handle the typing
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isVisible, selectedDate, selectedTime, previewMode])
+
+  const handleSlotClick = (time: Date) => {
+    setSelectedTime(time)
+    if (!previewMode) {
+      setPreviewMode(true)
+    } else if (selectedTime.getTime() === time.getTime()) {
+      handleConfirmSelection()
+    }
+  }
+
+  const handleConfirmSelection = () => {
+    const dateString = formatDateForTodoist(selectedTime)
+    onScheduledDateChange(dateString)
+    onClose()
+  }
+
+  const handleClearDate = () => {
+    onScheduledDateChange('')
+    onClose()
+  }
+
+  const toggleCalendarVisibility = (calendarId: string) => {
+    setCalendarVisibility(prev => ({
+      ...prev,
+      [calendarId]: !prev[calendarId]
+    }))
   }
 
   if (!isVisible) return null
 
   return (
-    <div 
-      className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-8">
       <div 
-        className="bg-white rounded-xl shadow-xl border border-gray-200 max-w-5xl w-full mx-4 h-[85vh] flex flex-col overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
+        ref={containerRef}
+        className="bg-white rounded-lg shadow-xl w-full max-w-4xl h-full max-h-[800px] flex flex-col"
       >
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200 bg-white">
-          <div className="flex items-center justify-between">
+        <div className={`border-b border-gray-200 ${mode === 'deadline' ? 'bg-red-50' : 'bg-blue-50'}`}>
+          <div className="px-6 py-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                mode === 'deadline' ? 'bg-red-500' : 'bg-blue-500'
+              }`}>
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {mode === 'deadline' ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  )}
                 </svg>
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">
-                  {mode === 'scheduled' ? 'Schedule task' : 'Set deadline'}
-                </h2>
-                <p className="text-sm text-gray-600 mt-0.5 font-medium truncate max-w-md">{currentTask.content}</p>
+                <h3 className={`text-lg font-semibold ${
+                  mode === 'deadline' ? 'text-red-900' : 'text-blue-900'
+                }`}>
+                  {mode === 'deadline' ? 'Set Deadline' : 'Schedule Task'}
+                </h3>
+                <p className={`text-sm ${
+                  mode === 'deadline' ? 'text-red-700' : 'text-blue-700'
+                } truncate max-w-md`}>
+                  {currentTask.content}
+                </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowDatePicker(true)}
-                className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors font-medium flex items-center gap-2"
-              >
-                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                {selectedDate.toLocaleDateString('en-US', { 
-                  month: 'short', 
-                  day: 'numeric',
-                  weekday: 'short'
-                })}
-              </button>
-              <button
-                onClick={onClose}
-                className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors"
-              >
-                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          {/* Date input bar */}
+          <div className="px-6 py-3 border-t border-gray-100">
+            <div className="flex items-center gap-3">
+              <Clock className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              <input
+                ref={dateInputRef}
+                type="text"
+                value={dateInput}
+                onChange={(e) => handleDateInputChange(e.target.value)}
+                placeholder={mode === 'deadline' ? "When must this be done?" : "When will you work on this?"}
+                className={`flex-1 px-3 py-2 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:border-transparent ${
+                  mode === 'deadline' ? 'focus:ring-red-500' : 'focus:ring-blue-500'
+                }`}
+              />
+              <div className="relative group">
+                <span className="text-xs text-gray-500 flex-shrink-0 cursor-help">
+                  Type naturally or use arrow keys
+                </span>
+                
+                {/* Keyboard shortcuts tooltip */}
+                <div className="absolute top-full right-0 mt-2 w-56 p-3 bg-gray-900 text-white rounded-lg shadow-xl opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 pointer-events-none group-hover:pointer-events-auto z-50">
+                  <div className="space-y-1.5 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-gray-300">Navigate time</span>
+                      <kbd className="px-1.5 py-0.5 bg-gray-800 rounded text-xs font-mono">↑ ↓</kbd>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-300">Change day</span>
+                      <kbd className="px-1.5 py-0.5 bg-gray-800 rounded text-xs font-mono">← →</kbd>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-300">Confirm</span>
+                      <kbd className="px-1.5 py-0.5 bg-gray-800 rounded text-xs font-mono">Enter</kbd>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-300">Cancel</span>
+                      <kbd className="px-1.5 py-0.5 bg-gray-800 rounded text-xs font-mono">Esc</kbd>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-300">Clear date</span>
+                      <kbd className="px-1.5 py-0.5 bg-gray-800 rounded text-xs font-mono">⇧ Del</kbd>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Main Content */}
+        {/* Main content */}
         <div className="flex-1 flex overflow-hidden">
-          {authRequired ? (
-            <div className="flex flex-col items-center justify-center flex-1 gap-6 p-8">
-              <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center">
-                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-              </div>
-              <div className="text-center">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Connect your calendar</h3>
-                <p className="text-gray-600 text-sm max-w-sm">
-                  To schedule tasks and avoid conflicts, please authorize access to your Google Calendar.
-                </p>
-              </div>
-              <a 
-                href="/api/auth/google" 
-                className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium inline-flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                </svg>
-                Connect Google Calendar
-              </a>
-            </div>
-          ) : calendarError ? (
-            <div className="flex flex-col items-center justify-center flex-1 gap-4 p-8">
-              <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center">
-                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-              </div>
-              <div className="text-center">
-                <h3 className="text-lg font-semibold text-gray-900 mb-1">Connection error</h3>
-                <p className="text-red-600 text-sm">{calendarError}</p>
-              </div>
-            </div>
-          ) : (
-            <>
-              {/* Show calendar grid with loading overlay */}
-              <div className="relative flex-1">
-                {loadingCalendar && (
-                  <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex items-center justify-center z-30">
-                    <div className="flex items-center gap-3 bg-white px-4 py-3 rounded-lg shadow-sm border border-gray-200">
-                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-gray-300 border-t-blue-600"></div>
-                      <span className="text-gray-700 font-medium">Loading events...</span>
-                    </div>
-                  </div>
-                )}
-                
-                <CalendarGrid
-                  events={calendarEvents}
-                  selectedSlot={selectedSlot?.time || null}
-                  onSlotClick={(time) => {
-                    // Create a new slot for the clicked time
-                    const newSlot: TimeSlot = {
-                      time,
-                      available: !calendarEvents.some(event => 
-                        !event.isAllDay && // Don't consider all-day events as conflicts
-                        time < new Date(event.end) && 
-                        new Date(time.getTime() + 30 * 60000) > new Date(event.start)
-                      ),
-                      hasConflict: false,
-                      events: []
-                    }
-                    setSelectedSlot(newSlot)
-                    if (!previewMode) {
-                      setPreviewMode(true)
-                    }
-                  }}
-                  currentDate={selectedDate}
-                  previewMode={previewMode}
-                  taskDuration={30}
-                  daysToShow={3}
-                />
-              </div>
+          {/* Calendar Grid */}
+          <div className="flex-1 overflow-hidden border-r border-gray-200">
+            <CalendarGrid
+              events={visibleEvents}
+              selectedSlot={selectedTime}
+              onSlotClick={handleSlotClick}
+              currentDate={selectedDate}
+              previewMode={previewMode}
+              taskDuration={30}
+              daysToShow={1}
+              mode={mode}
+              taskContent={currentTask.content}
+            />
+          </div>
 
-              {/* Calendar List Sidebar */}
-              <div className="w-72 border-l border-gray-200 bg-gray-50/50 overflow-y-auto">
-                <div className="p-4 border-b border-gray-200 bg-white">
-                  <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    My calendars
-                  </h3>
-                </div>
-                
-                <div className="p-4">
-                  {/* Group events by calendar */}
-                  {(() => {
-                    const calendarMap = new Map<string, { name: string; color: string; events: CalendarEvent[] }>()
-                    
-                    calendarEvents.forEach(event => {
-                      if (!calendarMap.has(event.calendarId)) {
-                        calendarMap.set(event.calendarId, {
-                          name: event.calendarName,
-                          color: event.color || '#3b82f6',
-                          events: []
-                        })
-                      }
-                      calendarMap.get(event.calendarId)!.events.push(event)
-                    })
-                    
-                    return Array.from(calendarMap.entries()).map(([id, calendar]) => (
-                      <div key={id} className="mb-3 p-3 bg-white rounded-lg border border-gray-200/60 hover:border-gray-300 transition-colors">
-                        <div className="flex items-center justify-between">
+          {/* Sidebar */}
+          <div className="w-80 bg-gray-50">
+            {/* Calendar visibility toggles */}
+            <div className="flex flex-col h-full">
+              <div className="p-4 pb-2">
+                <h4 className="text-sm font-medium text-gray-700">Calendars</h4>
+              </div>
+              <div className="flex-1 overflow-y-auto px-4 pb-4" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                <style jsx>{`
+                  div::-webkit-scrollbar {
+                    display: none;
+                  }
+                `}</style>
+                <div className="space-y-2">
+                  {uniqueCalendars.map((calendar) => {
+                    const calendarEvents = visibleEvents.filter(e => e.calendarId === calendar.id)
+                    return (
+                      <div
+                        key={calendar.id}
+                        className="bg-white rounded-lg p-3 border border-gray-200 hover:shadow-sm transition-shadow cursor-pointer"
+                        onClick={() => toggleCalendarVisibility(calendar.id)}
+                      >
+                        <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-3 min-w-0 flex-1">
-                            <div 
-                              className="w-3 h-3 rounded-full flex-shrink-0" 
-                              style={{ backgroundColor: calendar.color }}
+                            <input
+                              type="checkbox"
+                              checked={calendarVisibility[calendar.id] !== false}
+                              onChange={(e) => {
+                                e.stopPropagation()
+                                toggleCalendarVisibility(calendar.id)
+                              }}
+                              className="rounded text-blue-500 flex-shrink-0"
+                              onClick={(e) => e.stopPropagation()}
                             />
-                            <span className="text-sm font-medium text-gray-900 truncate">
+                            <div
+                              className="w-3 h-3 rounded-full flex-shrink-0"
+                              style={{ 
+                                backgroundColor: calendar.color || '#4285f4'
+                              }}
+                            />
+                            <div className="font-medium text-gray-900 truncate text-sm pr-2" title={calendar.name}>
                               {calendar.name}
-                            </span>
+                            </div>
                           </div>
-                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full font-medium">
-                            {calendar.events.length}
+                          <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 flex-shrink-0 ml-2">
+                            {calendarEvents.length}
                           </span>
                         </div>
                       </div>
-                    ))
-                  })()}
-                  
-                  {calendarEvents.length === 0 && !loadingCalendar && (
-                    <div className="text-center py-8">
-                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                      <p className="text-sm text-gray-500">No events for these days</p>
-                    </div>
-                  )}
+                    )
+                  })}
                 </div>
               </div>
-            </>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 bg-white">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4 text-xs text-gray-500">
-              <div className="flex items-center gap-1">
-                <kbd className="px-1.5 py-0.5 bg-gray-100 rounded border text-gray-600 font-mono">↑↓</kbd>
-                <span>Navigate</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <kbd className="px-1.5 py-0.5 bg-gray-100 rounded border text-gray-600 font-mono">←→</kbd>
-                <span>Change day</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <kbd className="px-1.5 py-0.5 bg-gray-100 rounded border text-gray-600 font-mono">Enter</kbd>
-                <span>{previewMode ? 'Confirm' : 'Preview'}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <kbd className="px-1.5 py-0.5 bg-gray-100 rounded border text-gray-600 font-mono">Esc</kbd>
-                <span>{previewMode ? 'Cancel' : 'Close'}</span>
-              </div>
             </div>
-            {previewMode && (
-              <button
-                onClick={handleConfirmSelection}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium inline-flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                Schedule task
-              </button>
+
+            {/* Status indicators */}
+            {(loadingCalendar || authRequired || calendarError) && (
+              <div className="p-4 space-y-2">
+                {loadingCalendar && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Loading calendar events...
+                  </div>
+                )}
+                {authRequired && (
+                  <div className="flex items-center gap-2 text-sm text-orange-600">
+                    <AlertCircle className="w-4 h-4" />
+                    Calendar authorization required
+                  </div>
+                )}
+                {calendarError && (
+                  <div className="flex items-center gap-2 text-sm text-red-600">
+                    <AlertCircle className="w-4 h-4" />
+                    Error loading calendar
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>
 
-        {/* Date Picker Modal */}
-        {showDatePicker && (
-          <div className="absolute inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl shadow-xl border border-gray-200 p-6 max-w-sm w-full mx-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Select date</h3>
-                <button
-                  onClick={() => setShowDatePicker(false)}
-                  className="w-6 h-6 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors"
-                >
-                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              
-              <div className="space-y-3">
-                {/* Quick date options */}
-                {[
-                  { label: 'Today', date: new Date() },
-                  { label: 'Tomorrow', date: (() => { const d = new Date(); d.setDate(d.getDate() + 1); return d })() },
-                  { label: 'This weekend', date: (() => { 
-                    const d = new Date(); 
-                    const daysUntilSaturday = (6 - d.getDay()) % 7;
-                    d.setDate(d.getDate() + daysUntilSaturday); 
-                    return d 
-                  })() },
-                  { label: 'Next week', date: (() => { 
-                    const d = new Date(); 
-                    const daysUntilMonday = (8 - d.getDay()) % 7;
-                    d.setDate(d.getDate() + daysUntilMonday); 
-                    return d 
-                  })() }
-                ].map(({ label, date }) => {
-                  date.setHours(0, 0, 0, 0)
-                  const isSelected = selectedDate.getTime() === date.getTime()
-                  return (
-                    <button
-                      key={label}
-                      onClick={() => handleDatePickerSelect(date)}
-                      className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
-                        isSelected 
-                          ? 'bg-blue-100 text-blue-900 font-medium' 
-                          : 'hover:bg-gray-100 text-gray-700'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span>{label}</span>
-                        <span className="text-sm text-gray-500">
-                          {date.toLocaleDateString('en-US', { 
-                            month: 'short', 
-                            day: 'numeric',
-                            weekday: 'short'
-                          })}
-                        </span>
-                      </div>
-                    </button>
-                  )
+        {/* Footer */}
+        <div className="border-t border-gray-200 bg-gray-50">
+          <div className="px-6 py-3 flex items-center justify-between">
+            {/* Left side - Selected time */}
+            <div className="flex items-center gap-3">
+              <Clock className="w-4 h-4 text-gray-400" />
+              <span className="font-medium text-gray-700">
+                {selectedTime.toLocaleDateString('en-US', { 
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric'
                 })}
-                
-                {/* HTML date input for custom dates */}
-                <div className="pt-2 border-t border-gray-200">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Custom date</label>
-                  <input
-                    type="date"
-                    value={selectedDate.toISOString().split('T')[0]}
-                    onChange={(e) => {
-                      const date = new Date(e.target.value + 'T00:00:00')
-                      handleDatePickerSelect(date)
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
+              </span>
+              <span className="text-lg font-semibold text-blue-600">
+                {selectedTime.toLocaleTimeString('en-US', { 
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  hour12: true
+                })}
+              </span>
+            </div>
+            
+            {/* Right side - Action buttons */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleClearDate}
+                className="px-3 py-1.5 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded"
+              >
+                Clear Date
+              </button>
+              {previewMode && (
+                <button
+                  onClick={() => setPreviewMode(false)}
+                  className="px-3 py-1.5 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded"
+                >
+                  Cancel Preview
+                </button>
+              )}
+              <button
+                onClick={handleConfirmSelection}
+                className={`px-4 py-1.5 text-sm rounded font-medium flex items-center gap-2 ${
+                  previewMode 
+                    ? mode === 'deadline'
+                      ? 'bg-red-500 text-white hover:bg-red-600' 
+                      : 'bg-blue-500 text-white hover:bg-blue-600'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                }`}
+                disabled={!previewMode}
+              >
+                {mode === 'deadline' ? 'Set Deadline' : 'Schedule Task'}
+                {previewMode && (
+                  <kbd className={`px-1.5 py-0.5 rounded text-xs font-mono ${
+                    mode === 'deadline' ? 'bg-red-600' : 'bg-blue-600'
+                  }`}>↵</kbd>
+                )}
+              </button>
             </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   )
