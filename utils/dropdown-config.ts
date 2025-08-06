@@ -63,7 +63,7 @@ function getPlaceholder(type: ProcessingModeType | 'prioritized'): string {
     case 'priority':
       return 'Select priority...'
     case 'label':
-      return 'Select labels...'
+      return 'Select label...'
     case 'date':
       return 'Select date...'
     case 'deadline':

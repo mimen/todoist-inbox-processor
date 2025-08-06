@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useImperativeHandle, forwardRef, useRef, useEffect } from 'react';
+import React, { useState, useImperativeHandle, forwardRef, useRef, useEffect, useMemo } from 'react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { ProcessingMode, ProcessingModeType, PROCESSING_MODE_OPTIONS } from '@/types/processing-mode';
@@ -18,6 +18,8 @@ import { useQueueProgression } from '@/hooks/useQueueProgression';
 import { useCurrentModeOptions } from '@/hooks/useCurrentModeOptions';
 import { useQueueConfig } from '@/hooks/useQueueConfig';
 import { QueueProgressionState } from '@/types/queue';
+import { sortDropdownOptions } from '@/utils/dropdown-sorting';
+import { getDefaultSortOption, SortOption } from '@/constants/dropdown-sort-options';
 
 export interface ProcessingModeSelectorRef {
   switchToMode: (type: ProcessingModeType) => void;
@@ -56,6 +58,24 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
   // Track the selected processing type separately from the active processing mode
   // This allows the UI to show the correct dropdown without changing the display name prematurely
   const [selectedProcessingType, setSelectedProcessingType] = useState<ProcessingModeType>(mode.type as ProcessingModeType);
+  
+  // Track sort state for each mode type
+  const [sortStates, setSortStates] = useState<Record<string, SortOption>>({});
+  
+  // Get current sort for the active mode
+  const currentSort = useMemo(() => {
+    const modeType = mode.type.startsWith('custom:') ? 'preset' : mode.type as ProcessingModeType;
+    return sortStates[modeType] || getDefaultSortOption(modeType);
+  }, [mode.type, sortStates]);
+  
+  // Handle sort changes from dropdowns
+  const handleSortChange = (sort: SortOption) => {
+    const modeType = mode.type.startsWith('custom:') ? 'preset' : mode.type as ProcessingModeType;
+    setSortStates(prev => ({
+      ...prev,
+      [modeType]: sort
+    }));
+  };
   
   // Sync selectedProcessingType when mode changes externally (e.g., when tasks are loaded)
   React.useEffect(() => {
@@ -99,10 +119,22 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
     projectMetadata
   });
 
-  // Use queue progression
+  // Apply sorting to options based on current sort state
+  const sortedOptions = useMemo(() => {
+    if (!currentSort) return currentModeOptions;
+    
+    const sortConfig = {
+      sortBy: currentSort.value,
+      sortDirection: currentSort.direction
+    };
+    
+    return sortDropdownOptions(currentModeOptions, sortConfig, currentSort.value);
+  }, [currentModeOptions, currentSort]);
+
+  // Use queue progression with sorted options
   const queueState = useQueueProgression({
-    mode: mode.type,
-    dropdownOptions: currentModeOptions,
+    currentValue: mode.value,
+    dropdownOptions: sortedOptions,
     config: queueConfig
   });
 
@@ -112,11 +144,6 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
     // This prevents premature display name changes and metadata hiding
     
     setSelectedProcessingType(newType);
-    
-    // Reset queue progression when changing modes
-    if ('resetQueueProgress' in queueState && typeof queueState.resetQueueProgress === 'function') {
-      queueState.resetQueueProgress();
-    }
     
     // Don't call onModeChange here - let the dropdown selection handle it
     // The radio button selection just controls which dropdown is visible
@@ -170,33 +197,11 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
     },
     openCurrentDropdown,
     queueState
-    // TODO: Future methods to expose:
-    // getQueueHistory: () => completedQueues[]
-    // skipToQueue: (queueId: string) => void
-    // reorderQueues: (newOrder: string[]) => void
-    // saveQueueState: () => void
-    // loadQueueState: () => void
   }), [mode.type, handleModeTypeChange, queueState]);
 
   const handleValueChange = (value: string | string[], displayName: string) => {
-    // Find the index of the selected option in the current queue
-    const selectedIndex = currentModeOptions.findIndex(option => {
-      if (Array.isArray(value)) {
-        // For multi-select (labels), match if the arrays are equal
-        return Array.isArray(option.id) && 
-          value.length === option.id.length && 
-          value.every(v => option.id.includes(v));
-      }
-      return option.id === value;
-    });
-
-    // Jump to the selected queue if found
-    if (selectedIndex !== -1) {
-      if ('jumpToQueue' in queueState && typeof queueState.jumpToQueue === 'function') {
-        (queueState as any).jumpToQueue(selectedIndex);
-      }
-    }
-
+    // Simply update the mode - the queue progression hook will automatically
+    // find the correct position based on the value
     onModeChange({
       ...mode,
       type: selectedProcessingType,
@@ -247,6 +252,8 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
                 handleValueChange(projectId, project?.name || 'Unknown');
               }}
               allTasks={filteredTasks}
+              currentSort={currentSort}
+              onSortChange={handleSortChange}
             />
           )}
 
@@ -264,9 +271,11 @@ const ProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, ProcessingM
           {selectedProcessingType === 'label' && (
             <LabelDropdown
               ref={labelDropdownRef}
-              selectedLabels={Array.isArray(mode.value) ? mode.value : []}
+              selectedLabels={mode.value ? [mode.value as string] : []}
               onLabelsChange={(labels, displayName) => {
-                handleValueChange(labels, displayName);
+                // Take only the first label since we're in single-select mode
+                const singleLabel = labels[0] || '';
+                handleValueChange(singleLabel, displayName);
               }}
               availableLabels={allLabelNames}
               allTasks={filteredTasks}

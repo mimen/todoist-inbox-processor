@@ -7,6 +7,7 @@ import { UnifiedDropdownRef } from '@/types/dropdown';
 import { useProjectOptions } from '@/hooks/useProjectOptions';
 import { useQueueConfig } from '@/hooks/useQueueConfig';
 import { getDropdownConfig } from '@/utils/dropdown-config';
+import { SortOption } from '@/constants/dropdown-sort-options';
 
 interface ProjectDropdownProps {
   projects: TodoistProject[];
@@ -16,6 +17,9 @@ interface ProjectDropdownProps {
   includeInbox?: boolean;
   className?: string;
   allTasks?: TodoistTask[];
+  // Sort management
+  currentSort?: SortOption | null;
+  onSortChange?: (sort: SortOption) => void;
 }
 
 const ProjectDropdown = forwardRef<any, ProjectDropdownProps>(({
@@ -25,7 +29,9 @@ const ProjectDropdown = forwardRef<any, ProjectDropdownProps>(({
   placeholder,
   includeInbox = true,
   className = "",
-  allTasks = []
+  allTasks = [],
+  currentSort,
+  onSortChange
 }: ProjectDropdownProps, ref) => {
   const dropdownRef = useRef<UnifiedDropdownRef>(null);
   const queueConfig = useQueueConfig();
@@ -59,6 +65,8 @@ const ProjectDropdown = forwardRef<any, ProjectDropdownProps>(({
       type="project"
       className={className}
       loading={allTasks.length === 0}
+      currentSort={currentSort}
+      onSortChange={onSortChange}
     />
   );
 });
