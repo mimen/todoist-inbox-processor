@@ -23,7 +23,7 @@ function startDevServer() {
   }
 
   console.log('🚀 Starting Next.js dev server...');
-  devProcess = spawn('npm', ['run', 'dev'], {
+  devProcess = spawn('npx', ['next', 'dev', '-p', '4200'], {
     stdio: 'pipe',
     shell: true
   });
