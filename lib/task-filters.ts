@@ -142,6 +142,14 @@ export function filterTasksByMode(
         const prioritizedValue = JSON.parse(mode.value as string);
         const { filterType, filterValue } = prioritizedValue;
         
+        console.log('[filterTasksByMode] Prioritized mode:', {
+          originalMode: mode,
+          parsedValue: prioritizedValue,
+          filterType,
+          filterValue,
+          displayName: mode.displayName
+        });
+        
         // Create a temporary mode with the actual filter type
         const actualMode: ProcessingMode = {
           type: filterType,

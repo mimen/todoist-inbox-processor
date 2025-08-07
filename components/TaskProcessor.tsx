@@ -60,7 +60,13 @@ import AssigneeFilter, { AssigneeFilterType } from './AssigneeFilter'
 import QueueCompletionView from './QueueCompletionView'
 import ViewModeToggle from './ViewModeToggle'
 import ListView from './ListView/ListView'
+import MultiListContainer from './ListView/MultiListContainer'
 import SyncStatus from './SyncStatus'
+import { useSettingsContext } from '@/contexts/SettingsContext'
+import SettingsButton from './SettingsButton'
+import SettingsModal from './SettingsModal'
+import MultiListModeIndicator from './MultiListModeIndicator'
+import DebugInfo from './DebugInfo'
 
 export default function TaskProcessor() {
   const searchParams = useSearchParams()
@@ -102,6 +108,10 @@ export default function TaskProcessor() {
   const [overlayTaskId, setOverlayTaskId] = useState<string | null>(null)
   const [projectCollaborators, setProjectCollaborators] = useState<Record<string, TodoistUser[]>>({})
   const [dateLoadingStates, setDateLoadingStates] = useState<Record<string, 'due' | 'deadline' | null>>({})
+  
+  // Settings state
+  const { settings } = useSettingsContext()
+  const [showSettingsModal, setShowSettingsModal] = useState(false)
   // Removed showNextQueuePrompt as it's now integrated into empty state
   
   // VIEW MODE STATE (for List View feature)
@@ -302,11 +312,19 @@ export default function TaskProcessor() {
           isPriorityProject: false
         }
         
-        setProcessingMode({
-          type: 'prioritized',
+        const initialMode = {
+          type: 'prioritized' as const,
           value: JSON.stringify(prioritizedValue),
           displayName: 'Inbox'
+        }
+        
+        console.log('[TaskProcessor] Setting initial processing mode:', {
+          mode: initialMode,
+          prioritizedValue,
+          inboxId
         })
+        
+        setProcessingMode(initialMode)
         
         // Load ALL tasks immediately using sync API
         const allTasksRes = await fetch('/api/todoist/all-tasks')
@@ -437,7 +455,10 @@ export default function TaskProcessor() {
           return
         }
         filteredTasks = filterTasksByMode(allTasksGlobal, mode, projectMetadata, assigneeFilter, currentUserId)
-        console.log(`📋 ${mode.displayName}: ${filteredTasks.length} tasks`)
+        console.log(`📋 ${mode.displayName}: ${filteredTasks.length} tasks`, {
+          mode,
+          firstTask: filteredTasks[0]
+        })
       }
       
       // NEW QUEUE ARCHITECTURE: Update master store and reset queue
@@ -1801,23 +1822,31 @@ export default function TaskProcessor() {
                 </>
               )}
               <SyncStatus />
+              <div className="h-5 w-px bg-gray-300 dark:bg-gray-700" />
+              <SettingsButton onClick={() => setShowSettingsModal(true)} />
             </div>
           </div>
           
-          {/* Processing Mode Selector */}
-          <ProcessingModeSelector
-            ref={processingModeSelectorRef}
-            mode={processingMode}
-            onModeChange={setProcessingMode}
-            projects={projects}
-            allTasks={allTasksGlobal}
-            allTasksGlobal={allTasksGlobal}
-            taskCounts={getTaskCountsForProjects(allTasksGlobal, projects.map(p => p.id), assigneeFilter, currentUserId)}
-            labels={labels}
-            projectMetadata={projectMetadata}
-            currentUserId={currentUserId}
-            assigneeFilter={assigneeFilter}
-          />
+          {/* Processing Mode Selector - Hide in multi-list mode */}
+          {settings.listView.multiListMode && viewMode === 'list' && processingMode.type === 'prioritized' ? (
+            <div className="px-4 py-3">
+              <MultiListModeIndicator isActive={true} />
+            </div>
+          ) : (
+            <ProcessingModeSelector
+              ref={processingModeSelectorRef}
+              mode={processingMode}
+              onModeChange={setProcessingMode}
+              projects={projects}
+              allTasks={allTasksGlobal}
+              allTasksGlobal={allTasksGlobal}
+              taskCounts={getTaskCountsForProjects(allTasksGlobal, projects.map(p => p.id), assigneeFilter, currentUserId)}
+              labels={labels}
+              projectMetadata={projectMetadata}
+              currentUserId={currentUserId}
+              assigneeFilter={assigneeFilter}
+            />
+          )}
         </div>
       </div>
         
@@ -1834,32 +1863,60 @@ export default function TaskProcessor() {
       <div className="max-w-4xl mx-auto p-4">
         {/* Main Content Area - conditional based on view mode */}
         {viewMode === 'list' ? (
-          <ListView
-            tasks={activeQueue
-              .filter(id => !processedTaskIds.includes(id))
-              .map(id => masterTasks[id])
-              .filter(Boolean)}
-            projects={projects}
-            labels={labels}
-            processingMode={processingMode}
-            projectMetadata={projectMetadata}
-            listViewState={listViewState}
-            slidingOutTaskIds={slidingOutTaskIds}
-            onListViewStateChange={setListViewState}
-            onTaskUpdate={handleListViewTaskUpdate}
-            onTaskComplete={handleListViewTaskComplete}
-            onTaskProcess={handleListViewTaskProcess}
-            onTaskDelete={handleListViewTaskDelete}
-            onViewModeChange={setViewMode}
-            currentUserId={currentUserId}
-            collaborators={projectCollaborators}
-            onOpenProjectOverlay={handleOpenProjectOverlay}
-            onOpenPriorityOverlay={handleOpenPriorityOverlay}
-            onOpenLabelOverlay={handleOpenLabelOverlay}
-            onOpenScheduledOverlay={handleOpenScheduledOverlay}
-            onOpenDeadlineOverlay={handleOpenDeadlineOverlay}
-            onOpenAssigneeOverlay={handleOpenAssigneeOverlay}
-          />
+          settings.listView.multiListMode && processingMode.type === 'prioritized' ? (
+            <MultiListContainer
+              masterTasks={masterTasks}
+              allTasks={allTasksGlobal}
+              projects={projects}
+              labels={labels}
+              processingMode={processingMode}
+              projectMetadata={projectMetadata}
+              listViewState={listViewState}
+              slidingOutTaskIds={slidingOutTaskIds}
+              onListViewStateChange={setListViewState}
+              onTaskUpdate={handleListViewTaskUpdate}
+              onTaskComplete={handleListViewTaskComplete}
+              onTaskProcess={handleListViewTaskProcess}
+              onTaskDelete={handleListViewTaskDelete}
+              onViewModeChange={setViewMode}
+              currentUserId={currentUserId}
+              assigneeFilter={assigneeFilter}
+              collaborators={projectCollaborators}
+              onOpenProjectOverlay={handleOpenProjectOverlay}
+              onOpenPriorityOverlay={handleOpenPriorityOverlay}
+              onOpenLabelOverlay={handleOpenLabelOverlay}
+              onOpenScheduledOverlay={handleOpenScheduledOverlay}
+              onOpenDeadlineOverlay={handleOpenDeadlineOverlay}
+              onOpenAssigneeOverlay={handleOpenAssigneeOverlay}
+            />
+          ) : (
+            <ListView
+              tasks={activeQueue
+                .filter(id => !processedTaskIds.includes(id))
+                .map(id => masterTasks[id])
+                .filter(Boolean)}
+              projects={projects}
+              labels={labels}
+              processingMode={processingMode}
+              projectMetadata={projectMetadata}
+              listViewState={listViewState}
+              slidingOutTaskIds={slidingOutTaskIds}
+              onListViewStateChange={setListViewState}
+              onTaskUpdate={handleListViewTaskUpdate}
+              onTaskComplete={handleListViewTaskComplete}
+              onTaskProcess={handleListViewTaskProcess}
+              onTaskDelete={handleListViewTaskDelete}
+              onViewModeChange={setViewMode}
+              currentUserId={currentUserId}
+              collaborators={projectCollaborators}
+              onOpenProjectOverlay={handleOpenProjectOverlay}
+              onOpenPriorityOverlay={handleOpenPriorityOverlay}
+              onOpenLabelOverlay={handleOpenLabelOverlay}
+              onOpenScheduledOverlay={handleOpenScheduledOverlay}
+              onOpenDeadlineOverlay={handleOpenDeadlineOverlay}
+              onOpenAssigneeOverlay={handleOpenAssigneeOverlay}
+            />
+          )
         ) : currentTask && !loadingTasks ? (
           <div className="space-y-6">
             {/* Progress Indicator - only in Processing View */}
@@ -2165,6 +2222,24 @@ export default function TaskProcessor() {
         </div>
       )}
       
+
+      {/* Settings Modal */}
+      <SettingsModal 
+        isOpen={showSettingsModal} 
+        onClose={() => setShowSettingsModal(false)} 
+      />
+
+      {/* Debug Info */}
+      {isDebugMode && (
+        <DebugInfo
+          viewMode={viewMode}
+          processingMode={processingMode}
+          multiListMode={settings.listView.multiListMode}
+          isListView={viewMode === 'list'}
+          isPrioritized={processingMode.type === 'prioritized'}
+          shouldShowMultiList={settings.listView.multiListMode && processingMode.type === 'prioritized'}
+        />
+      )}
 
       {/* Toast Notification */}
       {toast && (

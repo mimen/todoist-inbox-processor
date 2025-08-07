@@ -22,6 +22,7 @@ export function usePrioritizedOptions(
   const priorityOptions = usePriorityOptions(tasks, {})
   const presetOptions = usePresetOptions(tasks, projectMetadata)
 
+
   return useMemo(() => {
     const options: DropdownOption[] = []
 
@@ -45,11 +46,12 @@ export function usePrioritizedOptions(
           }
           
           if (option) {
-            options.push({
+            const finalOption = {
               ...option,
               label: item.name || option.label,
               icon: item.icon || option.icon
-            })
+            }
+            options.push(finalOption)
           }
           break
         }
@@ -104,6 +106,7 @@ export function usePrioritizedOptions(
         }
       }
     })
+
 
     return options
   }, [prioritizedConfig, projectOptions, priorityOptions, presetOptions, projectMetadata, projects])
