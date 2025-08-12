@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { TodoistTask, TodoistProject, TodoistLabel, TodoistUser } from '@/lib/types'
 import { isExcludedLabel } from '@/lib/excluded-labels'
 import { getDateColor, getDateTimeLabel, getFullDateTime } from '@/lib/date-colors'
+import { parseTodoistLinks } from '@/lib/todoist-link-parser'
 
 interface TaskCardProps {
   task: TodoistTask
@@ -45,6 +46,8 @@ export default function TaskCard({
   const [description, setDescription] = useState(task.description || '')
   const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null)
   const [showDebug, setShowDebug] = useState(false)
+  const [isEditingContent, setIsEditingContent] = useState(false)
+  const [isEditingDescription, setIsEditingDescription] = useState(false)
   const contentRef = useRef<HTMLTextAreaElement>(null)
   const descriptionRef = useRef<HTMLTextAreaElement>(null)
   const searchParams = useSearchParams()
@@ -85,6 +88,39 @@ export default function TaskCard({
     debouncedSave('description', newDescription)
   }
 
+  const handleContentSubmit = useCallback(() => {
+    if (content.trim() && content !== task.content) {
+      onContentChange?.(content.trim())
+    }
+    setIsEditingContent(false)
+  }, [content, task.content, onContentChange])
+
+  const handleDescriptionSubmit = useCallback(() => {
+    if (description !== (task.description || '')) {
+      onDescriptionChange?.(description)
+    }
+    setIsEditingDescription(false)
+  }, [description, task.description, onDescriptionChange])
+
+  const handleContentKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleContentSubmit()
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      setContent(task.content)
+      setIsEditingContent(false)
+    }
+  }
+
+  const handleDescriptionKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      setDescription(task.description || '')
+      setIsEditingDescription(false)
+    }
+  }
+
   // Auto-resize textarea
   useEffect(() => {
     const adjustHeight = (textarea: HTMLTextAreaElement | null) => {
@@ -96,6 +132,20 @@ export default function TaskCard({
     adjustHeight(contentRef.current)
     adjustHeight(descriptionRef.current)
   }, [content, description])
+
+  // Focus textarea when entering edit mode
+  useEffect(() => {
+    if (isEditingContent && contentRef.current) {
+      contentRef.current.focus()
+      contentRef.current.select()
+    }
+  }, [isEditingContent])
+
+  useEffect(() => {
+    if (isEditingDescription && descriptionRef.current) {
+      descriptionRef.current.focus()
+    }
+  }, [isEditingDescription])
 
   const getTodoistColor = (colorName: string) => {
     const colorMap: { [key: string]: string } = {
@@ -155,26 +205,69 @@ export default function TaskCard({
       <div className="p-4 pb-2">
         {/* Task Content */}
         <div className="mb-1">
-          <textarea
-            ref={contentRef}
-            value={content}
-            onChange={handleContentChange}
-            className="w-full text-xl font-semibold text-gray-900 leading-tight bg-transparent hover:bg-gray-50 rounded px-2 py-1 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 resize-none transition-all overflow-hidden"
-            style={{ minHeight: '1.75rem' }}
-            placeholder="Task name..."
-          />
+          {isEditingContent ? (
+            <textarea
+              ref={contentRef}
+              value={content}
+              onChange={handleContentChange}
+              onBlur={handleContentSubmit}
+              onKeyDown={handleContentKeyDown}
+              className="w-full text-xl font-semibold text-gray-900 leading-tight bg-transparent hover:bg-gray-50 rounded px-2 py-1 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 resize-none transition-all overflow-hidden"
+              style={{ minHeight: '1.75rem' }}
+              placeholder="Task name..."
+            />
+          ) : (
+            // View mode - parse and render links
+            <div 
+              className="w-full text-xl font-semibold text-gray-900 leading-tight px-2 py-1 hover:bg-gray-50 rounded cursor-text"
+              onDoubleClick={() => setIsEditingContent(true)}
+              style={{ minHeight: '1.75rem' }}
+              title="Double-click to edit"
+            >
+              {parseTodoistLinks(content).map((segment, index) => {
+                if (segment.type === 'text') {
+                  return <span key={index}>{segment.content}</span>
+                } else {
+                  return (
+                    <a
+                      key={index}
+                      href={segment.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-700 underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {segment.content}
+                    </a>
+                  )
+                }
+              })}
+            </div>
+          )}
         </div>
 
         {/* Description */}
         <div>
-          <textarea
-            ref={descriptionRef}
-            value={description}
-            onChange={handleDescriptionChange}
-            className="w-full text-gray-600 bg-gray-50 hover:bg-gray-100 focus:bg-white rounded p-2.5 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none transition-all overflow-hidden"
-            placeholder="Add a description..."
-            style={{ minHeight: '2rem' }}
-          />
+          {isEditingDescription ? (
+            <textarea
+              ref={descriptionRef}
+              value={description}
+              onChange={handleDescriptionChange}
+              onBlur={handleDescriptionSubmit}
+              onKeyDown={handleDescriptionKeyDown}
+              className="w-full text-gray-600 bg-gray-50 hover:bg-gray-100 focus:bg-white rounded p-2.5 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none transition-all overflow-hidden"
+              placeholder="Add a description..."
+              style={{ minHeight: '2rem' }}
+            />
+          ) : (
+            <div 
+              className="w-full text-gray-600 bg-gray-50 hover:bg-gray-100 rounded p-2.5 text-sm leading-relaxed cursor-text min-h-[2rem]"
+              onDoubleClick={() => setIsEditingDescription(true)}
+              title="Double-click to edit"
+            >
+              {description || <span className="text-gray-400">Add a description...</span>}
+            </div>
+          )}
         </div>
       </div>
 

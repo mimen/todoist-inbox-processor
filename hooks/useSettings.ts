@@ -16,15 +16,24 @@ export function useSettings() {
       const stored = localStorage.getItem(SETTINGS_KEY)
       if (stored) {
         const parsed = JSON.parse(stored)
-        // Merge with defaults to ensure all settings exist
-        setSettings({
+        // Deep merge to ensure all settings exist, including new ones
+        const mergedSettings = {
           ...DEFAULT_SETTINGS,
           ...parsed,
+          general: {
+            ...DEFAULT_SETTINGS.general,
+            ...(parsed.general || {})
+          },
           listView: {
             ...DEFAULT_SETTINGS.listView,
             ...(parsed.listView || {})
           }
-        })
+        }
+        
+        console.log('useSettings: Loaded settings:', mergedSettings)
+        setSettings(mergedSettings)
+      } else {
+        console.log('useSettings: No stored settings, using defaults:', DEFAULT_SETTINGS)
       }
     } catch (error) {
       console.error('Failed to load settings:', error)

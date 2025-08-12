@@ -7,11 +7,21 @@ export interface ListViewSettings {
   duplicateFiltering: boolean
 }
 
+export type ThemePreference = 'light' | 'dark' | 'system'
+
+export interface GeneralSettings {
+  theme: ThemePreference
+}
+
 export interface AppSettings {
+  general: GeneralSettings
   listView: ListViewSettings
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
+  general: {
+    theme: 'system'
+  },
   listView: {
     multiListMode: false,
     duplicateFiltering: false

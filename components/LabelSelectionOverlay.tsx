@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { TodoistTask, TodoistLabel } from '@/lib/types'
 import { isExcludedLabel } from '@/lib/excluded-labels'
+import { parseTodoistLinks } from '@/lib/todoist-link-parser'
 
 interface LabelSelectionOverlayProps {
   labels: TodoistLabel[]
@@ -171,7 +172,24 @@ export default function LabelSelectionOverlay({
             </div>
           </div>
           <h3 className="text-sm font-medium text-green-900 leading-tight">
-            {currentTask.content}
+            {parseTodoistLinks(currentTask.content).map((segment, index) => {
+              if (segment.type === 'text') {
+                return <span key={index}>{segment.content}</span>
+              } else {
+                return (
+                  <a
+                    key={index}
+                    href={segment.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-green-700 hover:text-green-800 underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {segment.content}
+                  </a>
+                )
+              }
+            })}
           </h3>
         </div>
 

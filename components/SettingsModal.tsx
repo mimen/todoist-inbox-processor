@@ -9,7 +9,7 @@ interface SettingsModalProps {
 }
 
 export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
-  const { settings, toggleSetting } = useSettingsContext()
+  const { settings, toggleSetting, updateSetting } = useSettingsContext()
 
   const handleBackdropClick = useCallback((e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -56,8 +56,75 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
         {/* Content */}
         <div className="px-6 py-4 overflow-y-auto max-h-[calc(80vh-120px)]">
-          {/* List View Settings Section */}
+          {/* General Settings Section */}
           <div className="mb-6">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
+              General Settings
+            </h3>
+            
+            {/* Theme Toggle */}
+            <div className="py-3">
+              <label className="text-gray-900 dark:text-gray-100 font-medium">
+                Theme
+              </label>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 mb-3">
+                Choose your preferred color theme
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    console.log('SettingsModal: Changing theme to light')
+                    updateSetting('general', 'theme', 'light')
+                  }}
+                  className={`
+                    px-4 py-2 rounded-lg flex items-center gap-2 transition-colors
+                    ${settings.general?.theme === 'light'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}
+                  `}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                      d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                  Light
+                </button>
+                <button
+                  onClick={() => updateSetting('general', 'theme', 'dark')}
+                  className={`
+                    px-4 py-2 rounded-lg flex items-center gap-2 transition-colors
+                    ${settings.general?.theme === 'dark'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}
+                  `}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                      d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                  </svg>
+                  Dark
+                </button>
+                <button
+                  onClick={() => updateSetting('general', 'theme', 'system')}
+                  className={`
+                    px-4 py-2 rounded-lg flex items-center gap-2 transition-colors
+                    ${settings.general?.theme === 'system'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}
+                  `}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                      d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  System
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* List View Settings Section */}
+          <div className="mb-6 border-t border-gray-200 dark:border-gray-700 pt-6">
             <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
               List View Settings
             </h3>

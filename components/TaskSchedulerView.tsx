@@ -7,6 +7,7 @@ import type { CalendarEvent } from '@/hooks/useCalendarEvents'
 import CalendarGrid from './CalendarGrid'
 import { parseDate } from 'chrono-node'
 import { Calendar, Clock, AlertCircle, RefreshCw } from 'lucide-react'
+import { parseTodoistLinks } from '@/lib/todoist-link-parser'
 
 interface TaskSchedulerViewProps {
   currentTask: TodoistTask
@@ -597,7 +598,26 @@ export default function TaskSchedulerView({
                 <p className={`text-sm ${
                   mode === 'deadline' ? 'text-red-700' : 'text-blue-700'
                 } truncate max-w-md`}>
-                  {currentTask.content}
+                  {parseTodoistLinks(currentTask.content).map((segment, index) => {
+                    if (segment.type === 'text') {
+                      return <span key={index}>{segment.content}</span>
+                    } else {
+                      return (
+                        <a
+                          key={index}
+                          href={segment.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`${
+                            mode === 'deadline' ? 'text-red-800' : 'text-blue-800'
+                          } hover:underline`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {segment.content}
+                        </a>
+                      )
+                    }
+                  })}
                 </p>
               </div>
             </div>

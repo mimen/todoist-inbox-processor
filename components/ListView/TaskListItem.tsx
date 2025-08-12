@@ -6,6 +6,7 @@ import { TodoistTask, TodoistProject, TodoistLabel, TaskUpdate } from '@/lib/typ
 import { DisplayContext } from '@/types/view-mode'
 import { isExcludedLabel } from '@/lib/excluded-labels'
 import { getDateColor, getDateTimeLabel, getFullDateTime } from '@/lib/date-colors'
+import { parseTodoistLinks } from '@/lib/todoist-link-parser'
 
 interface TaskListItemProps {
   task: TodoistTask
@@ -381,7 +382,24 @@ const TaskListItem: React.FC<TaskListItemProps> = ({
               onDoubleClick={onEdit}
               title={task.content}
             >
-              {task.content}
+              {parseTodoistLinks(task.content).map((segment, index) => {
+                if (segment.type === 'text') {
+                  return <span key={index}>{segment.content}</span>
+                } else {
+                  return (
+                    <a
+                      key={index}
+                      href={segment.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {segment.content}
+                    </a>
+                  )
+                }
+              })}
             </span>
           )}
           

@@ -9,6 +9,7 @@ import { suggestionsCache } from '@/lib/suggestions-cache'
 import { ProcessingMode, PROCESSING_MODE_OPTIONS } from '@/types/processing-mode'
 import { ViewMode, ListViewState, createDefaultListViewState } from '@/types/view-mode'
 import { filterTasksByMode, getTaskCountsForProjects } from '@/lib/task-filters'
+import { isExcludedLabel } from '@/lib/excluded-labels'
 
 // Extract project metadata from special tasks marked with * prefix or project-metadata label
 function extractProjectMetadata(tasks: TodoistTask[]): Record<string, any> {
@@ -90,7 +91,7 @@ export default function TaskProcessor() {
     value: '',
     displayName: 'Inbox'
   })
-  const [allTasksGlobal, setAllTasksGlobal] = useState<TodoistTask[]>([]) // Keep for loading tasks
+  const [allTasksGlobal, setAllTasksGlobal] = useState<TodoistTask[]>([]) // All tasks from API
   const [taskKey, setTaskKey] = useState(0) // Force re-render of TaskForm
   const [projectMetadata, setProjectMetadata] = useState<Record<string, any>>({})
   const [showPriorityOverlay, setShowPriorityOverlay] = useState(false)
@@ -204,6 +205,39 @@ export default function TaskProcessor() {
     
     return false
   }, [currentTask, projectCollaborators, collaboratorsData, currentUserId])
+  
+  // Apply global filters (archived, excluded labels, assignee) to all tasks
+  const globallyFilteredTasks = useMemo(() => {
+    let filtered = allTasksGlobal
+    
+    // 1. Exclude archived tasks (starting with *)
+    filtered = filtered.filter(task => !task.content.startsWith('* '))
+    
+    // 2. Exclude tasks with excluded labels
+    filtered = filtered.filter(task => 
+      !task.labels.some(label => isExcludedLabel(label))
+    )
+    
+    // 3. Apply assignee filter
+    if (assigneeFilter !== 'all') {
+      filtered = filtered.filter(task => {
+        switch (assigneeFilter) {
+          case 'unassigned':
+            return !task.assigneeId
+          case 'assigned-to-me':
+            return task.assigneeId === currentUserId
+          case 'assigned-to-others':
+            return task.assigneeId && task.assigneeId !== currentUserId
+          case 'not-assigned-to-others':
+            return !task.assigneeId || task.assigneeId === currentUserId
+          default:
+            return true
+        }
+      })
+    }
+    
+    return filtered
+  }, [allTasksGlobal, assigneeFilter, currentUserId])
   
   // Helper functions for updating list view state
   const updateListViewState = useCallback((updates: Partial<ListViewState>) => {
@@ -449,12 +483,13 @@ export default function TaskProcessor() {
           }
         }
       } else {
-        // For other modes, filter from global data
-        if (allTasksGlobal.length === 0) {
+        // For other modes, filter from globally filtered data
+        if (globallyFilteredTasks.length === 0) {
           setLoadingTasks(false)
           return
         }
-        filteredTasks = filterTasksByMode(allTasksGlobal, mode, projectMetadata, assigneeFilter, currentUserId)
+        // Note: assigneeFilter is already applied in globallyFilteredTasks, so pass 'all' to avoid double filtering
+        filteredTasks = filterTasksByMode(globallyFilteredTasks, mode, projectMetadata, 'all', currentUserId)
         console.log(`📋 ${mode.displayName}: ${filteredTasks.length} tasks`, {
           mode,
           firstTask: filteredTasks[0]
@@ -508,7 +543,7 @@ export default function TaskProcessor() {
     } finally {
       setLoadingTasks(false)
     }
-  }, [projectHierarchy, setToast, assigneeFilter, currentUserId, projectMetadata])
+  }, [projectHierarchy, setToast, globallyFilteredTasks, currentUserId, projectMetadata])
 
 
   // Helper function to check if processing mode has a meaningful value to filter by
@@ -530,12 +565,12 @@ export default function TaskProcessor() {
     return !placeholderValues.includes(mode.value as string);
   };
 
-  // Load tasks when processing mode or assignee filter changes
+  // Load tasks when processing mode changes (NOT assignee filter)
   useEffect(() => {
     if (hasMeaningfulValue(processingMode) && (processingMode.type === 'filter' || allTasksGlobal.length > 0)) {
       loadTasksForMode(processingMode)
     }
-  }, [processingMode, loadTasksForMode, assigneeFilter])
+  }, [processingMode, loadTasksForMode, allTasksGlobal.length])
 
   // Load suggestions when current task changes
   useEffect(() => {
@@ -715,33 +750,35 @@ export default function TaskProcessor() {
         }
       })
       
-      // Also update allTasksGlobal for loading purposes
-      setAllTasksGlobal(prev => {
-        const index = prev.findIndex(t => t.id === taskId)
-        if (index !== -1) {
-          const updated = [...prev]
-          const existingTask = updated[index]
-          
-          if (responseData.dates) {
-            if (responseData.dates.due !== undefined) {
-              existingTask.due = responseData.dates.due
-            }
-            if (responseData.dates.deadline !== undefined) {
-              existingTask.deadline = responseData.dates.deadline
-            }
-            Object.keys(updates).forEach(key => {
-              if (key !== 'dueString' && key !== 'deadline' && key !== 'due') {
-                (existingTask as any)[key] = updates[key as keyof TaskUpdate]
+      // Only update allTasksGlobal in list mode to prevent queue reload in processing mode
+      if (viewMode === 'list') {
+        setAllTasksGlobal(prev => {
+          const index = prev.findIndex(t => t.id === taskId)
+          if (index !== -1) {
+            const updated = [...prev]
+            const existingTask = updated[index]
+            
+            if (responseData.dates) {
+              if (responseData.dates.due !== undefined) {
+                existingTask.due = responseData.dates.due
               }
-            })
-          } else {
-            Object.assign(existingTask, updates)
+              if (responseData.dates.deadline !== undefined) {
+                existingTask.deadline = responseData.dates.deadline
+              }
+              Object.keys(updates).forEach(key => {
+                if (key !== 'dueString' && key !== 'deadline' && key !== 'due') {
+                  (existingTask as any)[key] = updates[key as keyof TaskUpdate]
+                }
+              })
+            } else {
+              Object.assign(existingTask, updates)
+            }
+            
+            return updated
           }
-          
-          return updated
-        }
-        return prev
-      })
+          return prev
+        })
+      }
       
     } catch (err) {
       console.error('Error auto-saving task:', err)
@@ -751,7 +788,7 @@ export default function TaskProcessor() {
       })
       throw err
     }
-  }, [masterTasks])
+  }, [masterTasks, viewMode])
 
   const handleContentChange = useCallback(async (newContent: string) => {
     if (currentTask) {
@@ -1702,23 +1739,31 @@ export default function TaskProcessor() {
                   </>
                 )}
                 <SyncStatus />
+                <div className="h-5 w-px bg-gray-300 dark:bg-gray-700" />
+                <SettingsButton onClick={() => setShowSettingsModal(true)} />
               </div>
             </div>
             
-            {/* Processing Mode Selector */}
-            <ProcessingModeSelector
-              ref={processingModeSelectorRef}
-              mode={processingMode}
-              onModeChange={setProcessingMode}
-              projects={projects}
-              allTasks={allTasksGlobal}
-              allTasksGlobal={allTasksGlobal}
-              taskCounts={getTaskCountsForProjects(allTasksGlobal, projects.map(p => p.id), assigneeFilter, currentUserId)}
-              labels={labels}
-              projectMetadata={projectMetadata}
-              currentUserId={currentUserId}
-              assigneeFilter={assigneeFilter}
-            />
+            {/* Processing Mode Selector - Hide in multi-list mode */}
+            {settings.listView.multiListMode && viewMode === 'list' && processingMode.type === 'prioritized' ? (
+              <div className="px-4 py-3">
+                <MultiListModeIndicator isActive={true} />
+              </div>
+            ) : (
+              <ProcessingModeSelector
+                ref={processingModeSelectorRef}
+                mode={processingMode}
+                onModeChange={setProcessingMode}
+                projects={projects}
+                allTasks={globallyFilteredTasks}
+                allTasksGlobal={globallyFilteredTasks}
+                taskCounts={getTaskCountsForProjects(globallyFilteredTasks, projects.map(p => p.id), 'all', currentUserId)}
+                labels={labels}
+                projectMetadata={projectMetadata}
+                currentUserId={currentUserId}
+                assigneeFilter={assigneeFilter}
+              />
+            )}
           </div>
         </div>
         
@@ -1783,6 +1828,12 @@ export default function TaskProcessor() {
         {showShortcuts && (
           <KeyboardShortcuts onClose={() => setShowShortcuts(false)} />
         )}
+        
+        {/* Settings Modal - Must be rendered in empty state too */}
+        <SettingsModal 
+          isOpen={showSettingsModal} 
+          onClose={() => setShowSettingsModal(false)} 
+        />
       </div>
     )
   }
@@ -1838,9 +1889,9 @@ export default function TaskProcessor() {
               mode={processingMode}
               onModeChange={setProcessingMode}
               projects={projects}
-              allTasks={allTasksGlobal}
-              allTasksGlobal={allTasksGlobal}
-              taskCounts={getTaskCountsForProjects(allTasksGlobal, projects.map(p => p.id), assigneeFilter, currentUserId)}
+              allTasks={globallyFilteredTasks}
+              allTasksGlobal={globallyFilteredTasks}
+              taskCounts={getTaskCountsForProjects(globallyFilteredTasks, projects.map(p => p.id), 'all', currentUserId)}
               labels={labels}
               projectMetadata={projectMetadata}
               currentUserId={currentUserId}
@@ -1866,7 +1917,7 @@ export default function TaskProcessor() {
           settings.listView.multiListMode && processingMode.type === 'prioritized' ? (
             <MultiListContainer
               masterTasks={masterTasks}
-              allTasks={allTasksGlobal}
+              allTasks={globallyFilteredTasks}
               projects={projects}
               labels={labels}
               processingMode={processingMode}

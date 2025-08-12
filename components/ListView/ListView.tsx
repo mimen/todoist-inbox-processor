@@ -24,6 +24,7 @@ interface ListViewProps {
   onViewModeChange: (mode: 'processing') => void
   currentUserId: string
   collaborators?: Record<string, TodoistUser[]>
+  autoFocus?: boolean
   // Add overlay handlers from parent
   onOpenProjectOverlay: (taskId: string) => void
   onOpenPriorityOverlay: (taskId: string) => void
@@ -54,6 +55,7 @@ const ListView: React.FC<ListViewProps> = ({
   onViewModeChange,
   currentUserId,
   collaborators = {},
+  autoFocus = true,
   onOpenProjectOverlay,
   onOpenPriorityOverlay,
   onOpenLabelOverlay,
@@ -63,6 +65,7 @@ const ListView: React.FC<ListViewProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const [isMetaKeyHeld, setIsMetaKeyHeld] = useState(false)
+  const isKeyboardNavigating = useRef(false)
   
   // Get display context for hiding redundant information
   const displayContext = useMemo(() => 
@@ -137,10 +140,10 @@ const ListView: React.FC<ListViewProps> = ({
 
   // Focus the container when component mounts or becomes visible
   useEffect(() => {
-    if (containerRef.current) {
+    if (autoFocus && containerRef.current) {
       containerRef.current.focus()
     }
-  }, [])
+  }, [autoFocus])
   
   // Track meta key state
   useEffect(() => {
@@ -165,18 +168,22 @@ const ListView: React.FC<ListViewProps> = ({
     }
   }, [])
 
-  // Scroll highlighted task into view
+  // Scroll highlighted task into view ONLY when using keyboard navigation
   useEffect(() => {
-    if (listViewState.highlightedTaskId) {
+    if (listViewState.highlightedTaskId && isKeyboardNavigating.current) {
       const element = document.getElementById(`task-${listViewState.highlightedTaskId}`)
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
       }
+      // Reset the flag after scrolling
+      isKeyboardNavigating.current = false
     }
   }, [listViewState.highlightedTaskId])
 
   // Handle keyboard navigation
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // If autoFocus is false, we're in multi-list mode - don't handle keyboard events
+    if (!autoFocus) return;
     const highlightedTask = sortedTasks.find(t => t.id === listViewState.highlightedTaskId)
     
     
@@ -233,6 +240,7 @@ const ListView: React.FC<ListViewProps> = ({
       e.preventDefault()
       const currentIndex = sortedTasks.findIndex(t => t.id === listViewState.highlightedTaskId)
       const nextIndex = currentIndex < sortedTasks.length - 1 ? currentIndex + 1 : 0
+      isKeyboardNavigating.current = true  // Set flag before changing highlight
       onListViewStateChange({
         ...listViewState,
         highlightedTaskId: sortedTasks[nextIndex]?.id || null
@@ -241,6 +249,7 @@ const ListView: React.FC<ListViewProps> = ({
       e.preventDefault()
       const currentIndex = sortedTasks.findIndex(t => t.id === listViewState.highlightedTaskId)
       const prevIndex = currentIndex > 0 ? currentIndex - 1 : sortedTasks.length - 1
+      isKeyboardNavigating.current = true  // Set flag before changing highlight
       onListViewStateChange({
         ...listViewState,
         highlightedTaskId: sortedTasks[prevIndex]?.id || null

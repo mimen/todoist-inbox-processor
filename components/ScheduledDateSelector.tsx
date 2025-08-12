@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { TodoistTask } from '@/lib/types'
 import SmartScheduleDateInput from './SmartScheduleDateInput'
 import { getDateColor, getDateTimeLabel } from '@/lib/date-colors'
+import { parseTodoistLinks } from '@/lib/todoist-link-parser'
 import dynamic from 'next/dynamic'
 
 // Lazy load the new scheduler to avoid loading calendar dependencies if not used
@@ -384,7 +385,24 @@ export default function ScheduledDateSelector({
             </div>
           </div>
           <h3 className="text-sm font-medium text-blue-900 leading-tight">
-            {currentTask.content}
+            {parseTodoistLinks(currentTask.content).map((segment, index) => {
+              if (segment.type === 'text') {
+                return <span key={index}>{segment.content}</span>
+              } else {
+                return (
+                  <a
+                    key={index}
+                    href={segment.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-700 hover:text-blue-800 underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {segment.content}
+                  </a>
+                )
+              }
+            })}
           </h3>
         </div>
 

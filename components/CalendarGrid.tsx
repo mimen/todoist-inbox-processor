@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useEffect } from 'react'
 import type { CalendarEvent } from '@/hooks/useCalendarEvents'
+import { parseTodoistLinks } from '@/lib/todoist-link-parser'
 
 interface CalendarGridProps {
   events: CalendarEvent[]
@@ -463,9 +464,13 @@ export default function CalendarGrid({
                       <div className={`text-sm font-medium truncate ${
                         mode === 'deadline' ? 'text-red-900' : 'text-blue-900'
                       }`}>
-                        {taskContent || (mode === 'deadline' 
-                          ? (previewMode ? 'Deadline Preview' : 'New Deadline')
-                          : (previewMode ? 'Task Preview' : 'New Task')
+                        {taskContent ? (
+                          // Extract just the text content from links
+                          parseTodoistLinks(taskContent).map(segment => segment.content).join('')
+                        ) : (
+                          mode === 'deadline' 
+                            ? (previewMode ? 'Deadline Preview' : 'New Deadline')
+                            : (previewMode ? 'Task Preview' : 'New Task')
                         )}
                       </div>
                       <div className={`text-xs ${

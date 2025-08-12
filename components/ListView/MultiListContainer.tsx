@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
+import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react'
 import { TodoistTask, TodoistProject, TodoistLabel, TaskUpdate, TodoistUser } from '@/lib/types'
 import { ProcessingMode } from '@/types/processing-mode'
 import { ListViewState } from '@/types/view-mode'
@@ -45,12 +45,11 @@ interface ListData {
   tasks: TodoistTask[]
   filterType: string
   filterValue: string
-  isLoaded: boolean
 }
 
 /**
  * Multi-List Container Component
- * Displays multiple task lists sequentially with progressive loading
+ * Simple load more button approach with global navigation
  */
 const MultiListContainer: React.FC<MultiListContainerProps> = ({
   masterTasks,
@@ -78,14 +77,11 @@ const MultiListContainer: React.FC<MultiListContainerProps> = ({
   onOpenAssigneeOverlay,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null)
-  const listRefs = useRef<Map<string, HTMLDivElement>>(new Map())
-  const observerRef = useRef<IntersectionObserver | null>(null)
-  const [loadedLists, setLoadedLists] = useState<Set<string>>(new Set(['0', '1', '2', '3', '4', '5'])) // Load first 6 lists immediately
+  const [visibleCount, setVisibleCount] = useState(3) // Start with 3 lists
+  const [globalHighlightedTaskId, setGlobalHighlightedTaskId] = useState<string | null>(null)
+  const [isMetaKeyHeld, setIsMetaKeyHeld] = useState(false)
   const config = useQueueConfig()
   const { settings } = useSettingsContext()
-
-  // Use the allTasks prop directly - it contains ALL tasks from the API
-  // masterTasks only contains tasks that have been loaded for specific modes
 
   // Get prioritized options to determine queue order
   const prioritizedOptions = usePrioritizedOptions(
@@ -100,12 +96,10 @@ const MultiListContainer: React.FC<MultiListContainerProps> = ({
     // If duplicate filtering is enabled, track which tasks we've already shown
     const shownTaskIds = settings.listView.duplicateFiltering ? new Set<string>() : null
 
-
     const rawLists = prioritizedOptions.map((option, index) => {
       // Parse the filter details from the option
       let filterType = option.type || 'project'
       let filterValue = option.id
-
 
       // Special handling for inbox project
       if (option.id === 'inbox') {
@@ -133,10 +127,9 @@ const MultiListContainer: React.FC<MultiListContainerProps> = ({
         allTasks,
         listProcessingMode,
         projectMetadata,
-        assigneeFilter,
+        'all',  // assigneeFilter already applied in allTasks
         currentUserId
       )
-
 
       // Apply duplicate filtering if enabled
       if (shownTaskIds) {
@@ -156,69 +149,172 @@ const MultiListContainer: React.FC<MultiListContainerProps> = ({
         tasks,
         filterType,
         filterValue,
-        isLoaded: loadedLists.has(`${index}`)
       }
     })
     
-    // Apply filtering
-    const filteredLists = rawLists.filter(list => {
-      const shouldShow = list.tasks.length > 0 || config.behavior?.showEmptyQueues
-      return shouldShow
-    })
-    
+    // Apply filtering - in multi-list mode, only show lists with tasks
+    const filteredLists = rawLists.filter(list => list.tasks.length > 0)
     
     return filteredLists
-  }, [prioritizedOptions, allTasks, projectMetadata, currentUserId, assigneeFilter, loadedLists, config, settings.listView.duplicateFiltering])
+  }, [prioritizedOptions, allTasks, projectMetadata, currentUserId, config, settings.listView.duplicateFiltering, projects])
 
-  // Set up intersection observer for progressive loading
-  useEffect(() => {
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            const listId = entry.target.getAttribute('data-list-id')
-            if (listId && !loadedLists.has(listId)) {
-              setLoadedLists(prev => new Set([...prev, listId]))
-            }
-          }
-        })
-      },
-      {
-        rootMargin: '100px' // Start loading 100px before the element comes into view
-      }
-    )
+  // Get visible lists
+  const visibleLists = listData.slice(0, visibleCount)
+  const hasMore = visibleCount < listData.length
 
-    return () => {
-      observerRef.current?.disconnect()
-    }
-  }, [loadedLists])
-
-  // Observe list placeholders
-  useEffect(() => {
-    const observer = observerRef.current
-    if (!observer) return
-
-    listRefs.current.forEach((element, id) => {
-      if (!loadedLists.has(id)) {
-        observer.observe(element)
-      }
-    })
-
-    return () => {
-      listRefs.current.forEach(element => {
-        observer?.unobserve(element)
+  // Create a flat array of all visible tasks for navigation
+  const allVisibleTasks = useMemo(() => {
+    const tasks: { task: TodoistTask; listIndex: number }[] = []
+    visibleLists.forEach((list, listIndex) => {
+      list.tasks.forEach(task => {
+        tasks.push({ task, listIndex })
       })
-    }
-  }, [listData, loadedLists])
+    })
+    return tasks
+  }, [visibleLists])
 
-  // Create list-specific view state
+  // Initialize highlighted task on first load
+  useEffect(() => {
+    if (!globalHighlightedTaskId && allVisibleTasks.length > 0) {
+      setGlobalHighlightedTaskId(allVisibleTasks[0].task.id)
+    }
+  }, [allVisibleTasks.length]) // Only depend on length to avoid re-running
+
+  // Track meta key state
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey) {
+        setIsMetaKeyHeld(true)
+      }
+    }
+    
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (!e.metaKey && !e.ctrlKey) {
+        setIsMetaKeyHeld(false)
+      }
+    }
+    
+    window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('keyup', handleKeyUp)
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
+    }
+  }, [])
+
+  // Global keyboard navigation
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // Don't handle if we're editing
+    if (listViewState.editingTaskId) return
+
+    const currentIndex = allVisibleTasks.findIndex(t => t.task.id === globalHighlightedTaskId)
+    
+    // Navigation
+    if (e.key === 'ArrowDown' || e.key === 'j') {
+      e.preventDefault()
+      const nextIndex = currentIndex < allVisibleTasks.length - 1 ? currentIndex + 1 : 0
+      setGlobalHighlightedTaskId(allVisibleTasks[nextIndex]?.task.id || null)
+      
+      // Scroll into view
+      const element = document.getElementById(`task-${allVisibleTasks[nextIndex]?.task.id}`)
+      element?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    } else if (e.key === 'ArrowUp' || e.key === 'k') {
+      e.preventDefault()
+      const prevIndex = currentIndex > 0 ? currentIndex - 1 : allVisibleTasks.length - 1
+      setGlobalHighlightedTaskId(allVisibleTasks[prevIndex]?.task.id || null)
+      
+      // Scroll into view
+      const element = document.getElementById(`task-${allVisibleTasks[prevIndex]?.task.id}`)
+      element?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+    
+    // Other shortcuts that need the highlighted task
+    const highlightedTask = allVisibleTasks.find(t => t.task.id === globalHighlightedTaskId)?.task
+    if (highlightedTask) {
+      switch (e.key) {
+        case 'Enter':
+          e.preventDefault()
+          onTaskProcess(highlightedTask.id)
+          break
+        case '#':
+          e.preventDefault()
+          onOpenProjectOverlay(highlightedTask.id)
+          break
+        case '@':
+          e.preventDefault()
+          onOpenLabelOverlay(highlightedTask.id)
+          break
+        case 's':
+        case 'S':
+          e.preventDefault()
+          onOpenScheduledOverlay(highlightedTask.id)
+          break
+        case 'd':
+        case 'D':
+          if (!e.metaKey && !e.ctrlKey) {
+            e.preventDefault()
+            onOpenDeadlineOverlay(highlightedTask.id)
+          }
+          break
+        case 'p':
+        case 'P':
+          if (!e.shiftKey) {
+            e.preventDefault()
+            onOpenPriorityOverlay(highlightedTask.id)
+          }
+          break
+        case '+':
+          e.preventDefault()
+          onOpenAssigneeOverlay(highlightedTask.id)
+          break
+        case 'c':
+          if (!e.metaKey && !e.ctrlKey) {
+            e.preventDefault()
+            onTaskComplete(highlightedTask.id)
+          }
+          break
+        case 'e':
+          e.preventDefault()
+          onListViewStateChange({
+            ...listViewState,
+            editingTaskId: highlightedTask.id
+          })
+          break
+      }
+    }
+    
+    // View mode switch
+    if (e.key === 'l' || e.key === 'L') {
+      e.preventDefault()
+      onViewModeChange('processing')
+    }
+  }, [allVisibleTasks, globalHighlightedTaskId, listViewState, onListViewStateChange, 
+      onTaskProcess, onTaskComplete, onOpenProjectOverlay, onOpenPriorityOverlay, 
+      onOpenLabelOverlay, onOpenScheduledOverlay, onOpenDeadlineOverlay, 
+      onOpenAssigneeOverlay, onViewModeChange])
+
+  // Create list-specific view state with global highlight
   const getListViewState = useCallback((listId: string): ListViewState => {
     return {
       ...listViewState,
-      // Each list maintains its own sort preference
-      sortBy: listViewState.sortBy // For now, use global sort
+      highlightedTaskId: globalHighlightedTaskId,
+      sortBy: listViewState.sortBy
     }
-  }, [listViewState])
+  }, [listViewState, globalHighlightedTaskId])
+
+  // Handle list view state changes (intercept highlight changes)
+  const handleListViewStateChange = useCallback((newState: ListViewState) => {
+    // If highlight changed, update global highlight
+    if (newState.highlightedTaskId !== listViewState.highlightedTaskId) {
+      setGlobalHighlightedTaskId(newState.highlightedTaskId)
+    }
+    // Pass through other state changes
+    onListViewStateChange({
+      ...newState,
+      highlightedTaskId: listViewState.highlightedTaskId // Keep original highlight in parent state
+    })
+  }, [listViewState, onListViewStateChange])
 
   // Create list-specific processing mode
   const getListProcessingMode = useCallback((list: ListData): ProcessingMode => {
@@ -229,75 +325,62 @@ const MultiListContainer: React.FC<MultiListContainerProps> = ({
     }
   }, [])
 
+  // Load more handler
+  const loadMore = useCallback(() => {
+    setVisibleCount(prev => Math.min(prev + 3, listData.length))
+  }, [listData.length])
+
+  // Focus container on mount
+  useEffect(() => {
+    containerRef.current?.focus()
+  }, [])
 
   return (
-    <div ref={containerRef} className="space-y-6">
-      {listData.map((list, index) => {
-        const isLoaded = list.isLoaded
-
-        return (
-          <div
-            key={list.id}
-            ref={(el) => {
-              if (el) listRefs.current.set(list.id, el)
-              else listRefs.current.delete(list.id)
-            }}
-            data-list-id={list.id}
-            className="relative"
+    <div 
+      ref={containerRef} 
+      className="space-y-6"
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+    >
+      {visibleLists.map((list, index) => (
+        <div key={list.id} className="relative">
+          <ListView
+            tasks={list.tasks}
+            projects={projects}
+            labels={labels}
+            processingMode={getListProcessingMode(list)}
+            projectMetadata={projectMetadata}
+            listViewState={getListViewState(list.id)}
+            slidingOutTaskIds={slidingOutTaskIds}
+            autoFocus={false}
+            onListViewStateChange={handleListViewStateChange}
+            onTaskUpdate={onTaskUpdate}
+            onTaskComplete={onTaskComplete}
+            onTaskProcess={onTaskProcess}
+            onTaskDelete={onTaskDelete}
+            onViewModeChange={onViewModeChange}
+            currentUserId={currentUserId}
+            collaborators={collaborators}
+            onOpenProjectOverlay={onOpenProjectOverlay}
+            onOpenPriorityOverlay={onOpenPriorityOverlay}
+            onOpenLabelOverlay={onOpenLabelOverlay}
+            onOpenScheduledOverlay={onOpenScheduledOverlay}
+            onOpenDeadlineOverlay={onOpenDeadlineOverlay}
+            onOpenAssigneeOverlay={onOpenAssigneeOverlay}
+          />
+        </div>
+      ))}
+      
+      {hasMore && (
+        <div className="flex justify-center py-8">
+          <button
+            onClick={loadMore}
+            className="px-6 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg transition-colors"
           >
-            {isLoaded ? (
-              <div className="animate-fade-in">
-                <ListView
-                  tasks={list.tasks}
-                  projects={projects}
-                  labels={labels}
-                  processingMode={getListProcessingMode(list)}
-                  projectMetadata={projectMetadata}
-                  listViewState={getListViewState(list.id)}
-                  slidingOutTaskIds={slidingOutTaskIds}
-                  onListViewStateChange={onListViewStateChange}
-                  onTaskUpdate={onTaskUpdate}
-                  onTaskComplete={onTaskComplete}
-                  onTaskProcess={onTaskProcess}
-                  onTaskDelete={onTaskDelete}
-                  onViewModeChange={onViewModeChange}
-                  currentUserId={currentUserId}
-                  collaborators={collaborators}
-                  onOpenProjectOverlay={onOpenProjectOverlay}
-                  onOpenPriorityOverlay={onOpenPriorityOverlay}
-                  onOpenLabelOverlay={onOpenLabelOverlay}
-                  onOpenScheduledOverlay={onOpenScheduledOverlay}
-                  onOpenDeadlineOverlay={onOpenDeadlineOverlay}
-                  onOpenAssigneeOverlay={onOpenAssigneeOverlay}
-                />
-              </div>
-            ) : (
-              // Placeholder for unloaded lists
-              <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {list.icon && <span>{list.icon}</span>}
-                      <h3 className="font-medium text-gray-900 dark:text-gray-100">{list.label}</h3>
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
-                        ({list.tasks.length})
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="py-8 text-center text-gray-400">
-                  <div className="animate-pulse">Loading...</div>
-                </div>
-              </div>
-            )}
-
-            {/* Separator between lists */}
-            {index < listData.length - 1 && (
-              <div className="mt-6" />
-            )}
-          </div>
-        )
-      })}
+            Load More Lists ({listData.length - visibleCount} remaining)
+          </button>
+        </div>
+      )}
     </div>
   )
 }
