@@ -88,6 +88,16 @@ This is a Next.js 15 application for processing Todoist inbox tasks with keyboar
 - **Keyboard Navigation**: Extensive keyboard shortcuts for efficient task processing
 - **Processing Modes**: Different queue types for focused task processing (project selection, priority assignment, etc.)
 
+### Critical Rules
+
+#### API ID Usage
+**ALWAYS use Sync API IDs, NEVER use REST API IDs**
+- The Todoist Sync API and REST API use different ID formats
+- This codebase exclusively uses Sync API IDs for all operations
+- REST API calls or IDs must never be introduced into the codebase
+- All Todoist operations should use the `@doist/todoist-api-typescript` client which uses Sync API
+- If you encounter any REST API endpoints or IDs, they must be converted to use Sync API equivalents
+
 ### Key Files
 - `components/TaskProcessor.tsx` - Main task processing component
 - `components/UnifiedDropdown.tsx` - Core dropdown component

@@ -7,6 +7,7 @@ import { ListViewState, getDisplayContext } from '@/types/view-mode'
 import TaskListItem from './TaskListItem'
 import ListHeader from './ListHeader'
 import { filterTasksByMode } from '@/lib/task-filters'
+import { useListViewIntegration } from '@/hooks/useListViewIntegration'
 
 interface ListViewProps {
   tasks: TodoistTask[]

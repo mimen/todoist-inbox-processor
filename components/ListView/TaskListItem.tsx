@@ -243,7 +243,7 @@ const TaskListItem: React.FC<TaskListItemProps> = ({
       onTouchStart={() => setIsTapped(true)}
     >
       {/* Main task row */}
-      <div className="flex items-start gap-3 px-4 py-2 min-h-[32px]">
+      <div className="flex items-center gap-3 px-4 py-2.5 min-h-[32px]">
         {/* Selection checkbox - shown when multi-selecting */}
         {showSelectionCheckbox && (
           <input
@@ -254,7 +254,7 @@ const TaskListItem: React.FC<TaskListItemProps> = ({
               onToggleSelect()
             }}
             onClick={(e) => e.stopPropagation()}
-            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mt-0.5"
+            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             aria-label={`Select ${task.content}`}
           />
         )}
@@ -265,7 +265,7 @@ const TaskListItem: React.FC<TaskListItemProps> = ({
             e.stopPropagation()
             handleComplete()
           }}
-          className="relative w-[18px] h-[18px] flex-shrink-0 group/checkbox mt-0.5"
+          className="relative w-[18px] h-[18px] flex-shrink-0 group/checkbox"
           aria-label={`${isCompleting ? 'Cancel completion of' : 'Complete'} ${task.content}`}
         >
           {isCompleting ? (
@@ -350,7 +350,7 @@ const TaskListItem: React.FC<TaskListItemProps> = ({
         </button>
         
         {/* Task content and metadata */}
-        <div className="flex-1 flex items-start gap-2 min-w-0">
+        <div className="flex-1 flex items-center gap-2 min-w-0">
           {/* Task content */}
           {isEditing ? (
             <div className="flex-1 relative">
