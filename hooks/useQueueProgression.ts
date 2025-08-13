@@ -28,16 +28,6 @@ export function useQueueProgression({
         const parsed = JSON.parse(currentValue)
         // For prioritized mode, we need to find by the filterValue
         compareValue = parsed.filterValue
-        
-        // Special case for inbox
-        if (parsed.filterType === 'project' && parsed.filterValue) {
-          // Check if any queue has id 'inbox' and this filterValue matches an inbox project
-          const inboxQueue = activeQueues.find(q => q.id === 'inbox')
-          if (inboxQueue) {
-            // We might be looking for the inbox
-            compareValue = 'inbox'
-          }
-        }
       } catch (e) {
         // Not JSON, use as-is
       }
@@ -56,15 +46,6 @@ export function useQueueProgression({
       return String(queueId) === String(currentVal)
     })
     
-    console.log('[useQueueProgression] Finding queue index:', {
-      originalValue: currentValue,
-      compareValue,
-      activeQueuesLength: activeQueues.length,
-      foundIndex: index,
-      returnedIndex: index === -1 ? 0 : index,
-      queueIds: activeQueues.map(q => ({ id: q.id, label: q.label }))
-    })
-    
     return index === -1 ? 0 : index
   }, [currentValue, activeQueues])
 
@@ -80,14 +61,6 @@ export function useQueueProgression({
     const nextIndex = currentQueueIndex + 1
     if (nextIndex >= activeQueues.length) return null
     
-    console.log('[useQueueProgression] Calculating next queue:', {
-      currentQueueIndex,
-      nextIndex,
-      totalQueues: activeQueues.length,
-      hasNext: nextIndex < activeQueues.length,
-      nextQueue: activeQueues[nextIndex]?.label
-    })
-    
     return activeQueues[nextIndex]
   }, [activeQueues, currentQueueIndex])
 
@@ -99,7 +72,6 @@ export function useQueueProgression({
   // Move to next queue - returns the next queue for the parent to handle
   const moveToNextQueue = useCallback(() => {
     if (!nextQueue) {
-      console.log('Already at last queue')
       return null
     }
     
