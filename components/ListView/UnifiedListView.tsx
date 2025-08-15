@@ -147,7 +147,7 @@ const UnifiedListView: React.FC<UnifiedListViewProps> = ({
       // Use context directly
       const task = masterTasks?.[taskId] || allTasks.find(t => t.id === taskId)
       if (task) {
-        contextOpenOverlay(type as any, task)
+        contextOpenOverlay(type as any)
       }
     }
   }, [onOpenOverlay, contextOpenOverlay, masterTasks, allTasks])

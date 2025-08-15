@@ -6,28 +6,28 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 # Install dependencies
-npm install
+pnpm install
 
 # Development (includes Redis + Next.js)
-npm run dev              # Start Redis + Next.js dev server
-npm run dev:turbo        # Start Redis + Next.js with Turbo mode
-npm run dev:auto         # Start Redis + Next.js with auto-clean capability
-npm run dev:clean        # Clean .next directory and start dev server
-npm run dev:next-only    # Start only Next.js (without Redis)
+pnpm run dev              # Start Redis + Next.js dev server
+pnpm run dev:turbo        # Start Redis + Next.js with Turbo mode
+pnpm run dev:auto         # Start Redis + Next.js with auto-clean capability
+pnpm run dev:clean        # Clean .next directory and start dev server
+pnpm run dev:next-only    # Start only Next.js (without Redis)
 
 # Individual services
-npm run redis            # Start Redis server only
+pnpm run redis            # Start Redis server only
 
 # Build & Production
-npm run build            # Build for production
-npm start                # Start production server
+pnpm run build            # Build for production
+pnpm start                # Start production server
 
 # Code Quality
-npm run lint             # Run Next.js linter
+pnpm run lint             # Run Next.js linter
 
 # Utilities
-npm run clean            # Remove .next directory
-npm run restart          # Kill Redis + Next.js processes and restart clean
+pnpm run clean            # Remove .next directory
+pnpm run restart          # Kill Redis + Next.js processes and restart clean
 ```
 
 ## Architecture Overview

@@ -4,10 +4,10 @@
   "description": "A sleek Next.js interface for processing Todoist inbox tasks",
   "main": "index.js",
   "scripts": {
-    "dev": "concurrently \"npm run redis\" \"next dev -p 4200\" --names \"redis,next\" --prefix-colors \"red,blue\"",
-    "dev:turbo": "concurrently \"npm run redis\" \"next dev --turbo -p 4200\" --names \"redis,next\" --prefix-colors \"red,blue\"",
-    "dev:auto": "concurrently \"npm run redis\" \"node scripts/dev-with-auto-clean.js\" --names \"redis,next\" --prefix-colors \"red,blue\"",
-    "dev:clean": "npm run clean && npm run dev",
+    "dev": "concurrently \"pnpm run redis\" \"next dev -p 4200\" --names \"redis,next\" --prefix-colors \"red,blue\"",
+    "dev:turbo": "concurrently \"pnpm run redis\" \"next dev --turbo -p 4200\" --names \"redis,next\" --prefix-colors \"red,blue\"",
+    "dev:auto": "concurrently \"pnpm run redis\" \"node scripts/dev-with-auto-clean.js\" --names \"redis,next\" --prefix-colors \"red,blue\"",
+    "dev:clean": "pnpm run clean && pnpm run dev",
     "dev:next-only": "next dev -p 4200",
     "redis": "redis-server --port 6379 --loglevel notice",
     "build": "next build",
@@ -15,7 +15,8 @@
     "lint": "next lint",
     "test": "echo \"Error: no test specified\" && exit 1",
     "clean": "rm -rf .next",
-    "restart": "pkill -f 'redis-server' || true && pkill -f 'next dev' || true && npm run dev:clean"
+    "restart": "pkill -f 'redis-server' || true && pkill -f 'next dev' || true && pnpm run dev:clean",
+    "heroku-postbuild": "pnpm run build"
   },
   "keywords": [
     "todoist",
@@ -27,8 +28,9 @@
   "license": "MIT",
   "engines": {
     "node": "22.x",
-    "npm": "10.x"
+    "pnpm": "10.x"
   },
+  "packageManager": "pnpm@10.14.0",
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
@@ -36,31 +38,37 @@
     "@doist/todoist-api-typescript": "^5.0.2",
     "@radix-ui/react-label": "^2.1.7",
     "@radix-ui/react-radio-group": "^1.3.7",
-    "@tailwindcss/postcss": "^4.1.11",
-    "@types/node": "^24.0.13",
-    "@types/react": "^19.1.8",
-    "@types/react-dom": "^19.1.6",
-    "autoprefixer": "^10.4.21",
-    "chrono-node": "^2.8.4",
+    "@radix-ui/react-select": "^2.1.8",
+    "@radix-ui/react-switch": "^1.1.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "eslint": "^9.31.0",
-    "eslint-config-next": "^15.3.5",
-    "google-auth-library": "^10.2.0",
-    "googleapis": "^154.1.0",
-    "lucide-react": "^0.525.0",
-    "next": "^15.3.5",
-    "postcss": "^8.5.6",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "react-intersection-observer": "^9.16.0",
-    "react-window": "^1.8.11",
-    "redis": "^5.7.0",
-    "tailwind-merge": "^3.3.1",
-    "tailwindcss": "^4.1.11",
-    "typescript": "^5.8.3"
+    "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
+    "framer-motion": "^12.2.2",
+    "googleapis": "^149.0.0",
+    "ioredis": "^5.4.2",
+    "next": "15.4.6",
+    "react": "^19.0.0",
+    "react-day-picker": "^9.4.4",
+    "react-dom": "^19.0.0",
+    "react-hot-toast": "^2.4.1",
+    "react-use": "^17.5.1",
+    "server-only": "^0.0.1",
+    "tailwind-merge": "^2.8.1",
+    "uuid": "^11.0.6"
   },
   "devDependencies": {
-    "concurrently": "^9.2.0"
+    "@tailwindcss/forms": "^0.5.9",
+    "@types/node": "^22.12.0",
+    "@types/react": "^19.0.5",
+    "@types/react-dom": "^19.0.3",
+    "@types/uuid": "^10.0.0",
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.2.0",
+    "eslint": "^9.19.0",
+    "eslint-config-next": "15.3.5",
+    "postcss": "^8.5.2",
+    "tailwindcss": "^4.1.0",
+    "typescript": "^5.7.3"
   }
 }

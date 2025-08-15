@@ -41,7 +41,7 @@ interface MultiListContainerProps {
 interface ListData {
   id: string
   label: string
-  icon?: string
+  icon?: React.ReactNode
   tasks: TodoistTask[]
   filterType: string
   filterValue: string

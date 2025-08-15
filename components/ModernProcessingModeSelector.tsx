@@ -12,11 +12,17 @@ import PresetDropdown from './PresetDropdown'
 import AllTasksDropdown from './AllTasksDropdown'
 import PrioritizedDropdown from './PrioritizedDropdown'
 import { TodoistProject, TodoistTask, TodoistLabel } from '@/lib/types'
-import { ProjectMetadata } from '@/types/project'
 import { getActiveTasks, getQueueTaskCount } from '@/lib/task-filters'
 import { useQueueConfig } from '@/hooks/useQueueConfig'
 import { useQueueProgression } from '@/hooks/useQueueProgression'
 import { useCurrentModeOptions } from '@/hooks/useCurrentModeOptions'
+
+// Define ProjectMetadata type locally
+interface ProjectMetadata {
+  description?: string
+  category?: string | null
+  priority?: number | null
+}
 
 interface ModernProcessingModeSelectorProps {
   mode: ProcessingMode
