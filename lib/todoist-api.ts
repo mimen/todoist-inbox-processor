@@ -65,6 +65,7 @@ export interface TodoistProjectApi {
     color: string
     isInboxProject: boolean
     parentId?: string
+    order?: number
 }
 
 export interface TodoistLabelApi {
@@ -1172,6 +1173,101 @@ export class TodoistApiClient {
         } catch (error) {
             console.error('Error generating Todoist context:', error)
             throw new Error('Failed to generate Todoist context')
+        }
+    }
+
+    // Create a new project using Sync API
+    static async createProject(options: {
+        name: string
+        parentId?: string
+        color?: string
+    }): Promise<TodoistProjectApi> {
+        try {
+            console.log('createProject called with:', options)
+            
+            const apiKey = process.env.TODOIST_API_KEY
+            if (!apiKey) {
+                throw new Error('TODOIST_API_KEY is not configured')
+            }
+
+            // Generate a unique UUID for the command
+            const uuid = crypto.randomUUID()
+            const tempId = crypto.randomUUID()
+
+            // Build the project_add args
+            const args: any = {
+                name: options.name,
+            }
+
+            if (options.parentId) {
+                args.parent_id = options.parentId
+            }
+            if (options.color) {
+                args.color = options.color
+            }
+
+            const response = await fetch('https://api.todoist.com/sync/v9/sync', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${apiKey}`,
+                },
+                body: JSON.stringify({
+                    commands: [
+                        {
+                            type: 'project_add',
+                            temp_id: tempId,
+                            args: args,
+                            uuid: uuid,
+                        },
+                    ],
+                }),
+            })
+
+            if (!response.ok) {
+                const errorText = await response.text()
+                console.error('Sync API error:', errorText)
+                throw new Error(`Sync API request failed: ${response.status}`)
+            }
+
+            const result = await response.json()
+            console.log('Create project response:', result)
+
+            // Check if the command was successful
+            if (result.sync_status && result.sync_status[uuid] === 'ok') {
+                // Get the created project from the temp_id_mapping
+                const projectId = result.temp_id_mapping[tempId]
+                
+                // Find the project in the returned projects array
+                const createdProject = result.projects?.find((p: any) => p.id === projectId)
+                
+                if (createdProject) {
+                    return {
+                        id: createdProject.id,
+                        name: createdProject.name,
+                        color: createdProject.color,
+                        isInboxProject: createdProject.inbox_project || false,
+                        parentId: createdProject.parent_id || undefined,
+                        order: createdProject.child_order || 0,
+                    }
+                } else {
+                    // If not found in result, return minimal project object
+                    return {
+                        id: projectId,
+                        name: options.name,
+                        color: options.color || 'charcoal',
+                        isInboxProject: false,
+                        parentId: options.parentId,
+                        order: 0,
+                    }
+                }
+            } else {
+                console.error('Create project command failed:', result.sync_status)
+                throw new Error('Failed to create project')
+            }
+        } catch (error: any) {
+            console.error('Error creating project:', error)
+            throw new Error(`Failed to create project: ${error.message || 'Unknown error'}`)
         }
     }
 }

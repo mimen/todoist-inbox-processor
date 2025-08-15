@@ -278,18 +278,37 @@ export function getTaskCountsForProjects(
   tasks: TodoistTask[],
   projectIds: string[],
   assigneeFilter: AssigneeFilterType = 'all',
-  currentUserId?: string
+  currentUserId?: string,
+  processedTaskIds?: string[],
+  originalProjectIds?: Record<string, string>
 ): Record<string, number> {
   const counts: Record<string, number> = {};
   
   for (const projectId of projectIds) {
     counts[projectId] = tasks.filter(task => {
       // Basic filters
-      if (String(task.projectId) !== String(projectId)) return false;
       if (task.content.startsWith('* ')) return false;
       
       // Exclude tasks with excluded labels
       if (task.labels.some(label => isExcludedLabel(label))) return false;
+      
+      // If we have queue tracking information, handle processed tasks
+      if (processedTaskIds && originalProjectIds) {
+        // If this task was originally from this project and has been processed, exclude it
+        if (originalProjectIds[task.id] === projectId && processedTaskIds.includes(task.id)) {
+          return false;
+        }
+        // If this task is currently in this project but wasn't originally from the queue, include it
+        if (String(task.projectId) === String(projectId) && !originalProjectIds[task.id]) {
+          // Task is in this project but wasn't part of the queue - include it
+        } else if (String(task.projectId) !== String(projectId)) {
+          // Task is not currently in this project - exclude it
+          return false;
+        }
+      } else {
+        // No queue tracking - use simple project match
+        if (String(task.projectId) !== String(projectId)) return false;
+      }
       
       // Apply assignee filter
       if (assigneeFilter !== 'all') {

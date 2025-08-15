@@ -26,6 +26,9 @@ interface OverlayManagerProps {
   
   // Optional suggestions for project overlay
   suggestions?: any[]
+  
+  // Project update handler (for when new projects are created)
+  onProjectsUpdate?: (updater: (projects: TodoistProject[]) => TodoistProject[]) => void
 }
 
 export default function OverlayManager({
@@ -35,7 +38,8 @@ export default function OverlayManager({
   masterTasks,
   onTaskUpdate,
   onCompleteTask,
-  suggestions = []
+  suggestions = [],
+  onProjectsUpdate
 }: OverlayManagerProps) {
   const { focusedTask } = useFocusedTask()
   const { overlays, closeOverlay } = useOverlayContext()
@@ -165,6 +169,7 @@ export default function OverlayManager({
           onProjectSelect={handleProjectSelect}
           onClose={() => closeOverlay('project')}
           isVisible={true}
+          onProjectsUpdate={onProjectsUpdate}
         />
       )}
 

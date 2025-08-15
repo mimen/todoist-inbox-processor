@@ -13,6 +13,7 @@ import { isExcludedLabel } from '@/lib/excluded-labels'
 import { useFocusedTask } from '@/contexts/FocusedTaskContext'
 import { useOverlayManager, OverlayType } from '@/hooks/useOverlayManager'
 import { useTaskKeyboardShortcuts } from '@/hooks/useTaskKeyboardShortcuts'
+import { useQueueManagement } from '@/hooks/useQueueManagement'
 import OverlayManager from './OverlayManager'
 
 // Extract project metadata from special tasks marked with * prefix or project-metadata label
@@ -73,6 +74,7 @@ export default function TaskProcessor() {
   
   // Ref for ProcessingModeSelector
   const processingModeSelectorRef = useRef<ProcessingModeSelectorRef>(null)
+  const skipNextLoadRef = useRef(false)
   
   // MAIN STATE
   const [projects, setProjects] = useState<TodoistProject[]>([])
@@ -134,46 +136,44 @@ export default function TaskProcessor() {
     }
   }, [viewMode])
   
-  // NEW QUEUE ARCHITECTURE STATE
-  // 1. Master task store - continuously updated as changes are made
-  const [masterTasks, setMasterTasks] = useState<Record<string, TodoistTask>>({})
-  
-  // 2. Current queue - stable until explicit reload  
-  const [taskQueue, setTaskQueue] = useState<string[]>([])
-  
-  // 3. Position tracking
-  const [queuePosition, setQueuePosition] = useState(0)
-  const [processedTaskIds, setProcessedTaskIds] = useState<string[]>([])
-  const [skippedTaskIds, setSkippedTaskIds] = useState<string[]>([])
-  const [slidingOutTaskIds, setSlidingOutTaskIds] = useState<string[]>([])
+  // Queue management
+  const queueManagement = useQueueManagement()
+  const {
+    // State
+    masterTasks,
+    taskQueue,
+    queuePosition,
+    activeQueuePosition,
+    processedTaskIds,
+    skippedTaskIds,
+    slidingOutTaskIds,
+    originalProjectIds,
+    activeQueue,
+    currentTask,
+    queuedTasks,
+    totalTasks,
+    completedTasks,
+    
+    // Actions
+    setMasterTasks,
+    updateMasterTask,
+    setTaskQueue,
+    resetQueue,
+    clearQueue,
+    setQueuePosition,
+    setActiveQueuePosition,
+    navigateToNextTask,
+    navigateToPrevTask,
+    markTaskAsProcessed,
+    markTaskAsSkipped,
+    setProcessedTaskIds,
+    setSkippedTaskIds,
+    setSlidingOutTaskIds,
+    addSlidingOutTask,
+    removeSlidingOutTask
+  } = queueManagement
   
   const currentUserId = collaboratorsData?.currentUser?.id || '13801296' // Use dynamic user ID
-  
-  // DERIVED STATE from queue architecture
-  // Active queue - only unprocessed tasks
-  const activeQueue = useMemo(() => {
-    return taskQueue.filter(taskId => !processedTaskIds.includes(taskId))
-  }, [taskQueue, processedTaskIds])
-  
-  // Current position in active queue
-  const [activeQueuePosition, setActiveQueuePosition] = useState(0)
-  
-  const currentTask = useMemo((): TodoistTask | null => {
-    if (activeQueuePosition >= activeQueue.length) return null
-    const taskId = activeQueue[activeQueuePosition]
-    return masterTasks[taskId] || null
-  }, [activeQueue, activeQueuePosition, masterTasks])
-  
-  
-  
-  const queuedTasks = useMemo((): TodoistTask[] => {
-    return activeQueue.slice(activeQueuePosition + 1)
-      .map(id => masterTasks[id])
-      .filter(Boolean)
-  }, [activeQueue, activeQueuePosition, masterTasks])
-  
-  const totalTasks = taskQueue.length
-  const completedTasks = processedTaskIds.length
   
   // Helper function to check if current project has collaborators
   const hasCollaboratorsForCurrentProject = useCallback(() => {
@@ -392,16 +392,8 @@ export default function TaskProcessor() {
             
             // Initialize queue architecture with inbox tasks
             if (inboxTasks.length > 0) {
-              const taskMap = inboxTasks.reduce((acc, task) => {
-                acc[task.id] = task
-                return acc
-              }, {} as Record<string, TodoistTask>)
-              
-              setMasterTasks(taskMap)
-              setTaskQueue(inboxTasks.map(task => task.id))
-              setQueuePosition(0)
-              setProcessedTaskIds([])
-              setSkippedTaskIds([])
+              // Use the new resetQueue method
+              resetQueue(inboxTasks)
               setTaskKey(prev => prev + 1)
             }
             
@@ -493,32 +485,12 @@ export default function TaskProcessor() {
       
       // NEW QUEUE ARCHITECTURE: Update master store and reset queue
       if (filteredTasks.length > 0) {
-        // 1. Update master task store
-        const taskMap = filteredTasks.reduce((acc, task) => {
-          acc[task.id] = task
-          return acc
-        }, {} as Record<string, TodoistTask>)
-        
-        setMasterTasks(prev => ({ ...prev, ...taskMap }))
-        
-        // 2. Reset queue to new task IDs
-        const taskIds = filteredTasks.map(task => task.id)
-        setTaskQueue(taskIds)
-        
-        // 3. Reset position tracking
-        setQueuePosition(0)
-        setActiveQueuePosition(0) // Reset active queue position
-        setProcessedTaskIds([])
-        setSkippedTaskIds([])
-        
+        // Use the new resetQueue method
+        resetQueue(filteredTasks)
         setTaskKey(prev => prev + 1) // Force TaskForm to re-render with new task
       } else {
-        // Empty state
-        setTaskQueue([])
-        setQueuePosition(0)
-        setActiveQueuePosition(0) // Reset active queue position
-        setProcessedTaskIds([])
-        setSkippedTaskIds([])
+        // Empty state - use clearQueue method
+        clearQueue()
       }
       
     
@@ -562,10 +534,16 @@ export default function TaskProcessor() {
 
   // Load tasks when processing mode changes (NOT assignee filter)
   useEffect(() => {
+    // Skip if we just completed a task
+    if (skipNextLoadRef.current) {
+      skipNextLoadRef.current = false
+      return
+    }
+    
     if (hasMeaningfulValue(processingMode) && (processingMode.type === 'filter' || allTasksGlobal.length > 0)) {
       loadTasksForMode(processingMode)
     }
-  }, [processingMode, loadTasksForMode, allTasksGlobal.length])
+  }, [processingMode, loadTasksForMode]) // Removed allTasksGlobal.length to prevent reloads on task updates
 
   // Update focused task when current task changes
   useEffect(() => {
@@ -919,26 +897,21 @@ export default function TaskProcessor() {
     }
   }, [currentTask, handleLabelsChange])
 
-  const navigateToNextTask = useCallback(() => {
-    if (activeQueue.length === 0) return
-    if (activeQueuePosition >= activeQueue.length - 1) return // Already at the end
-    
-    setActiveQueuePosition(prev => prev + 1)
+  // Navigation with re-render
+  const navigateToNextTaskWithRerender = useCallback(() => {
+    navigateToNextTask()
     setTaskKey(prev => prev + 1) // Force re-render
-  }, [activeQueue.length, activeQueuePosition])
-
-  const navigateToPrevTask = useCallback(() => {
-    if (activeQueue.length === 0) return
-    if (activeQueuePosition <= 0) return // Already at the beginning
-    
-    setActiveQueuePosition(prev => prev - 1)
+  }, [navigateToNextTask])
+  
+  const navigateToPrevTaskWithRerender = useCallback(() => {
+    navigateToPrevTask()
     setTaskKey(prev => prev + 1) // Force re-render
-  }, [activeQueue.length, activeQueuePosition])
+  }, [navigateToPrevTask])
 
   const handleNext = useCallback(() => {
     // Use new architecture navigation
-    navigateToNextTask()
-  }, [navigateToNextTask])
+    navigateToNextTaskWithRerender()
+  }, [navigateToNextTaskWithRerender])
 
   // Note: handleScheduledDateChange is no longer used - OverlayManager handles scheduled date changes directly
 
@@ -953,18 +926,13 @@ export default function TaskProcessor() {
     const taskId = currentTask.id
     
     // Mark as processed (local state only)
-    setProcessedTaskIds(prev => [...prev, taskId])
+    markTaskAsProcessed(taskId)
+    
+    // Set flag to skip the next load
+    skipNextLoadRef.current = true
     
     // Show success message
     setToast({ message: 'Task processed', type: 'success' })
-    
-    // The activeQueue will automatically update due to the processedTaskIds change
-    // Keep position the same (next task will slide into current position)
-    // Unless we're at the end of the queue
-    if (activeQueuePosition >= activeQueue.length - 1 && activeQueue.length > 1) {
-      // If we're at the last task and there are other tasks, go back one
-      setActiveQueuePosition(prev => Math.max(0, prev - 1))
-    }
     
     setTaskKey(prev => prev + 1) // Force re-render
   }, [currentTask, activeQueuePosition, activeQueue.length])
@@ -1008,15 +976,13 @@ export default function TaskProcessor() {
     }
     
     // Mark as processed
-    setProcessedTaskIds(prev => [...prev, taskId])
+    markTaskAsProcessed(taskId)
+    
+    // Set flag to skip the next load
+    skipNextLoadRef.current = true
     
     // Show optimistic success message
     setToast({ message: 'Task completed', type: 'success' })
-    
-    // Handle position adjustment for processing view
-    if (viewMode === 'processing' && activeQueuePosition >= activeQueue.length - 1 && activeQueue.length > 1) {
-      setActiveQueuePosition(prev => Math.max(0, prev - 1))
-    }
     
     // Note: Overlay state is now managed by OverlayManager
     
@@ -1141,17 +1107,17 @@ export default function TaskProcessor() {
       }
 
       // Start slide-out animation
-      setSlidingOutTaskIds(prev => [...prev, taskId])
+      addSlidingOutTask(taskId)
+      
+      // Set flag to skip the next load
+      skipNextLoadRef.current = true
       
       // After animation completes, mark as processed
       setTimeout(() => {
-        setProcessedTaskIds(prev => {
-          if (prev.includes(taskId)) return prev
-          return [...prev, taskId]
-        })
+        markTaskAsProcessed(taskId)
         
         // Remove from sliding out state
-        setSlidingOutTaskIds(prev => prev.filter(id => id !== taskId))
+        removeSlidingOutTask(taskId)
       }, 400) // Match the animation duration
       
       // Update list view highlighted task
@@ -1336,7 +1302,7 @@ export default function TaskProcessor() {
           // Only handle in processing mode
           if (viewMode === 'processing') {
             e.preventDefault()
-            navigateToNextTask()
+            navigateToNextTaskWithRerender()
           }
           break
         case 'k':
@@ -1345,7 +1311,7 @@ export default function TaskProcessor() {
           // Only handle in processing mode
           if (viewMode === 'processing') {
             e.preventDefault()
-            navigateToPrevTask()
+            navigateToPrevTaskWithRerender()
           }
           break
         case '?':
@@ -1380,7 +1346,7 @@ export default function TaskProcessor() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [navigateToNextTask, navigateToPrevTask, showShortcuts, currentTask, totalTasks, processedTaskIds, taskQueue, handleProgressToNextQueue, processingMode, viewMode, setViewMode, loadTasksForMode, isAnyOverlayOpen])
+  }, [navigateToNextTaskWithRerender, navigateToPrevTaskWithRerender, showShortcuts, currentTask, totalTasks, processedTaskIds, taskQueue, handleProgressToNextQueue, processingMode, viewMode, setViewMode, loadTasksForMode, isAnyOverlayOpen])
 
 
   const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
@@ -1471,7 +1437,14 @@ export default function TaskProcessor() {
                 projects={projects}
                 allTasks={globallyFilteredTasks}
                 allTasksGlobal={globallyFilteredTasks}
-                taskCounts={getTaskCountsForProjects(globallyFilteredTasks, projects.map(p => p.id), 'all', currentUserId)}
+                taskCounts={getTaskCountsForProjects(
+                  globallyFilteredTasks, 
+                  projects.map(p => p.id), 
+                  'all', 
+                  currentUserId,
+                  processedTaskIds,
+                  originalProjectIds
+                )}
                 labels={labels}
                 projectMetadata={projectMetadata}
                 currentUserId={currentUserId}
@@ -1605,7 +1578,14 @@ export default function TaskProcessor() {
               projects={projects}
               allTasks={globallyFilteredTasks}
               allTasksGlobal={globallyFilteredTasks}
-              taskCounts={getTaskCountsForProjects(globallyFilteredTasks, projects.map(p => p.id), 'all', currentUserId)}
+              taskCounts={getTaskCountsForProjects(
+                globallyFilteredTasks, 
+                projects.map(p => p.id), 
+                'all', 
+                currentUserId,
+                processedTaskIds,
+                originalProjectIds
+              )}
               labels={labels}
               projectMetadata={projectMetadata}
               currentUserId={currentUserId}
@@ -1780,7 +1760,7 @@ export default function TaskProcessor() {
               suggestions={generateMockSuggestions(currentTask.content)}
               onAutoSave={(updates) => autoSaveTask(currentTask!.id, updates)}
               onNext={handleNext}
-              onPrevious={navigateToPrevTask}
+              onPrevious={navigateToPrevTaskWithRerender}
               canGoNext={activeQueuePosition < activeQueue.length - 1}
               canGoPrevious={activeQueuePosition > 0}
             />
@@ -1833,6 +1813,7 @@ export default function TaskProcessor() {
         onTaskUpdate={autoSaveTask}
         suggestions={currentTaskSuggestions}
         onCompleteTask={handleCompleteTask}
+        onProjectsUpdate={setProjects}
       />
       
 
