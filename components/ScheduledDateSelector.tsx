@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { TodoistTask } from '@/lib/types'
 import SmartScheduleDateInput from './SmartScheduleDateInput'
 import { getDateColor, getDateTimeLabel } from '@/lib/date-colors'
@@ -38,24 +38,7 @@ export default function ScheduledDateSelector({
   isVisible,
   isLoading
 }: ScheduledDateSelectorProps) {
-  // Check if we should use the new scheduler
-  const useNewScheduler = process.env.NEXT_PUBLIC_USE_NEW_SCHEDULER === 'true'
-  
-  // If using new scheduler, render it instead
-  if (useNewScheduler) {
-    return (
-      <TaskSchedulerView
-        currentTask={currentTask}
-        onScheduledDateChange={onScheduledDateChange}
-        onClose={onClose}
-        isVisible={isVisible}
-        isLoading={isLoading}
-        mode="scheduled"
-      />
-    )
-  }
-  
-  // Otherwise, continue with the original implementation
+  // All hooks must be declared before any conditional returns
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -223,11 +206,25 @@ export default function ScheduledDateSelector({
       return dateA.getTime() - dateB.getTime()
     })
   }, [currentTask.priority, currentTask.deadline])
+  
+  const handleApply = (dateString: string) => {
+    onScheduledDateChange(dateString)
+    onClose()
+  }
 
-  const suggestions = generateSuggestions()
+  const handleSuggestionClick = useCallback((dateString: string) => {
+    handleApply(dateString)
+  }, [handleApply])
+
+  const handleClearDate = () => {
+    onScheduledDateChange('')
+    onClose()
+  }
+  
+  const suggestions = useMemo(() => generateSuggestions(), [generateSuggestions])
   
   // Filter suggestions based on search term and add custom option
-  const filteredSuggestions = (() => {
+  const filteredSuggestions = useMemo(() => {
     const filtered = suggestions.filter(suggestion => 
       suggestion.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
       suggestion.sublabel?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -246,7 +243,7 @@ export default function ScheduledDateSelector({
     }
     
     return filtered
-  })()
+  }, [suggestions, searchTerm])
 
   // Reset when opening
   useEffect(() => {
@@ -340,20 +337,23 @@ export default function ScheduledDateSelector({
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isVisible, selectedIndex, filteredSuggestions, searchTerm])
-
-  const handleApply = (dateString: string) => {
-    onScheduledDateChange(dateString)
-    onClose()
-  }
-
-  const handleSuggestionClick = useCallback((dateString: string) => {
-    handleApply(dateString)
-  }, [])
-
-  const handleClearDate = () => {
-    onScheduledDateChange('')
-    onClose()
+  }, [isVisible, selectedIndex, filteredSuggestions, searchTerm, handleApply, handleClearDate, onClose])
+  
+  // Check if we should use the new scheduler
+  const useNewScheduler = process.env.NEXT_PUBLIC_USE_NEW_SCHEDULER === 'true'
+  
+  // If using new scheduler, render it instead
+  if (useNewScheduler) {
+    return (
+      <TaskSchedulerView
+        currentTask={currentTask}
+        onScheduledDateChange={onScheduledDateChange}
+        onClose={onClose}
+        isVisible={isVisible}
+        isLoading={isLoading}
+        mode="scheduled"
+      />
+    )
   }
 
   if (!isVisible) return null

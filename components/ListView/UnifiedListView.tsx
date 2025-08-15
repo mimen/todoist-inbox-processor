@@ -50,14 +50,17 @@ export interface UnifiedListViewProps {
   collaborators?: Record<string, TodoistUser[]>
   autoFocus?: boolean
   
-  // Overlay handlers
-  onOpenProjectOverlay: (taskId: string) => void
-  onOpenPriorityOverlay: (taskId: string) => void
-  onOpenLabelOverlay: (taskId: string) => void
-  onOpenScheduledOverlay: (taskId: string) => void
-  onOpenDeadlineOverlay: (taskId: string) => void
-  onOpenAssigneeOverlay: (taskId: string) => void
-  onOpenCompleteOverlay: (taskId: string) => void
+  // Unified overlay handler (optional - will use context if not provided)
+  onOpenOverlay?: (type: string, taskId: string) => void
+  
+  // Legacy overlay handlers (deprecated - for backwards compatibility)
+  onOpenProjectOverlay?: (taskId: string) => void
+  onOpenPriorityOverlay?: (taskId: string) => void
+  onOpenLabelOverlay?: (taskId: string) => void
+  onOpenScheduledOverlay?: (taskId: string) => void
+  onOpenDeadlineOverlay?: (taskId: string) => void
+  onOpenAssigneeOverlay?: (taskId: string) => void
+  onOpenCompleteOverlay?: (taskId: string) => void
 }
 
 interface ListData {
@@ -116,6 +119,8 @@ const UnifiedListView: React.FC<UnifiedListViewProps> = ({
   assigneeFilter = 'all',
   collaborators = {},
   autoFocus = true,
+  onOpenOverlay,
+  // Legacy overlay handlers
   onOpenProjectOverlay,
   onOpenPriorityOverlay,
   onOpenLabelOverlay,
@@ -132,7 +137,35 @@ const UnifiedListView: React.FC<UnifiedListViewProps> = ({
   const config = useQueueConfig()
   const { settings } = useSettingsContext()
   const effectiveSettings = externalSettings || settings
-  const { isAnyOverlayOpen } = useOverlayManager()
+  const { openOverlay: contextOpenOverlay, isAnyOverlayOpen } = useOverlayManager()
+  
+  // Create overlay handlers that use either the provided handler or context
+  const handleOpenOverlay = useCallback((type: string, taskId: string) => {
+    if (onOpenOverlay) {
+      onOpenOverlay(type, taskId)
+    } else {
+      // Use context directly
+      const task = masterTasks?.[taskId] || allTasks.find(t => t.id === taskId)
+      if (task) {
+        contextOpenOverlay(type as any, task)
+      }
+    }
+  }, [onOpenOverlay, contextOpenOverlay, masterTasks, allTasks])
+  
+  // Create individual overlay handlers for backwards compatibility
+  const overlayHandlers = useMemo(() => ({
+    project: onOpenProjectOverlay || ((taskId: string) => handleOpenOverlay('project', taskId)),
+    priority: onOpenPriorityOverlay || ((taskId: string) => handleOpenOverlay('priority', taskId)),
+    label: onOpenLabelOverlay || ((taskId: string) => handleOpenOverlay('label', taskId)),
+    scheduled: onOpenScheduledOverlay || ((taskId: string) => handleOpenOverlay('scheduled', taskId)),
+    deadline: onOpenDeadlineOverlay || ((taskId: string) => handleOpenOverlay('deadline', taskId)),
+    assignee: onOpenAssigneeOverlay || ((taskId: string) => handleOpenOverlay('assignee', taskId)),
+    complete: onOpenCompleteOverlay || ((taskId: string) => handleOpenOverlay('complete', taskId)),
+  }), [
+    onOpenProjectOverlay, onOpenPriorityOverlay, onOpenLabelOverlay,
+    onOpenScheduledOverlay, onOpenDeadlineOverlay, onOpenAssigneeOverlay,
+    onOpenCompleteOverlay, handleOpenOverlay
+  ])
   
   // Get prioritized options for multi-list mode
   const prioritizedOptions = usePrioritizedOptions(
@@ -437,25 +470,25 @@ const UnifiedListView: React.FC<UnifiedListViewProps> = ({
       switch (e.key) {
         case '#':
           e.preventDefault()
-          onOpenProjectOverlay(highlightedTask.id)
+          overlayHandlers.project(highlightedTask.id)
           break
           
         case '@':
           e.preventDefault()
-          onOpenLabelOverlay(highlightedTask.id)
+          overlayHandlers.label(highlightedTask.id)
           break
           
         case 's':
         case 'S':
           e.preventDefault()
-          onOpenScheduledOverlay(highlightedTask.id)
+          overlayHandlers.scheduled(highlightedTask.id)
           break
           
         case 'd':
         case 'D':
           if (!e.metaKey && !e.ctrlKey) {
             e.preventDefault()
-            onOpenDeadlineOverlay(highlightedTask.id)
+            overlayHandlers.deadline(highlightedTask.id)
           }
           break
           
@@ -465,11 +498,11 @@ const UnifiedListView: React.FC<UnifiedListViewProps> = ({
             if (e.metaKey || e.ctrlKey) {
               // Cmd+P or Ctrl+P for priority overlay
               e.preventDefault()
-              onOpenPriorityOverlay(highlightedTask.id)
+              overlayHandlers.priority(highlightedTask.id)
             } else if (!e.metaKey && !e.ctrlKey) {
               // Regular P key
               e.preventDefault()
-              onOpenPriorityOverlay(highlightedTask.id)
+              overlayHandlers.priority(highlightedTask.id)
             }
           }
           break
@@ -478,7 +511,7 @@ const UnifiedListView: React.FC<UnifiedListViewProps> = ({
         case 'A':
           if (!e.metaKey && !e.ctrlKey) {
             e.preventDefault()
-            onOpenAssigneeOverlay(highlightedTask.id)
+            overlayHandlers.assignee(highlightedTask.id)
           }
           break
           
@@ -486,7 +519,7 @@ const UnifiedListView: React.FC<UnifiedListViewProps> = ({
         case 'C':
           if (!e.metaKey && !e.ctrlKey) {
             e.preventDefault()
-            onOpenCompleteOverlay(highlightedTask.id)
+            overlayHandlers.complete(highlightedTask.id)
           }
           break
           
@@ -525,8 +558,7 @@ const UnifiedListView: React.FC<UnifiedListViewProps> = ({
       }
     }
   }, [allVisibleTasks, listViewState, onListViewStateChange, onViewModeChange, onTaskProcess, 
-      onTaskComplete, onTaskDelete, onOpenProjectOverlay, onOpenPriorityOverlay, 
-      onOpenLabelOverlay, onOpenScheduledOverlay, onOpenDeadlineOverlay, onOpenAssigneeOverlay, onOpenCompleteOverlay])
+      onTaskComplete, onTaskDelete, overlayHandlers])
 
   // Ensure keyboard events work even without browser focus
   useEffect(() => {
@@ -735,12 +767,12 @@ const UnifiedListView: React.FC<UnifiedListViewProps> = ({
                       handleTaskClick(task.id)
                     }
                   }}
-                  onOpenProjectOverlay={() => onOpenProjectOverlay(task.id)}
-                  onOpenPriorityOverlay={() => onOpenPriorityOverlay(task.id)}
-                  onOpenLabelOverlay={() => onOpenLabelOverlay(task.id)}
-                  onOpenScheduledOverlay={() => onOpenScheduledOverlay(task.id)}
-                  onOpenDeadlineOverlay={() => onOpenDeadlineOverlay(task.id)}
-                  onOpenAssigneeOverlay={() => onOpenAssigneeOverlay(task.id)}
+                  onOpenProjectOverlay={() => overlayHandlers.project(task.id)}
+                  onOpenPriorityOverlay={() => overlayHandlers.priority(task.id)}
+                  onOpenLabelOverlay={() => overlayHandlers.label(task.id)}
+                  onOpenScheduledOverlay={() => overlayHandlers.scheduled(task.id)}
+                  onOpenDeadlineOverlay={() => overlayHandlers.deadline(task.id)}
+                  onOpenAssigneeOverlay={() => overlayHandlers.assignee(task.id)}
                 />
               </div>
             )

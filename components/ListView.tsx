@@ -1,10 +1,10 @@
 'use client'
 
 import React from 'react'
-import { TodoistTask, TodoistProject, TodoistLabel } from '@/lib/types'
+import { TodoistTask, TodoistProject, TodoistLabel, TaskUpdate } from '@/lib/types'
 import { ProcessingMode } from '@/types/processing-mode'
 import { ListViewState } from '@/types/view-mode'
-import ListViewComponent from './ListView/ListView'
+import UnifiedListView from './ListView/UnifiedListView'
 
 interface ListViewProps {
   // Data
@@ -55,62 +55,43 @@ export default function ListView({
   processedTaskIds
 }: ListViewProps) {
   // The onTaskUpdate prop already handles auto-saving
-  const handleTaskUpdate = async (taskId: string, updates: Partial<TodoistTask>) => {
+  const handleTaskUpdate = async (taskId: string, updates: TaskUpdate) => {
     // This already includes auto-save functionality
-    onTaskUpdate(taskId, updates)
+    onTaskUpdate(taskId, updates as Partial<TodoistTask>)
   }
   
-  // Map the overlay handler to individual overlay handlers expected by ListViewComponent
-  const handleOpenOverlay = (type: string, taskId?: string) => {
-    if (!taskId) return
-    
-    switch (type) {
-      case 'project':
-        onOpenOverlay('project', taskId)
-        break
-      case 'priority':
-        onOpenOverlay('priority', taskId)
-        break
-      case 'label':
-        onOpenOverlay('label', taskId)
-        break
-      case 'scheduled':
-        onOpenOverlay('scheduled', taskId)
-        break
-      case 'deadline':
-        onOpenOverlay('deadline', taskId)
-        break
-      case 'assignee':
-        onOpenOverlay('assignee', taskId)
-        break
-      case 'complete':
-        onOpenOverlay('complete', taskId)
-        break
-    }
+  // Convert multiListMode boolean to viewMode
+  const viewMode = multiListMode ? 'multi' : 'single'
+  
+  // Handle overlay with unified handler
+  const handleOpenOverlay = (type: string, taskId: string) => {
+    onOpenOverlay(type, taskId)
   }
   
   return (
-    <ListViewComponent
-      tasks={allTasks}
+    <UnifiedListView
+      allTasks={allTasks}
       projects={projects}
       labels={labels}
-      processingMode={processingMode}
       projectMetadata={projectMetadata}
+      viewMode={viewMode}
+      processingMode={processingMode}
+      prioritizedSequence={prioritizedModeOptions}
+      visibleListCount={3}
       listViewState={listViewState}
       slidingOutTaskIds={processedTaskIds}
       onListViewStateChange={onListViewStateChange}
       onTaskUpdate={handleTaskUpdate}
       onTaskComplete={onMarkTaskComplete}
       onTaskProcess={onTaskProcess}
-      onTaskDelete={(taskId) => onTaskUpdate(taskId, { isDeleted: true })}
+      onTaskDelete={(taskId) => {
+        // Handle task deletion - could either update a status or call a separate delete function
+        // For now, we'll just call onTaskProcess which handles task removal from the view
+        onTaskProcess(taskId)
+      }}
       onViewModeChange={() => {}}
       currentUserId="13801296"
-      onOpenProjectOverlay={(taskId) => handleOpenOverlay('project', taskId)}
-      onOpenPriorityOverlay={(taskId) => handleOpenOverlay('priority', taskId)}
-      onOpenLabelOverlay={(taskId) => handleOpenOverlay('label', taskId)}
-      onOpenScheduledOverlay={(taskId) => handleOpenOverlay('scheduled', taskId)}
-      onOpenDeadlineOverlay={(taskId) => handleOpenOverlay('deadline', taskId)}
-      onOpenAssigneeOverlay={(taskId) => handleOpenOverlay('assignee', taskId)}
+      onOpenOverlay={handleOpenOverlay}
     />
   )
 }
