@@ -48,24 +48,20 @@ function extractProjectMetadata(tasks: TodoistTask[]): Record<string, any> {
   
   return metadata
 }
-import TaskCard from './TaskCard'
-import TaskForm from './TaskForm'
 import KeyboardShortcuts from './KeyboardShortcuts'
-import ProgressIndicator from './ProgressIndicator'
 import ProcessingModeSelector, { ProcessingModeSelectorRef } from './ProcessingModeSelector'
-import ProjectSuggestions from './ProjectSuggestions'
 import Toast from './Toast'
-import ProjectMetadataDisplay from './ProjectMetadataDisplay'
 import AssigneeFilter, { AssigneeFilterType } from './AssigneeFilter'
 import QueueCompletionView from './QueueCompletionView'
 import ViewModeToggle from './ViewModeToggle'
-import { UnifiedListView } from './ListView'
 import SyncStatus from './SyncStatus'
 import { useSettingsContext } from '@/contexts/SettingsContext'
 import SettingsButton from './SettingsButton'
 import SettingsModal from './SettingsModal'
 import MultiListModeIndicator from './MultiListModeIndicator'
 import DebugInfo from './DebugInfo'
+import ProcessingView from './ProcessingView'
+import ListView from './ListView'
 
 export default function TaskProcessor() {
   const searchParams = useSearchParams()
@@ -896,6 +892,46 @@ export default function TaskProcessor() {
       handleLabelsChange(newLabels)
     }
   }, [currentTask, handleLabelsChange])
+  
+  const handleTaskCreate = useCallback(async (taskData: {
+    content: string
+    description?: string
+    projectId: string
+    priority?: 1 | 2 | 3 | 4
+    labels?: string[]
+    dueString?: string
+    deadline?: string
+    assigneeId?: string
+  }) => {
+    try {
+      const response = await fetch('/api/todoist/tasks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(taskData),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to create task')
+      }
+
+      const newTask = await response.json()
+      
+      // Refresh tasks to include the new one
+      if (processingMode.value) {
+        loadTasksForMode(processingMode)
+      }
+      
+      setToast({ message: 'Task created successfully', type: 'success' })
+      
+      return newTask
+    } catch (error) {
+      console.error('Error creating task:', error)
+      setToast({ message: 'Failed to create task', type: 'error' })
+      throw error
+    }
+  }, [processingMode, loadTasksForMode, setToast])
 
   // Navigation with re-render
   const navigateToNextTaskWithRerender = useCallback(() => {
@@ -912,6 +948,19 @@ export default function TaskProcessor() {
     // Use new architecture navigation
     navigateToNextTaskWithRerender()
   }, [navigateToNextTaskWithRerender])
+  
+  const handleSkipTask = useCallback(() => {
+    if (!currentTask) return
+    
+    // Mark task as skipped
+    markTaskAsSkipped(currentTask.id)
+    
+    // Move to next task
+    navigateToNextTaskWithRerender()
+    
+    // Show info message
+    setToast({ message: 'Task skipped', type: 'info' })
+  }, [currentTask, markTaskAsSkipped, navigateToNextTaskWithRerender, setToast])
 
   // Note: handleScheduledDateChange is no longer used - OverlayManager handles scheduled date changes directly
 
@@ -1608,195 +1657,58 @@ export default function TaskProcessor() {
       <div className="max-w-4xl mx-auto p-4">
         {/* Main Content Area - conditional based on view mode */}
         {viewMode === 'list' ? (
-          <UnifiedListView
+          <ListView
             allTasks={globallyFilteredTasks}
-            masterTasks={masterTasks}
+            allTasksGlobal={globallyFilteredTasks}
+            taskCounts={getTaskCountsForProjects(
+              globallyFilteredTasks, 
+              projects.map(p => p.id), 
+              'all', 
+              currentUserId,
+              processedTaskIds,
+              originalProjectIds
+            )}
             projects={projects}
             labels={labels}
-            viewMode={settings.listView.multiListMode && processingMode.type === 'prioritized' ? 'multi' : 'single'}
-            processingMode={processingMode}
             projectMetadata={projectMetadata}
+            processingMode={processingMode}
             listViewState={listViewState}
-            slidingOutTaskIds={slidingOutTaskIds}
+            multiListMode={settings.listView.multiListMode}
+            prioritizedModeOptions={processingMode.type === 'prioritized' ? processingModeSelectorRef.current?.prioritizedOptions : undefined}
             onListViewStateChange={setListViewState}
-            onTaskUpdate={handleListViewTaskUpdate}
-            onTaskComplete={handleListViewTaskComplete}
+            onTaskUpdate={updateMasterTask}
             onTaskProcess={handleListViewTaskProcess}
-            onTaskDelete={handleListViewTaskDelete}
-            onViewModeChange={setViewMode}
-            currentUserId={currentUserId}
-            assigneeFilter={assigneeFilter}
-            collaborators={projectCollaborators}
-            onOpenProjectOverlay={(taskId) => handleOpenOverlay('project', taskId)}
-            onOpenPriorityOverlay={(taskId) => handleOpenOverlay('priority', taskId)}
-            onOpenLabelOverlay={(taskId) => handleOpenOverlay('label', taskId)}
-            onOpenScheduledOverlay={(taskId) => handleOpenOverlay('scheduled', taskId)}
-            onOpenDeadlineOverlay={(taskId) => handleOpenOverlay('deadline', taskId)}
-            onOpenAssigneeOverlay={(taskId) => handleOpenOverlay('assignee', taskId)}
-            onOpenCompleteOverlay={(taskId) => handleOpenOverlay('complete', taskId)}
+            onOpenOverlay={handleOpenOverlay}
+            onToggleEditMode={(taskId) => setListViewState(prev => ({ ...prev, editingTaskId: taskId }))}
+            onMarkTaskComplete={handleListViewTaskComplete}
+            activeQueue={activeQueue}
+            processedTaskIds={processedTaskIds}
           />
-        ) : currentTask && !loadingTasks ? (
-          <div className="space-y-6">
-            {/* Progress Indicator - only in Processing View */}
-            {totalTasks > 0 && (
-              <ProgressIndicator
-                current={completedTasks}
-                total={totalTasks}
-                progress={progress}
-              />
-            )}
-            
-            {/* Show if all tasks are processed */}
-            {processedTaskIds.length === taskQueue.length && taskQueue.length > 0 && (
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-6 text-center">
-                <svg className="w-12 h-12 text-green-600 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <h3 className="text-lg font-bold text-green-800 mb-2">All Tasks Processed! 🎉</h3>
-                <p className="text-green-700">
-                  Great job! You&apos;ve processed all {taskQueue.length} tasks in this queue.
-                  {(() => {
-                    const queueState = processingModeSelectorRef.current?.queueState
-                    if (!queueState?.hasNextQueue) {
-                      return ' This was the last queue in the sequence.'
-                    }
-                    return ''
-                  })()}
-                </p>
-              </div>
-            )}
-            
-            {/* Show if task is already processed */}
-            {processedTaskIds.includes(currentTask.id) && processedTaskIds.length < taskQueue.length && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
-                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span className="text-green-700 font-medium">This task has been processed</span>
-              </div>
-            )}
-            
-            {/* Full-width Task Card */}
-            <TaskCard 
-              task={currentTask} 
-              projects={projects} 
-              labels={labels} 
-              assignee={currentTaskAssignee}
-              hasCollaborators={hasCollaboratorsForCurrentProject()}
-              dateLoadingState={dateLoadingStates[currentTask.id] || null}
-              onContentChange={handleContentChange}
-              onDescriptionChange={handleDescriptionChange}
-              onProjectClick={() => {
-                // Ensure current task is focused before opening overlay
-                setFocusedTask(currentTask.id, currentTask, {
-                  processingMode,
-                  queuePosition: activeQueuePosition
-                })
-                openOverlay('project')
-              }}
-              onPriorityClick={() => {
-                setFocusedTask(currentTask.id, currentTask, {
-                  processingMode,
-                  queuePosition: activeQueuePosition
-                })
-                openOverlay('priority')
-              }}
-              onLabelAdd={() => {
-                setFocusedTask(currentTask.id, currentTask, {
-                  processingMode,
-                  queuePosition: activeQueuePosition
-                })
-                openOverlay('label')
-              }}
-              onLabelRemove={handleLabelRemove}
-              onScheduledClick={() => {
-                setFocusedTask(currentTask.id, currentTask, {
-                  processingMode,
-                  queuePosition: activeQueuePosition
-                })
-                openOverlay('scheduled')
-              }}
-              onDeadlineClick={() => {
-                setFocusedTask(currentTask.id, currentTask, {
-                  processingMode,
-                  queuePosition: activeQueuePosition
-                })
-                openOverlay('deadline')
-              }}
-              onAssigneeClick={() => {
-                setFocusedTask(currentTask.id, currentTask, {
-                  processingMode,
-                  queuePosition: activeQueuePosition
-                })
-                openOverlay('assignee')
-              }}
-            />
-
-            {/* Project Metadata Display */}
-            <ProjectMetadataDisplay
-              project={projects.find(p => p.id === currentTask?.projectId)}
-              metadata={projectMetadata[currentTask?.projectId || '']}
-              allProjects={projects}
-              collaborators={currentTask ? (projectCollaborators[currentTask.projectId] || []) : []}
-              className="animate-fade-in"
-            />
-
-            {/* Project Suggestions */}
-            {currentTaskSuggestions.length > 0 && (
-              <ProjectSuggestions
-                task={currentTask}
-                projects={projects}
-                suggestions={currentTaskSuggestions}
-                onProjectSelect={handleProjectSelect}
-              />
-            )}
-
-            {/* Task Form Controls */}
-            <TaskForm
-              key={taskKey} // Force re-render when task changes
-              task={currentTask}
-              projects={projects}
-              labels={labels}
-              suggestions={generateMockSuggestions(currentTask.content)}
-              onAutoSave={(updates) => autoSaveTask(currentTask!.id, updates)}
-              onNext={handleNext}
-              onPrevious={navigateToPrevTaskWithRerender}
-              canGoNext={activeQueuePosition < activeQueue.length - 1}
-              canGoPrevious={activeQueuePosition > 0}
-            />
-          </div>
+        ) : !loadingTasks ? (
+          <ProcessingView
+            currentTask={currentTask}
+            queuedTasks={queuedTasks}
+            totalTasks={totalTasks}
+            completedTasks={completedTasks}
+            taskKey={taskKey}
+            projects={projects}
+            labels={labels}
+            projectHierarchy={projectHierarchy}
+            projectMetadata={projectMetadata}
+            suggestions={currentTaskSuggestions}
+            processingMode={processingMode}
+            queueState={processingModeSelectorRef.current?.queueState || null}
+            onTaskUpdate={updateMasterTask}
+            onProcessTask={handleProcessTask}
+            onSkipTask={handleSkipTask}
+            onOpenOverlay={(type) => handleOpenOverlay(type as OverlayType)}
+            onProgressToNextQueue={handleProgressToNextQueue}
+            onRefresh={() => loadTasksForMode(processingMode)}
+            hasCollaborators={hasCollaboratorsForCurrentProject()}
+          />
         ) : null}
 
-        {/* Queue Preview - only show in processing mode */}
-        {viewMode === 'processing' && queuedTasks.length > 0 && (
-          <div className="mt-8 flex flex-col items-center">
-            <div className="w-full max-w-2xl p-4 bg-gray-50 rounded-lg">
-              <h3 className="text-sm font-medium text-gray-700 mb-3 text-center">
-                Next in queue ({queuedTasks.length} remaining)
-              </h3>
-              <div className="space-y-2">
-                {queuedTasks.slice(0, 10).map((task, index) => {
-                  // Calculate opacity - fade out from task 5 to task 10
-                  const opacity = index < 5 ? 1 : 1 - ((index - 4) * 0.2)
-                  return (
-                    <div 
-                      key={task.id} 
-                      className="text-sm text-gray-600 truncate text-center"
-                      style={{ opacity }}
-                    >
-                      {index + 1}. {task.content}
-                    </div>
-                  )
-                })}
-                {queuedTasks.length > 10 && (
-                  <div className="text-sm text-gray-400 text-center" style={{ opacity: 0.3 }}>
-                    + {queuedTasks.length - 10} more...
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Queue preview is now handled inside ProcessingView */}
       </div>
 
       {/* Keyboard Shortcuts Modal */}
@@ -1814,6 +1726,7 @@ export default function TaskProcessor() {
         suggestions={currentTaskSuggestions}
         onCompleteTask={handleCompleteTask}
         onProjectsUpdate={setProjects}
+        onTaskCreate={handleTaskCreate}
       />
       
 

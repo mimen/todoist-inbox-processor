@@ -9,6 +9,7 @@ import LabelSelectionOverlay from './LabelSelectionOverlay'
 import ScheduledDateSelector from './ScheduledDateSelector'
 import DeadlineSelector from './DeadlineSelector'
 import AssigneeSelectionOverlay from './AssigneeSelectionOverlay'
+import NewTaskOverlay from './NewTaskOverlay'
 import { TodoistTask, TodoistProject, TodoistLabel, TodoistUser, TaskUpdate } from '@/lib/types'
 
 interface OverlayManagerProps {
@@ -29,6 +30,18 @@ interface OverlayManagerProps {
   
   // Project update handler (for when new projects are created)
   onProjectsUpdate?: (updater: (projects: TodoistProject[]) => TodoistProject[]) => void
+  
+  // Task creation handler
+  onTaskCreate?: (taskData: {
+    content: string
+    description?: string
+    projectId: string
+    priority?: 1 | 2 | 3 | 4
+    labels?: string[]
+    dueString?: string
+    deadline?: string
+    assigneeId?: string
+  }) => Promise<void>
 }
 
 export default function OverlayManager({
@@ -39,7 +52,8 @@ export default function OverlayManager({
   onTaskUpdate,
   onCompleteTask,
   suggestions = [],
-  onProjectsUpdate
+  onProjectsUpdate,
+  onTaskCreate
 }: OverlayManagerProps) {
   const { focusedTask } = useFocusedTask()
   const { overlays, closeOverlay } = useOverlayContext()
@@ -98,27 +112,33 @@ export default function OverlayManager({
   }, [overlays.complete, closeOverlay, focusedTask, onCompleteTask, onTaskUpdate])
   
   
-  // If no focused task, we can't render overlays that need task data
-  if (!focusedTask) {
+  // If no focused task, we can only render the new task overlay
+  if (!focusedTask && !overlays.newTask) {
     return null
   }
 
   // Get the latest task data from master store
-  const currentTaskData = masterTasks[focusedTask.id] || focusedTask
+  const currentTaskData = focusedTask ? (masterTasks[focusedTask.id] || focusedTask) : null
 
   const handlePrioritySelect = async (priority: 1 | 2 | 3 | 4) => {
     closeOverlay('priority')
-    await onTaskUpdate(focusedTask.id, { priority })
+    if (focusedTask) {
+      await onTaskUpdate(focusedTask.id, { priority })
+    }
   }
 
   const handleProjectSelect = async (projectId: string) => {
     closeOverlay('project')
-    await onTaskUpdate(focusedTask.id, { projectId })
+    if (focusedTask) {
+      await onTaskUpdate(focusedTask.id, { projectId })
+    }
   }
 
   const handleLabelsChange = async (labels: string[]) => {
     closeOverlay('label')
-    await onTaskUpdate(focusedTask.id, { labels })
+    if (focusedTask) {
+      await onTaskUpdate(focusedTask.id, { labels })
+    }
   }
 
   const handleScheduledDateChange = async (dateString: string) => {
@@ -148,18 +168,21 @@ export default function OverlayManager({
 
   return (
     <>
-      {/* Priority Overlay */}
-      {overlays.priority && (
-        <PriorityOverlay
-          currentPriority={currentTaskData.priority}
-          onPrioritySelect={handlePrioritySelect}
-          onClose={() => closeOverlay('priority')}
-          isVisible={true}
-        />
-      )}
+      {/* Task-specific overlays (only render if we have a focused task) */}
+      {currentTaskData && (
+        <>
+          {/* Priority Overlay */}
+          {overlays.priority && (
+            <PriorityOverlay
+              currentPriority={currentTaskData.priority}
+              onPrioritySelect={handlePrioritySelect}
+              onClose={() => closeOverlay('priority')}
+              isVisible={true}
+            />
+          )}
 
-      {/* Project Selection Overlay */}
-      {overlays.project && (
+          {/* Project Selection Overlay */}
+          {overlays.project && (
         <ProjectSelectionOverlay
           key={`project-overlay-${focusedTask.id}`}
           projects={projects}
@@ -204,19 +227,19 @@ export default function OverlayManager({
         />
       )}
 
-      {/* Assignee Selection Overlay */}
-      {overlays.assignee && (
-        <AssigneeSelectionOverlay
-          isVisible={true}
-          onClose={() => closeOverlay('assignee')}
-          onAssigneeSelect={handleAssigneeSelect}
-          currentAssigneeId={currentTaskData.assigneeId}
-          collaborators={projectCollaborators[currentTaskData.projectId] || []}
-        />
-      )}
+          {/* Assignee Selection Overlay */}
+          {overlays.assignee && (
+            <AssigneeSelectionOverlay
+              isVisible={true}
+              onClose={() => closeOverlay('assignee')}
+              onAssigneeSelect={handleAssigneeSelect}
+              currentAssigneeId={currentTaskData.assigneeId}
+              collaborators={projectCollaborators[currentTaskData.projectId] || []}
+            />
+          )}
 
-      {/* Complete Confirmation Dialog */}
-      {overlays.complete && (
+          {/* Complete Confirmation Dialog */}
+          {overlays.complete && (
         <div 
           ref={completeOverlayRef}
           tabIndex={-1}
@@ -274,6 +297,19 @@ export default function OverlayManager({
             </div>
           </div>
         </div>
+          )}
+        </>
+      )}
+      
+      {/* New Task Overlay */}
+      {overlays.newTask && (
+        <NewTaskOverlay
+          projects={projects}
+          labels={labels}
+          projectCollaborators={projectCollaborators}
+          onTaskCreate={onTaskCreate || (async () => {})}
+          isVisible={true}
+        />
       )}
     </>
   )

@@ -36,6 +36,13 @@ export function useTaskKeyboardShortcuts({
         return
       }
     }
+    
+    // Shift+Plus creates a new task (doesn't require focused task)
+    if (e.shiftKey && (e.key === '+' || e.key === '=')) {
+      e.preventDefault()
+      openOverlay('newTask')
+      return
+    }
 
     // Task-specific shortcuts require a focused task
     if (!focusedTask) return
