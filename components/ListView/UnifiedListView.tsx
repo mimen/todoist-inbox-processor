@@ -252,10 +252,14 @@ const UnifiedListView: React.FC<UnifiedListViewProps> = ({
     })
     
     
-    // Filter out empty lists in multi-list mode
+    // In multi-list mode, we want to show lists even if they're empty
+    // to ensure we always have the configured number of lists visible
+    if (viewMode === 'multi') {
+      return rawLists
+    }
+    
+    // In single-list mode, filter out empty lists
     const filteredLists = rawLists.filter(list => list.tasks.length > 0)
-    
-    
     return filteredLists
   }, [viewMode, allTasks, processingMode, prioritizedOptions, projectMetadata, assigneeFilter, currentUserId, effectiveSettings, projects])
 
@@ -579,9 +583,50 @@ const UnifiedListView: React.FC<UnifiedListViewProps> = ({
     }
   }, [listViewState.highlightedTaskId])
 
-  const handleLoadMore = () => {
-    setVisibleCount(prev => Math.min(prev + 3, listData.length))
-  }
+  const handleLoadMore = useCallback(() => {
+    setVisibleCount(prev => Math.min(prev + 1, listData.length))
+  }, [listData.length])
+
+  // Ref for the load more button
+  const loadMoreButtonRef = useRef<HTMLButtonElement>(null)
+
+  // Auto-load more lists when button comes into view
+  useEffect(() => {
+    if (!hasMore) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          handleLoadMore()
+        }
+      },
+      {
+        rootMargin: '100px', // Start loading 100px before button is visible
+        threshold: 0.1, // Trigger when 10% of the button is visible
+      }
+    )
+
+    const button = loadMoreButtonRef.current
+    if (button) {
+      observer.observe(button)
+      
+      // Check if button is already in view on mount
+      // Small delay to ensure proper layout calculation
+      setTimeout(() => {
+        const rect = button.getBoundingClientRect()
+        const inView = rect.top < window.innerHeight + 100 && rect.bottom > 0
+        if (inView) {
+          handleLoadMore()
+        }
+      }, 100)
+    }
+
+    return () => {
+      if (button) {
+        observer.unobserve(button)
+      }
+    }
+  }, [hasMore, handleLoadMore])
 
   // Handle task click
   const handleTaskClick = useCallback((taskId: string) => {
@@ -716,10 +761,11 @@ const UnifiedListView: React.FC<UnifiedListViewProps> = ({
       {hasMore && (
         <div className="flex justify-center py-4">
           <button
+            ref={loadMoreButtonRef}
             onClick={handleLoadMore}
             className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
-            Load More ({listData.length - visibleCount} more lists)
+            Load More ({listData.length - visibleCount} more {listData.length - visibleCount === 1 ? 'list' : 'lists'})
           </button>
         </div>
       )}

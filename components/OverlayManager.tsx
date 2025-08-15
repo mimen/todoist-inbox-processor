@@ -34,10 +34,64 @@ export default function OverlayManager({
   projectCollaborators,
   masterTasks,
   onTaskUpdate,
+  onCompleteTask,
   suggestions = []
 }: OverlayManagerProps) {
   const { focusedTask } = useFocusedTask()
   const { overlays, closeOverlay } = useOverlayContext()
+  const completeOverlayRef = React.useRef<HTMLDivElement>(null)
+  
+  // Handle keyboard events for complete overlay
+  React.useEffect(() => {
+    if (!overlays.complete) return
+    
+    const handleKeyDown = async (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        e.stopPropagation()
+        closeOverlay('complete')
+      } else if (e.key === 'Enter') {
+        e.preventDefault()
+        e.stopPropagation()
+        
+        if (!focusedTask) return
+        
+        closeOverlay('complete')
+        
+        // If onCompleteTask is provided (processing view), use it
+        if (onCompleteTask) {
+          onCompleteTask()
+        } else {
+          // Otherwise, complete the task directly (list view)
+          try {
+            const response = await fetch(`/api/todoist/tasks/${focusedTask.id}/complete`, {
+              method: 'POST',
+            })
+            if (!response.ok) {
+              throw new Error('Failed to complete task')
+            }
+            
+            // Update the task as completed in local state
+            await onTaskUpdate(focusedTask.id, { isCompleted: true })
+          } catch (error) {
+            console.error('Failed to complete task:', error)
+          }
+        }
+      }
+    }
+    
+    // Add event listener with capture to intercept before other handlers
+    window.addEventListener('keydown', handleKeyDown, true)
+    
+    // Focus the overlay
+    setTimeout(() => {
+      completeOverlayRef.current?.focus()
+    }, 0)
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown, true)
+    }
+  }, [overlays.complete, closeOverlay, focusedTask, onCompleteTask, onTaskUpdate])
   
   
   // If no focused task, we can't render overlays that need task data
@@ -159,7 +213,9 @@ export default function OverlayManager({
       {/* Complete Confirmation Dialog */}
       {overlays.complete && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
+          ref={completeOverlayRef}
+          tabIndex={-1}
+          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 focus:outline-none"
           onClick={() => closeOverlay('complete')}
         >
           <div 
@@ -181,10 +237,29 @@ export default function OverlayManager({
                 Cancel
               </button>
               <button
-                onClick={() => {
+                onClick={async () => {
+                  if (!focusedTask) return
+                  
                   closeOverlay('complete')
+                  
+                  // If onCompleteTask is provided (processing view), use it
                   if (onCompleteTask) {
                     onCompleteTask()
+                  } else {
+                    // Otherwise, complete the task directly (list view)
+                    try {
+                      const response = await fetch(`/api/todoist/tasks/${focusedTask.id}/complete`, {
+                        method: 'POST',
+                      })
+                      if (!response.ok) {
+                        throw new Error('Failed to complete task')
+                      }
+                      
+                      // Update the task as completed in local state
+                      await onTaskUpdate(focusedTask.id, { isCompleted: true })
+                    } catch (error) {
+                      console.error('Failed to complete task:', error)
+                    }
                   }
                 }}
                 className="flex-1 py-2 px-4 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"

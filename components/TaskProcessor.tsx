@@ -106,7 +106,7 @@ export default function TaskProcessor() {
   
   // Focused task and overlay management
   const { setFocusedTask } = useFocusedTask()
-  const { openOverlay, closeOverlay, focusedTask } = useOverlayManager()
+  const { openOverlay, closeOverlay, focusedTask, isAnyOverlayOpen } = useOverlayManager()
   
   // VIEW MODE STATE (for List View feature)
   // Initialize from localStorage with SSR safety
@@ -1285,6 +1285,11 @@ export default function TaskProcessor() {
   // Additional keyboard shortcuts for queue navigation and view switching
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't handle shortcuts if editing in list view
+      if (viewMode === 'list' && listViewState.editingTaskId) {
+        return
+      }
+      
       // Check if we're in any empty/completed state (no current task)
       if (!currentTask) {
         const queueState = processingModeSelectorRef.current?.queueState
@@ -1357,10 +1362,13 @@ export default function TaskProcessor() {
         case '7':
         case '8':
         case '9':
-          e.preventDefault()
-          const modeIndex = parseInt(e.key) - 1
-          if (modeIndex < PROCESSING_MODE_OPTIONS.length) {
-            processingModeSelectorRef.current?.switchToMode(PROCESSING_MODE_OPTIONS[modeIndex].type)
+          // Only handle number keys if no overlay is open
+          if (!isAnyOverlayOpen) {
+            e.preventDefault()
+            const modeIndex = parseInt(e.key) - 1
+            if (modeIndex < PROCESSING_MODE_OPTIONS.length) {
+              processingModeSelectorRef.current?.switchToMode(PROCESSING_MODE_OPTIONS[modeIndex].type)
+            }
           }
           break
         case 'Escape':
@@ -1372,7 +1380,7 @@ export default function TaskProcessor() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [navigateToNextTask, navigateToPrevTask, showShortcuts, currentTask, totalTasks, processedTaskIds, taskQueue, handleProgressToNextQueue, processingMode, viewMode, setViewMode, loadTasksForMode])
+  }, [navigateToNextTask, navigateToPrevTask, showShortcuts, currentTask, totalTasks, processedTaskIds, taskQueue, handleProgressToNextQueue, processingMode, viewMode, setViewMode, loadTasksForMode, isAnyOverlayOpen])
 
 
   const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
@@ -1407,7 +1415,7 @@ export default function TaskProcessor() {
     )
   }
 
-  if (!currentTask && queuedTasks.length === 0 && !loading) {
+  if (!currentTask && queuedTasks.length === 0 && !loading && !(settings.listView.multiListMode && viewMode === 'list' )) {
     const displayName = processingMode.displayName || 'Tasks'
     
     return (
