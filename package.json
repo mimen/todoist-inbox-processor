@@ -27,8 +27,7 @@
   "author": "David Miotti",
   "license": "MIT",
   "engines": {
-    "node": "22.x",
-    "pnpm": "10.x"
+    "node": "22.x"
   },
   "packageManager": "pnpm@10.14.0",
   "dependencies": {
