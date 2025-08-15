@@ -4,7 +4,7 @@ import React from 'react'
 import { TodoistTask, TodoistProject, TodoistLabel } from '@/lib/types'
 import { ProcessingMode } from '@/types/processing-mode'
 import { ListViewState } from '@/types/view-mode'
-import UnifiedListView from './ListView/UnifiedListView'
+import ListViewComponent from './ListView/ListView'
 
 interface ListViewProps {
   // Data
@@ -60,25 +60,57 @@ export default function ListView({
     onTaskUpdate(taskId, updates)
   }
   
+  // Map the overlay handler to individual overlay handlers expected by ListViewComponent
+  const handleOpenOverlay = (type: string, taskId?: string) => {
+    if (!taskId) return
+    
+    switch (type) {
+      case 'project':
+        onOpenOverlay('project', taskId)
+        break
+      case 'priority':
+        onOpenOverlay('priority', taskId)
+        break
+      case 'label':
+        onOpenOverlay('label', taskId)
+        break
+      case 'scheduled':
+        onOpenOverlay('scheduled', taskId)
+        break
+      case 'deadline':
+        onOpenOverlay('deadline', taskId)
+        break
+      case 'assignee':
+        onOpenOverlay('assignee', taskId)
+        break
+      case 'complete':
+        onOpenOverlay('complete', taskId)
+        break
+    }
+  }
+  
   return (
-    <UnifiedListView
-      allTasks={allTasks}
-      allTasksGlobal={allTasksGlobal}
-      taskCounts={taskCounts}
+    <ListViewComponent
+      tasks={allTasks}
+      projects={projects}
       labels={labels}
-      projectMetadata={projectMetadata}
-      activeQueue={activeQueue}
-      processedTaskIds={processedTaskIds}
       processingMode={processingMode}
+      projectMetadata={projectMetadata}
       listViewState={listViewState}
-      multiListMode={multiListMode}
-      prioritizedModeOptions={prioritizedModeOptions}
+      slidingOutTaskIds={processedTaskIds}
       onListViewStateChange={onListViewStateChange}
       onTaskUpdate={handleTaskUpdate}
+      onTaskComplete={onMarkTaskComplete}
       onTaskProcess={onTaskProcess}
-      onOpenOverlay={onOpenOverlay}
-      onToggleEditMode={onToggleEditMode}
-      onMarkTaskComplete={onMarkTaskComplete}
+      onTaskDelete={(taskId) => onTaskUpdate(taskId, { isDeleted: true })}
+      onViewModeChange={() => {}}
+      currentUserId="13801296"
+      onOpenProjectOverlay={(taskId) => handleOpenOverlay('project', taskId)}
+      onOpenPriorityOverlay={(taskId) => handleOpenOverlay('priority', taskId)}
+      onOpenLabelOverlay={(taskId) => handleOpenOverlay('label', taskId)}
+      onOpenScheduledOverlay={(taskId) => handleOpenOverlay('scheduled', taskId)}
+      onOpenDeadlineOverlay={(taskId) => handleOpenOverlay('deadline', taskId)}
+      onOpenAssigneeOverlay={(taskId) => handleOpenOverlay('assignee', taskId)}
     />
   )
 }

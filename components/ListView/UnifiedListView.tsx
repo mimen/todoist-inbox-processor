@@ -683,8 +683,8 @@ const UnifiedListView: React.FC<UnifiedListViewProps> = ({
         
         <div className="space-y-1">
           {listTasks.map((task) => {
-            const taskLabels = labels.filter(label => task.labels.includes(label.name))
-            const isSlidingOut = slidingOutTaskIds.includes(task.id)
+            const taskLabels = labels?.filter(label => task.labels?.includes(label.name)) || []
+            const isSlidingOut = slidingOutTaskIds?.includes(task.id) || false
             
             return (
               <div

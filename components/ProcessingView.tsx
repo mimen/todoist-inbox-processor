@@ -11,8 +11,7 @@ import ProjectMetadataDisplay from './ProjectMetadataDisplay'
 import ProjectSuggestions from './ProjectSuggestions'
 import QueueProgressBar from './QueueProgressBar'
 import QueuePreview from './QueuePreview'
-import QueueCompletedView from './QueueCompletedView'
-import EmptyState from './EmptyState'
+import QueueCompletionView from './QueueCompletionView'
 import { ProjectSuggestion } from '@/lib/suggestions-cache'
 
 interface ProcessingViewProps {
@@ -69,37 +68,49 @@ export default function ProcessingView({
 }: ProcessingViewProps) {
   const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0
   
-  // Empty state
+  // Empty state or queue completed
   if (!currentTask && queuedTasks.length === 0) {
     const displayName = processingMode.displayName || 'Tasks'
+    const isEmptyQueue = totalTasks === 0
     
     return (
       <div className="min-h-[600px] flex items-center justify-center">
-        <EmptyState
-          title={`No ${displayName} to Process`}
-          message="All tasks have been processed or there are no tasks matching your criteria."
-          actionLabel="Refresh"
-          onAction={onRefresh}
-        />
+        <div className="max-w-md mx-auto text-center">
+          <div className="text-6xl mb-4">
+            {isEmptyQueue ? '📭' : '🎉'}
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            {isEmptyQueue ? `${displayName} is Empty` : `${displayName} Complete!`}
+          </h1>
+          <p className="text-gray-600 mb-4">
+            {isEmptyQueue 
+              ? `No tasks found for ${displayName}. Try selecting different criteria.`
+              : 'All tasks have been processed.'
+            }
+          </p>
+          {!isEmptyQueue && (
+            <div className="text-sm text-gray-500 mb-6">
+              Processed: {completedTasks} tasks
+            </div>
+          )}
+          
+          {/* Queue Completion/Empty State */}
+          <QueueCompletionView
+            isEmptyQueue={isEmptyQueue}
+            hasNextQueue={queueState?.hasNextQueue || false}
+            nextQueueLabel={queueState?.nextQueue?.label}
+            nextQueueCount={queueState?.nextQueue?.count}
+            queueProgress={queueState?.queueProgress}
+            onContinue={onProgressToNextQueue}
+            onRefresh={onRefresh}
+          />
+        </div>
       </div>
     )
   }
   
-  // Queue completed state
-  if (queueState?.isComplete && queueState.shouldShowCompletion) {
-    return (
-      <QueueCompletedView
-        queueState={queueState}
-        currentQueue={processingMode}
-        queueProgress={queueState?.queueProgress}
-        onContinue={onProgressToNextQueue}
-        onRefresh={onRefresh}
-      />
-    )
-  }
-  
   return (
-    <>
+    <div className="flex flex-col">
       {/* Queue Progress */}
       <div className="mb-6">
         <QueueProgressBar
@@ -121,7 +132,7 @@ export default function ProcessingView({
               </svg>
               <h3 className="text-lg font-bold text-green-800 mb-2">All Tasks Processed! 🎉</h3>
               <p className="text-green-700">
-                Great job! You've processed all {totalTasks} tasks in this queue.
+                Great job! You&apos;ve processed all {totalTasks} tasks in this queue.
                 {!queueState?.hasNextQueue && ' This was the last queue in the sequence.'}
               </p>
             </div>
@@ -147,51 +158,57 @@ export default function ProcessingView({
           />
 
           {/* Project Metadata Display */}
-          <ProjectMetadataDisplay
-            project={projects.find(p => p.id === currentTask?.projectId)}
-            metadata={projectMetadata[currentTask?.projectId || '']}
-            allProjects={projects}
-            collaborators={[]}
-            className="animate-fade-in"
-          />
+          <div className="mt-4">
+            <ProjectMetadataDisplay
+              project={projects.find(p => p.id === currentTask?.projectId)}
+              metadata={projectMetadata[currentTask?.projectId || '']}
+              allProjects={projects}
+              collaborators={[]}
+              className="animate-fade-in"
+            />
+          </div>
 
           {/* Project Suggestions */}
           {suggestions.length > 0 && (
-            <ProjectSuggestions
-              task={currentTask}
-              projects={projects}
-              suggestions={suggestions}
-              onProjectSelect={(projectId) => onTaskUpdate(currentTask.id, { projectId })}
-            />
+            <div className="mt-4">
+              <ProjectSuggestions
+                task={currentTask}
+                projects={projects}
+                suggestions={suggestions}
+                onProjectSelect={(projectId) => onTaskUpdate(currentTask.id, { projectId })}
+              />
+            </div>
           )}
 
           {/* Task Form Controls */}
-          <TaskForm
-            key={taskKey}
-            task={currentTask}
-            projects={projects}
-            labels={labels}
-            suggestions={generateMockSuggestions(currentTask.content)}
-            onAutoSave={(updates: TaskUpdate) => onTaskUpdate(currentTask.id, updates)}
-            onNext={onProcessTask}
-            onPrevious={() => {}}
-            canGoNext={true}
-            canGoPrevious={false}
-          />
+          <div className="mt-4">
+            <TaskForm
+              key={taskKey}
+              task={currentTask}
+              projects={projects}
+              labels={labels}
+              suggestions={generateMockSuggestions(currentTask.content)}
+              onAutoSave={(updates: TaskUpdate) => onTaskUpdate(currentTask.id, updates)}
+              onNext={onProcessTask}
+              onPrevious={() => {}}
+              canGoNext={true}
+              canGoPrevious={false}
+            />
+          </div>
         </>
       )}
       
       {/* Queue Preview */}
       {queuedTasks.length > 0 && (
-        <div className="mt-8 flex flex-col items-center">
-          <div className="w-full max-w-2xl p-4 bg-gray-50 rounded-lg">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">
+        <div className="mt-8">
+          <div className="max-w-2xl mx-auto p-4 bg-gray-50 rounded-lg">
+            <h3 className="text-sm font-medium text-gray-700 mb-2 text-center">
               Next in Queue ({queuedTasks.length})
             </h3>
             <QueuePreview tasks={queuedTasks} />
           </div>
         </div>
       )}
-    </>
+    </div>
   )
 }
