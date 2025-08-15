@@ -1,11 +1,8 @@
 import { NextResponse } from 'next/server'
-import { createClient } from 'redis'
-import { redisConfig } from '@/lib/config/redis'
+import { createRedisClient } from '@/lib/redis-client'
 
 export async function GET() {
-  const redis = createClient({
-    url: redisConfig.url
-  })
+  const redis = createRedisClient()
 
   try {
     await redis.connect()

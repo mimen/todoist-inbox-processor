@@ -1,12 +1,9 @@
 import { NextResponse } from 'next/server'
-import { createClient } from 'redis'
+import { createRedisClient } from '@/lib/redis-client'
 import { calendarSyncService } from '@/lib/calendar-sync-service'
-import { redisConfig } from '@/lib/config/redis'
 
 export async function GET() {
-  const redis = createClient({
-    url: redisConfig.url
-  })
+  const redis = createRedisClient()
 
   try {
     await redis.connect()
