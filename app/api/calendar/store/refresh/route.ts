@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
 import { createClient } from 'redis'
+import { redisConfig } from '@/lib/config/redis'
 
 export async function GET() {
   const redis = createClient({
-    url: process.env.REDIS_URL || 'redis://localhost:6379'
+    url: redisConfig.url
   })
 
   try {

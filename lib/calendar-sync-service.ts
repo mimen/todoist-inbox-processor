@@ -1,5 +1,6 @@
 import { createClient } from 'redis'
 import { GoogleCalendarService, CalendarEvent } from './google-calendar-service'
+import { redisConfig } from './config/redis'
 
 interface CalendarSyncData {
   calendarId: string
@@ -24,7 +25,7 @@ export class CalendarSyncService {
   constructor() {
     this.calendarService = new GoogleCalendarService()
     this.redis = createClient({
-      url: process.env.REDIS_URL || 'redis://localhost:6379'
+      url: redisConfig.url
     })
     
     console.log(`🔧 CalendarSyncService initialized with default interval: ${this.DEFAULT_SYNC_INTERVAL / 1000}s`)
