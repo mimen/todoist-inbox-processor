@@ -15,8 +15,7 @@
     "lint": "next lint",
     "test": "echo \"Error: no test specified\" && exit 1",
     "clean": "rm -rf .next",
-    "restart": "pkill -f 'redis-server' || true && pkill -f 'next dev' || true && pnpm run dev:clean",
-    "heroku-postbuild": "pnpm run build"
+    "restart": "pkill -f 'redis-server' || true && pkill -f 'next dev' || true && pnpm run dev:clean"
   },
   "keywords": [
     "todoist",
@@ -77,5 +76,6 @@
     "postcss": "^8.5.2",
     "tailwindcss": "^4.1.0",
     "typescript": "^5.7.3"
-  }
+  },
+  "cacheDirectories": [".next/cache"]
 }
