@@ -71,12 +71,12 @@ const ModernProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, Moder
   const prioritizedDropdownRef = useRef<any>(null)
 
   // Get active tasks
-  const activeTasks = getActiveTasks(allTasks, assigneeFilter, currentUserId)
+  const activeTasks = getActiveTasks(allTasks, assigneeFilter as any, currentUserId)
   const filteredTasks = activeTasks
 
   // Get current mode options
   const currentModeOptions = useCurrentModeOptions({
-    mode: mode.type,
+    mode: mode.type as ProcessingModeType,
     projects,
     allTasks: filteredTasks,
     labels,
@@ -85,9 +85,9 @@ const ModernProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, Moder
 
   // Use queue progression
   const queueState = useQueueProgression({
-    mode: mode.type,
     dropdownOptions: currentModeOptions,
-    config: queueConfig
+    config: queueConfig,
+    currentValue: []
   })
 
 
@@ -408,12 +408,7 @@ const ModernProcessingModeSelector = forwardRef<ProcessingModeSelectorRef, Moder
               }}
               projects={projects}
               allTasks={filteredTasks}
-              allTasksGlobal={allTasksGlobal}
-              taskCounts={taskCounts}
-              labels={labels}
               projectMetadata={projectMetadata}
-              currentUserId={currentUserId}
-              assigneeFilter={assigneeFilter}
             />
           )}
         </div>

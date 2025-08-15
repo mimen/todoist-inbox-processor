@@ -614,7 +614,7 @@ export class TodoistApiClient {
 
             return { success: true, dates: Object.keys(updatedDates).length > 0 ? updatedDates : undefined }
         } catch (error) {
-            console.error('Error updating task:', error.message || error)
+            console.error('Error updating task:', error instanceof Error ? error.message : error)
             throw new Error('Failed to update task')
         }
     }

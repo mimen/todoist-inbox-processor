@@ -11,7 +11,7 @@ interface QueueManagementState {
   processedTaskIds: string[]
   skippedTaskIds: string[]
   slidingOutTaskIds: string[]
-  originalProjectIds: Record<string, string> // Track original project IDs for queue tasks
+  originalProjectIds: Record<string, string>
   
   // Derived values
   activeQueue: string[]
@@ -47,6 +47,8 @@ interface QueueManagementActions {
   setSlidingOutTaskIds: React.Dispatch<React.SetStateAction<string[]>>
   addSlidingOutTask: (taskId: string) => void
   removeSlidingOutTask: (taskId: string) => void
+  // Expose setter in case external logic needs to adjust originals
+  setOriginalProjectIds?: React.Dispatch<React.SetStateAction<Record<string, string>>>
 }
 
 export interface UseQueueManagementReturn extends QueueManagementState, QueueManagementActions {}
@@ -99,14 +101,7 @@ export function useQueueManagement(): UseQueueManagementReturn {
   }, [])
   
   const resetQueue = useCallback((tasks: TodoistTask[], preserveProcessedTasks = false) => {
-    // 1. Track original project IDs for all tasks in this queue
-    const newOriginalProjectIds: Record<string, string> = {}
-    tasks.forEach(task => {
-      newOriginalProjectIds[task.id] = task.projectId
-    })
-    setOriginalProjectIds(newOriginalProjectIds)
-    
-    // 2. Build new master task map, preserving existing task data
+    // 1. Build new master task map, preserving existing task data
     setMasterTasks(prev => {
       const newMasterTasks = { ...prev }
       
@@ -130,7 +125,7 @@ export function useQueueManagement(): UseQueueManagementReturn {
             deadline: existingTask.deadline,
             assigneeId: existingTask.assigneeId,
             // But take server values for system fields
-            syncId: task.syncId,
+            //syncId: task.syncId,
             createdAt: task.createdAt,
             isCompleted: task.isCompleted,
           }
@@ -143,6 +138,13 @@ export function useQueueManagement(): UseQueueManagementReturn {
       return newMasterTasks
     })
     
+    // 2. Rebuild original project map from incoming tasks
+    const newOriginalProjectIds: Record<string, string> = {}
+    tasks.forEach(task => {
+      newOriginalProjectIds[task.id] = String(task.projectId)
+    })
+    setOriginalProjectIds(newOriginalProjectIds)
+
     // 3. Reset queue to new task IDs (but exclude already processed tasks)
     const taskIds = tasks.map(task => task.id)
     setTaskQueue(taskIds)
@@ -257,6 +259,7 @@ export function useQueueManagement(): UseQueueManagementReturn {
     setSkippedTaskIds,
     setSlidingOutTaskIds,
     addSlidingOutTask,
-    removeSlidingOutTask
+    removeSlidingOutTask,
+    setOriginalProjectIds
   }
 }

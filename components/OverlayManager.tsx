@@ -89,8 +89,8 @@ export default function OverlayManager({
               throw new Error('Failed to complete task')
             }
             
-            // Update the task as completed in local state
-            await onTaskUpdate(focusedTask.id, { isCompleted: true })
+            // Task is already marked as completed via onCompleteTask
+            // No need to update again
           } catch (error) {
             console.error('Failed to complete task:', error)
           }
@@ -143,6 +143,8 @@ export default function OverlayManager({
 
   const handleScheduledDateChange = async (dateString: string) => {
     closeOverlay('scheduled')
+    if (!focusedTask) return
+    
     const updates: any = { dueString: dateString }
     if (dateString) {
       updates.due = { 
@@ -158,11 +160,13 @@ export default function OverlayManager({
 
   const handleDeadlineChange = async (dateString: string) => {
     closeOverlay('deadline')
-    await onTaskUpdate(focusedTask.id, { deadline: dateString || null })
+    if (!focusedTask) return
+    await onTaskUpdate(focusedTask.id, { deadline: dateString || undefined })
   }
 
   const handleAssigneeSelect = async (userId: string | null) => {
     closeOverlay('assignee')
+    if (!focusedTask) return
     await onTaskUpdate(focusedTask.id, { assigneeId: userId || undefined })
   }
 
@@ -184,7 +188,7 @@ export default function OverlayManager({
           {/* Project Selection Overlay */}
           {overlays.project && (
         <ProjectSelectionOverlay
-          key={`project-overlay-${focusedTask.id}`}
+          key={`project-overlay-${focusedTask?.id || 'new'}`}
           projects={projects}
           currentProjectId={currentTaskData.projectId}
           currentTask={currentTaskData}
@@ -283,8 +287,8 @@ export default function OverlayManager({
                         throw new Error('Failed to complete task')
                       }
                       
-                      // Update the task as completed in local state
-                      await onTaskUpdate(focusedTask.id, { isCompleted: true })
+                      // Task is already marked as completed via onCompleteTask
+                      // No need to update again
                     } catch (error) {
                       console.error('Failed to complete task:', error)
                     }

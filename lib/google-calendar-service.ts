@@ -41,7 +41,7 @@ export class GoogleCalendarService {
         this.oauth2Client.setCredentials(credentials)
       }
 
-      this.calendar = google.calendar({ version: 'v3', auth: this.oauth2Client })
+      this.calendar = google.calendar({ version: 'v3', auth: this.oauth2Client as any })
       return true
     } catch (error) {
       console.error('Failed to initialize with OAuth, falling back to service account:', error)
@@ -107,14 +107,14 @@ export class GoogleCalendarService {
             })
           )
 
-          const calendarEvents = (response.data.items || []).map(event => ({
+          const calendarEvents: CalendarEvent[] = (response.data.items || []).map((event: any) => ({
             id: event.id!,
             calendarId: cal.id!,
             calendarName: cal.summary || cal.summaryOverride || 'Untitled Calendar',
             title: event.summary || 'Untitled',
             start: new Date(event.start?.dateTime || event.start?.date!),
             end: new Date(event.end?.dateTime || event.end?.date!),
-            color: cal.backgroundColor,
+            color: cal.backgroundColor ?? undefined,
             isAllDay: !event.start?.dateTime
           }))
           

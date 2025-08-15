@@ -3,7 +3,11 @@ import { ProcessingModeType } from '@/types/processing-mode'
 
 // Schema for validating queue configuration
 const QueueItemSchema = z.object({
-  type: z.enum(['project', 'priority', 'label', 'date', 'deadline', 'preset', 'all'] as const),
+  type: z.union([
+    z.enum(['project', 'priority', 'label', 'date', 'deadline', 'preset', 'all', 'prioritized'] as const),
+    z.literal('filter'),
+    z.custom<`custom:${string}`>((val: any) => typeof val === 'string' && val.startsWith('custom:'))
+  ]),
   value: z.union([
     z.string(),
     z.array(z.string()),
@@ -82,7 +86,7 @@ export class QueueConfigLoader {
       return QueueConfigSchema.parse(config)
     } catch (error) {
       if (error instanceof z.ZodError) {
-        throw new Error(`Invalid queue configuration: ${error.message}`)
+        throw new Error(`Invalid queue configuration: ${error?.message || 'Unknown error'}`)
       }
       throw error
     }

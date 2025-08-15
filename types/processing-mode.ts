@@ -1,4 +1,4 @@
-export type ProcessingModeType = 'project' | 'priority' | 'label' | 'date' | 'deadline' | 'preset' | 'all' | 'prioritized';
+export type ProcessingModeType = 'project' | 'priority' | 'label' | 'date' | 'deadline' | 'preset' | 'all' | 'prioritized' | 'filter';
 
 export interface ProcessingMode {
   type: ProcessingModeType | `custom:${string}`;

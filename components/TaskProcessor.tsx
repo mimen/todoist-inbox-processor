@@ -320,7 +320,7 @@ export default function TaskProcessor() {
           Object.entries(collaboratorsData.projectCollaborators || {}).forEach(([projectId, userIds]) => {
             // Map user IDs to actual user objects
             const projectUsers = (userIds as string[])
-              .map(userId => collaboratorsData.allUsers.find(user => user.id === userId))
+              .map(userId => collaboratorsData.allUsers.find((user: { id: string }) => user.id === userId))
               .filter(Boolean) as TodoistUser[]
             
             initialProjectCollaborators[projectId] = projectUsers
@@ -457,27 +457,13 @@ export default function TaskProcessor() {
     try {
       let filteredTasks: TodoistTask[] = []
       
-      // For filter mode, fetch tasks from API
-      if (mode.type === 'filter') {
-        const filterQuery = mode.value.toString().split('|')[1] // Get query part after ID
-        if (filterQuery) {
-          const response = await fetch(`/api/todoist/filter-tasks?filter=${encodeURIComponent(filterQuery)}`)
-          if (response.ok) {
-            filteredTasks = await response.json()
-          } else {
-            console.error('Failed to fetch filtered tasks')
-            setToast({ message: 'Failed to fetch filtered tasks', type: 'error' })
-          }
-        }
-      } else {
-        // For other modes, filter from globally filtered data
-        if (globallyFilteredTasks.length === 0) {
-          setLoadingTasks(false)
-          return
-        }
-        // Note: assigneeFilter is already applied in globallyFilteredTasks, so pass 'all' to avoid double filtering
-        filteredTasks = filterTasksByMode(globallyFilteredTasks, mode, projectMetadata, 'all', currentUserId)
+      // For other modes, filter from globally filtered data
+      if (globallyFilteredTasks.length === 0) {
+        setLoadingTasks(false)
+        return
       }
+      // Note: assigneeFilter is already applied in globallyFilteredTasks, so pass 'all' to avoid double filtering
+      filteredTasks = filterTasksByMode(globallyFilteredTasks, mode, projectMetadata, 'all', currentUserId)
       
       // NEW QUEUE ARCHITECTURE: Update master store and reset queue
       if (filteredTasks.length > 0) {
@@ -536,7 +522,7 @@ export default function TaskProcessor() {
       return
     }
     
-    if (hasMeaningfulValue(processingMode) && (processingMode.type === 'filter' || allTasksGlobal.length > 0)) {
+    if (hasMeaningfulValue(processingMode) && (allTasksGlobal.length > 0)) {
       loadTasksForMode(processingMode)
     }
   }, [processingMode, loadTasksForMode]) // Removed allTasksGlobal.length to prevent reloads on task updates
@@ -645,7 +631,7 @@ export default function TaskProcessor() {
     }
 
     // Store original values for rollback
-    const originalValues: Partial<TodoistTask> = {}
+    const originalValues: Record<string, any> = {}
     
     // OPTIMISTIC UPDATE: Update local state immediately
     setMasterTasks(prev => {
@@ -657,7 +643,7 @@ export default function TaskProcessor() {
       // Store original values and apply updates
       Object.keys(updates).forEach(key => {
         const updateKey = key as keyof TaskUpdate
-        originalValues[updateKey] = existingTask[updateKey] as any
+        ;(originalValues as any)[updateKey as string] = (existingTask as any)[updateKey as any]
         
         if (updateKey === 'projectId' && updates.projectId !== undefined) {
           updatedTask.projectId = updates.projectId
@@ -671,16 +657,16 @@ export default function TaskProcessor() {
           updatedTask.description = updates.description
         } else if (updateKey === 'assigneeId' && updates.assigneeId !== undefined) {
           updatedTask.assigneeId = updates.assigneeId
-          updatedTask.responsibleUid = updates.assigneeId || null
+          //updatedTask.responsibleUid = updates.assigneeId || null
         } else if (updateKey === 'dueString' && updates.dueString !== undefined) {
-          if (updates.due) {
-            updatedTask.due = updates.due
-          } else if (updates.dueString === '') {
-            updatedTask.due = null
+          updatedTask.due = {
+            date: updates.dueString,
+            string: updates.dueString,
+            recurring: false,
           }
         } else if (updateKey === 'deadline' && updates.deadline !== undefined) {
           if (updates.deadline === null) {
-            updatedTask.duration = null
+            updatedTask.duration = undefined
           } else if (updatedTask.duration) {
             updatedTask.duration = {
               ...updatedTask.duration,
@@ -751,10 +737,8 @@ export default function TaskProcessor() {
         } else {
           // Apply updates manually
           // Special handling for dates to maintain proper structure
-          if ('dueString' in updates || 'due' in updates) {
-            if (updates.due) {
-              updatedTask.due = updates.due
-            } else if (updates.dueString) {
+          if ('dueString' in updates) {
+            if (updates.dueString) {
               updatedTask.due = { 
                 date: updates.dueString, 
                 string: updates.dueString,
@@ -1674,11 +1658,11 @@ export default function TaskProcessor() {
             processingMode={processingMode}
             listViewState={listViewState}
             multiListMode={settings.listView.multiListMode}
-            prioritizedModeOptions={processingMode.type === 'prioritized' ? processingModeSelectorRef.current?.prioritizedOptions : undefined}
-            onListViewStateChange={setListViewState}
+            prioritizedModeOptions={undefined}
+            onListViewStateChange={updateListViewState}
             onTaskUpdate={updateMasterTask}
             onTaskProcess={handleListViewTaskProcess}
-            onOpenOverlay={handleOpenOverlay}
+            onOpenOverlay={(type, taskId) => handleOpenOverlay(type as OverlayType, taskId)}
             onToggleEditMode={(taskId) => setListViewState(prev => ({ ...prev, editingTaskId: taskId }))}
             onMarkTaskComplete={handleListViewTaskComplete}
             activeQueue={activeQueue}

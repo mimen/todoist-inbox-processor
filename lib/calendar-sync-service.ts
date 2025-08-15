@@ -120,7 +120,7 @@ export class CalendarSyncService {
     const calendars = calendarList.data.items || []
     
     // Return all calendars (we'll handle rate limits with delays)
-    return calendars.map(cal => ({
+    return calendars.map((cal: any) => ({
       id: cal.id!,
       name: cal.summary || cal.summaryOverride || 'Untitled Calendar',
       color: cal.backgroundColor,
@@ -202,7 +202,7 @@ export class CalendarSyncService {
         let pageCount = 0
         
         do {
-          const syncTokenResponse = await calendar.events.list({
+          const syncTokenResponse: any = await calendar.events.list({
             calendarId: calendarInfo.id,
             // Note: No singleEvents and no time filters - this is required to get a sync token
             maxResults: 250, // Max allowed per page
@@ -215,7 +215,7 @@ export class CalendarSyncService {
           // Sync token is only available when we've fetched all pages
           if (!pageToken && syncTokenResponse.data.nextSyncToken) {
             syncToken = syncTokenResponse.data.nextSyncToken
-            console.log(`  Got sync token after ${pageCount} page(s): ${syncToken.substring(0, 20)}...`)
+            console.log(`  Got sync token after ${pageCount} page(s): ${syncToken?.substring(0, 20)}...`)
           }
         } while (pageToken && pageCount < 20) // Safety limit
         
@@ -229,12 +229,12 @@ export class CalendarSyncService {
 
       // Process the events
       const events: CalendarEvent[] = (response.data.items || [])
-        .filter(event => {
+        .filter((event: any) => {
           // Filter out events without proper start/end times
           return event.start && (event.start.dateTime || event.start.date) &&
                  event.end && (event.end.dateTime || event.end.date)
         })
-        .map(event => ({
+        .map((event: any) => ({
           id: event.id!,
           calendarId: calendarInfo.id,
           calendarName: calendarInfo.name,

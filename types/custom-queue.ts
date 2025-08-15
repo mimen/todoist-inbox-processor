@@ -120,6 +120,7 @@ export const energyLevelQueue: CustomQueue = {
     })
     
     return energyLevels.map(level => ({
+      id: level.toLowerCase(),
       value: level.toLowerCase(),
       label: `${level} Energy`,
       count: counts.get(level.toLowerCase()) || 0,

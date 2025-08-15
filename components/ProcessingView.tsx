@@ -3,7 +3,7 @@
 import React from 'react'
 import { TodoistTask, TodoistProject, TodoistLabel, TaskUpdate } from '@/lib/types'
 import { ProcessingMode } from '@/types/processing-mode'
-import { QueueState } from '@/types/queue'
+import { QueueProgressionState } from '@/types/queue'
 import { generateMockSuggestions } from '@/lib/mock-data'
 import TaskForm from './TaskForm'
 import TaskCard from './TaskCard'
@@ -31,7 +31,7 @@ interface ProcessingViewProps {
   
   // Processing state
   processingMode: ProcessingMode
-  queueState: QueueState | null
+  queueState: QueueProgressionState | null
   
   // Actions
   onTaskUpdate: (taskId: string, updates: Partial<TodoistTask>) => void
@@ -188,7 +188,35 @@ export default function ProcessingView({
               projects={projects}
               labels={labels}
               suggestions={generateMockSuggestions(currentTask.content)}
-              onAutoSave={(updates: TaskUpdate) => onTaskUpdate(currentTask.id, updates)}
+              onAutoSave={(updates: TaskUpdate) => {
+                // Convert TaskUpdate to Partial<TodoistTask>
+                const todoistUpdates: Partial<TodoistTask> = {
+                  content: updates.content,
+                  description: updates.description,
+                  projectId: updates.projectId,
+                  priority: updates.priority,
+                  labels: updates.labels,
+                  // Convert duration from number to object format if present
+                  ...(updates.duration !== undefined && {
+                    duration: {
+                      amount: updates.duration,
+                      unit: updates.durationUnit || 'minute'
+                    }
+                  })
+                }
+                
+                // Handle due date updates
+                if (updates.dueDate || updates.dueDatetime || updates.dueString) {
+                  todoistUpdates.due = {
+                    date: updates.dueDate || '',
+                    datetime: updates.dueDatetime,
+                    string: updates.dueString || '',
+                    recurring: false
+                  }
+                }
+                
+                onTaskUpdate(currentTask.id, todoistUpdates)
+              }}
               onNext={onProcessTask}
               onPrevious={() => {}}
               canGoNext={true}

@@ -1,4 +1,4 @@
-import TaskProcessor from '@/components/TaskProcessor'
+import TaskProcessorWrapper from '@/components/TaskProcessorWrapper'
 import CalendarStoreInitializer from '@/components/CalendarStoreInitializer'
 import CalendarSyncInitializer from '@/components/CalendarSyncInitializer'
 import { SettingsProvider } from '@/contexts/SettingsContext'
@@ -15,7 +15,7 @@ export default function Home() {
             <OverlayProvider>
               <CalendarStoreInitializer />
               <CalendarSyncInitializer />
-              <TaskProcessor />
+              <TaskProcessorWrapper />
             </OverlayProvider>
           </FocusedTaskProvider>
         </ThemeProvider>

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle, useMemo } from 'react'
+import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle, useMemo, useCallback } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { 
   DropdownOption, 
@@ -223,7 +223,7 @@ const UnifiedDropdown = forwardRef<UnifiedDropdownRef, UnifiedDropdownProps>(({
   }
 
   // Handle option selection
-  const handleSelect = (option: DropdownOption) => {
+  const handleSelect = useCallback((option: DropdownOption) => {
     if (config.selectionMode === 'multi') {
       const currentValues = value as string[]
       const newValues = currentValues.includes(option.id)
@@ -238,7 +238,7 @@ const UnifiedDropdown = forwardRef<UnifiedDropdownRef, UnifiedDropdownProps>(({
       setIsOpen(false)
       setSearchTerm('')
     }
-  }
+  }, [config.selectionMode, value, options, onChange])
 
   // Handle keyboard navigation
   useEffect(() => {

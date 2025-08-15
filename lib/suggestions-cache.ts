@@ -177,4 +177,3 @@ class SuggestionsCache {
 
 // Export singleton instance
 export const suggestionsCache = new SuggestionsCache()
-export type { ProjectSuggestion }

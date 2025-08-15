@@ -87,4 +87,4 @@ const SortDropdown = forwardRef<SortDropdownRef, SortDropdownProps>(
 
 SortDropdown.displayName = 'SortDropdown'
 
-export { SortDropdown, type SortDropdownRef }
+export { SortDropdown }

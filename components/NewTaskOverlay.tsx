@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { TodoistTask, TodoistProject, TodoistLabel, TodoistUser } from '@/lib/types'
 import { useOverlayContext } from '@/contexts/OverlayContext'
 import { useFocusedTask } from '@/contexts/FocusedTaskContext'
+import { ProcessingMode } from '@/types/processing-mode'
 import TaskCard from './TaskCard'
 import { X } from 'lucide-react'
 
@@ -77,7 +78,7 @@ export default function NewTaskOverlay({
       
       // Set this as the focused task to enable overlay interactions
       setFocusedTask('new-task-temp', tempTask, {
-        isNewTask: true
+        processingMode: 'inbox' as unknown as ProcessingMode
       })
     }
   }, [isVisible, projects, setFocusedTask])
@@ -122,7 +123,7 @@ export default function NewTaskOverlay({
         priority: tempTask.priority,
         labels: tempTask.labels,
         dueString: tempTask.due?.string,
-        deadline: tempTask.deadline,
+        deadline: tempTask.deadline?.date,
         assigneeId: tempTask.assigneeId
       })
       

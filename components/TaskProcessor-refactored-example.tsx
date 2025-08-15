@@ -17,32 +17,35 @@ export default function TaskProcessorRefactoredExample() {
   
   // ✅ SIMPLIFIED: Keyboard shortcuts are centralized
   useTaskKeyboardShortcuts({
-    enabled: !loading && viewMode === 'processing',
-    hasCollaborators: hasCollaboratorsForCurrentProject(),
-    onProcessTask: handleProcessTask,
-    onCompleteTask: handleCompleteTask
+    // NOTE: This is just an example - these variables would come from actual state/props
+    enabled: false, // !loading && viewMode === 'processing',
+    hasCollaborators: false, // hasCollaboratorsForCurrentProject(),
+    onProcessTask: () => {}, // handleProcessTask,
+    onCompleteTask: () => {} // handleCompleteTask
   })
   
   // ✅ SIMPLIFIED: Update focused task when current task changes
   useEffect(() => {
-    if (viewMode === 'processing' && currentTask) {
-      setFocusedTask(currentTask.id, currentTask, {
-        processingMode,
-        queuePosition: activeQueuePosition
-      })
-    }
-  }, [currentTask, viewMode, processingMode, activeQueuePosition])
+    // NOTE: This is just an example showing the pattern
+    // if (viewMode === 'processing' && currentTask) {
+    //   setFocusedTask(currentTask.id, currentTask, {
+    //     processingMode,
+    //     queuePosition: activeQueuePosition
+    //   })
+    // }
+  }, [])
   
   // ✅ SIMPLIFIED: Single task update handler
-  const handleTaskUpdate = async (taskId: string, updates: TaskUpdate) => {
+  const handleTaskUpdate = async (taskId: string, updates: any) => {
+    // NOTE: This is just an example showing the pattern
     // Optimistic update
-    setMasterTasks(prev => ({
-      ...prev,
-      [taskId]: { ...prev[taskId], ...updates }
-    }))
+    // setMasterTasks(prev => ({
+    //   ...prev,
+    //   [taskId]: { ...prev[taskId], ...updates }
+    // }))
     
     // API call
-    await autoSaveTask(taskId, updates)
+    // await autoSaveTask(taskId, updates)
   }
   
   return (
@@ -51,12 +54,12 @@ export default function TaskProcessorRefactoredExample() {
       
       {/* ✅ SIMPLIFIED: All overlays in one component */}
       <OverlayManager
-        projects={projects}
-        labels={labels}
-        projectCollaborators={projectCollaborators}
-        masterTasks={masterTasks}
+        projects={[]}
+        labels={[]}
+        projectCollaborators={{}}
+        masterTasks={{}}
         onTaskUpdate={handleTaskUpdate}
-        suggestions={currentTaskSuggestions}
+        suggestions={[]}
       />
     </div>
   )

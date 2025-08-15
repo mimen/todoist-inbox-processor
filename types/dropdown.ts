@@ -30,6 +30,9 @@ export interface DropdownOption {
   
   /** Type for icon rendering */
   type: DropdownOptionType
+
+  /** Sort order */
+  sortOrder?: number
 }
 
 /**
@@ -67,6 +70,9 @@ export interface DropdownConfig {
   
   /** Available sort options */
   sortOptions?: SortOption[]
+  
+  /** Show sort dropdown */
+  showSort?: boolean
   
   /** Default sort key */
   defaultSort?: string
