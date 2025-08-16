@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react'
 
-export type OverlayType = 'priority' | 'project' | 'label' | 'scheduled' | 'deadline' | 'assignee' | 'complete' | 'newTask'
+export type OverlayType = 'priority' | 'project' | 'label' | 'scheduled' | 'deadline' | 'assignee' | 'complete'
 
 interface OverlayState {
   priority: boolean
@@ -12,7 +12,6 @@ interface OverlayState {
   deadline: boolean
   assignee: boolean
   complete: boolean
-  newTask: boolean
 }
 
 const initialOverlayState: OverlayState = {
@@ -22,8 +21,7 @@ const initialOverlayState: OverlayState = {
   scheduled: false,
   deadline: false,
   assignee: false,
-  complete: false,
-  newTask: false
+  complete: false
 }
 
 interface OverlayContextValue {

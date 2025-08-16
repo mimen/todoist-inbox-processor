@@ -3,9 +3,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { TodoistTask, TodoistProject, TodoistLabel, TodoistUser } from '@/lib/types'
 import { useOverlayContext } from '@/contexts/OverlayContext'
+import { useNewTaskContext } from '@/contexts/NewTaskContext'
 import { useFocusedTask } from '@/contexts/FocusedTaskContext'
 import { ProcessingMode } from '@/types/processing-mode'
-import TaskCard from './TaskCard'
+import TaskCard from '../views/processing/TaskCard'
 import { X } from 'lucide-react'
 
 interface NewTaskOverlayProps {
@@ -32,7 +33,8 @@ export default function NewTaskOverlay({
   onTaskCreate,
   isVisible 
 }: NewTaskOverlayProps) {
-  const { closeOverlay, openOverlay } = useOverlayContext()
+  const { openOverlay } = useOverlayContext()
+  const { closeNewTask } = useNewTaskContext()
   const { setFocusedTask } = useFocusedTask()
   const [isCreating, setIsCreating] = useState(false)
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
@@ -97,14 +99,14 @@ export default function NewTaskOverlay({
     if (hasUnsavedChanges && tempTask.content.trim()) {
       setShowConfirmDialog(true)
     } else {
-      closeOverlay('newTask')
+      closeNewTask()
     }
-  }, [hasUnsavedChanges, tempTask.content, closeOverlay])
+  }, [hasUnsavedChanges, tempTask.content, closeNewTask])
 
   const handleConfirmClose = useCallback(() => {
     setShowConfirmDialog(false)
-    closeOverlay('newTask')
-  }, [closeOverlay])
+    closeNewTask()
+  }, [closeNewTask])
 
   const handleCancelClose = useCallback(() => {
     setShowConfirmDialog(false)
@@ -128,14 +130,14 @@ export default function NewTaskOverlay({
       })
       
       // Close overlay after successful creation
-      closeOverlay('newTask')
+      closeNewTask()
     } catch (error) {
       console.error('Failed to create task:', error)
       // Could show error toast here
     } finally {
       setIsCreating(false)
     }
-  }, [tempTask, isCreating, onTaskCreate, closeOverlay])
+  }, [tempTask, isCreating, onTaskCreate, closeNewTask])
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -172,7 +174,7 @@ export default function NewTaskOverlay({
   const hasCollaborators = currentProject && projectCollaborators[currentProject.id]?.length > 0
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60]">
       <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-2xl">
@@ -195,6 +197,7 @@ export default function NewTaskOverlay({
             projects={projects}
             labels={labels}
             hasCollaborators={hasCollaborators}
+            isNew={true}
             onContentChange={handleContentChange}
             onDescriptionChange={handleDescriptionChange}
             onProjectClick={() => openOverlay('project')}

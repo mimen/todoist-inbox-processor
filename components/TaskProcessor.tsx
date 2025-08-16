@@ -14,7 +14,7 @@ import { useFocusedTask } from '@/contexts/FocusedTaskContext'
 import { useOverlayManager, OverlayType } from '@/hooks/useOverlayManager'
 import { useTaskKeyboardShortcuts } from '@/hooks/useTaskKeyboardShortcuts'
 import { useQueueManagement } from '@/hooks/useQueueManagement'
-import OverlayManager from './OverlayManager'
+import { OverlayManager } from './overlays'
 
 // Extract project metadata from special tasks marked with * prefix or project-metadata label
 function extractProjectMetadata(tasks: TodoistTask[]): Record<string, any> {
@@ -48,7 +48,7 @@ function extractProjectMetadata(tasks: TodoistTask[]): Record<string, any> {
   
   return metadata
 }
-import KeyboardShortcuts from './KeyboardShortcuts'
+import { KeyboardShortcuts } from './overlays'
 import ProcessingModeSelector, { ProcessingModeSelectorRef } from './ProcessingModeSelector'
 import Toast from './Toast'
 import AssigneeFilter, { AssigneeFilterType } from './AssigneeFilter'
@@ -57,11 +57,14 @@ import ViewModeToggle from './ViewModeToggle'
 import SyncStatus from './SyncStatus'
 import { useSettingsContext } from '@/contexts/SettingsContext'
 import SettingsButton from './SettingsButton'
-import SettingsModal from './SettingsModal'
+import { SettingsModal } from './overlays'
 import MultiListModeIndicator from './MultiListModeIndicator'
 import DebugInfo from './DebugInfo'
-import ProcessingView from './ProcessingView'
-import ListView from './ListView'
+import { ProcessingView } from './views/processing'
+import { ListView } from './views/list'
+import { NewTaskOverlay } from './overlays'
+import { useNewTaskContext } from '@/contexts/NewTaskContext'
+import FloatingNewTaskButton from './FloatingNewTaskButton'
 
 export default function TaskProcessor() {
   const searchParams = useSearchParams()
@@ -105,6 +108,7 @@ export default function TaskProcessor() {
   // Focused task and overlay management
   const { setFocusedTask } = useFocusedTask()
   const { openOverlay, closeOverlay, focusedTask, isAnyOverlayOpen } = useOverlayManager()
+  const { isNewTaskOpen } = useNewTaskContext()
   
   // VIEW MODE STATE (for List View feature)
   // Initialize from localStorage with SSR safety
@@ -1671,7 +1675,7 @@ export default function TaskProcessor() {
             multiListMode={settings.listView.multiListMode}
             prioritizedModeOptions={undefined}
             onListViewStateChange={updateListViewState}
-            onTaskUpdate={updateMasterTask}
+            onTaskUpdate={handleListViewTaskUpdate}
             onTaskProcess={handleListViewTaskProcess}
             onOpenOverlay={(type, taskId) => handleOpenOverlay(type as OverlayType, taskId)}
             onToggleEditMode={(taskId) => setListViewState(prev => ({ ...prev, editingTaskId: taskId }))}
@@ -1724,6 +1728,20 @@ export default function TaskProcessor() {
         onProjectsUpdate={setProjects}
         onTaskCreate={handleTaskCreate}
       />
+
+      {/* New Task Overlay - Separate from regular overlays */}
+      {isNewTaskOpen && (
+        <NewTaskOverlay
+          projects={projects}
+          labels={labels}
+          projectCollaborators={projectCollaborators}
+          onTaskCreate={handleTaskCreate}
+          isVisible={true}
+        />
+      )}
+
+      {/* Floating New Task Button */}
+      <FloatingNewTaskButton />
       
 
       {/* Settings Modal */}

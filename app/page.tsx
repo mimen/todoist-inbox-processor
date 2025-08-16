@@ -5,6 +5,7 @@ import { SettingsProvider } from '@/contexts/SettingsContext'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import { FocusedTaskProvider } from '@/contexts/FocusedTaskContext'
 import { OverlayProvider } from '@/contexts/OverlayContext'
+import { NewTaskProvider } from '@/contexts/NewTaskContext'
 
 export default function Home() {
   return (
@@ -13,9 +14,11 @@ export default function Home() {
         <ThemeProvider>
           <FocusedTaskProvider>
             <OverlayProvider>
-              <CalendarStoreInitializer />
-              <CalendarSyncInitializer />
-              <TaskProcessorWrapper />
+              <NewTaskProvider>
+                <CalendarStoreInitializer />
+                <CalendarSyncInitializer />
+                <TaskProcessorWrapper />
+              </NewTaskProvider>
             </OverlayProvider>
           </FocusedTaskProvider>
         </ThemeProvider>

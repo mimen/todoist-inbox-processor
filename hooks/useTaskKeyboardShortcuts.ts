@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from 'react'
 import { useFocusedTask } from '@/contexts/FocusedTaskContext'
 import { useOverlayManager } from './useOverlayManager'
+import { useNewTaskContext } from '@/contexts/NewTaskContext'
 
 interface UseTaskKeyboardShortcutsProps {
   enabled?: boolean
@@ -17,6 +18,7 @@ export function useTaskKeyboardShortcuts({
 }: UseTaskKeyboardShortcutsProps = {}) {
   const { focusedTask } = useFocusedTask()
   const { openOverlay, closeAllOverlays, isAnyOverlayOpen } = useOverlayManager()
+  const { openNewTask } = useNewTaskContext()
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     // Don't handle if disabled or if typing in an input
@@ -37,11 +39,13 @@ export function useTaskKeyboardShortcuts({
       }
     }
     
-    // Shift+Plus creates a new task (doesn't require focused task)
-    if (e.shiftKey && (e.key === '+' || e.key === '=')) {
-      e.preventDefault()
-      openOverlay('newTask')
-      return
+    // 'n' creates a new task (doesn't require focused task)
+    if (e.key === 'n' || e.key === 'N') {
+      if (!e.metaKey && !e.ctrlKey && !e.shiftKey) {
+        e.preventDefault()
+        openNewTask()
+        return
+      }
     }
 
     // Task-specific shortcuts require a focused task
@@ -82,7 +86,8 @@ export function useTaskKeyboardShortcuts({
         break
         
       case '+':
-        if (hasCollaborators) {
+      case '=':  // Handle both + and = keys
+        if (e.shiftKey && hasCollaborators) {
           e.preventDefault()
           openOverlay('assignee')
         }
@@ -108,7 +113,7 @@ export function useTaskKeyboardShortcuts({
         }
         break
     }
-  }, [enabled, focusedTask, isAnyOverlayOpen, openOverlay, closeAllOverlays, hasCollaborators, onProcessTask, onCompleteTask])
+  }, [enabled, focusedTask, isAnyOverlayOpen, openOverlay, closeAllOverlays, openNewTask, hasCollaborators, onProcessTask, onCompleteTask])
 
   useEffect(() => {
     if (!enabled) return
