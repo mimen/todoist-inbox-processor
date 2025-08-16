@@ -11,7 +11,7 @@
     "dev:next-only": "next dev -p 4200",
     "redis": "redis-server --port 6379 --loglevel notice",
     "build": "next build",
-    "start": "next start -p 4200",
+    "start": "next start -p $PORT",
     "lint": "next lint",
     "test": "echo \"Error: no test specified\" && exit 1",
     "clean": "rm -rf .next",
