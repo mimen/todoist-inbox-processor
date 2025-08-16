@@ -1,17 +1,17 @@
 import { createClient } from 'redis'
-import { redisConfig } from './config/redis'
 
 export function createRedisClient() {
-  const config: Parameters<typeof createClient>[0] = {
-    url: redisConfig.url
+  const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379'
+  
+  // For production Redis with self-signed certificates (Heroku)
+  // Set NODE_TLS_REJECT_UNAUTHORIZED=0 in your Heroku config vars
+  if (process.env.NODE_ENV === 'production' && redisUrl.startsWith('rediss://')) {
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
   }
   
-  // Add socket config if present
-  if (redisConfig.socket) {
-    config.socket = redisConfig.socket as any
-  }
-  
-  return createClient(config)
+  return createClient({
+    url: redisUrl
+  })
 }
 
 export type RedisClientType = ReturnType<typeof createRedisClient>

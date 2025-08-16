@@ -41,7 +41,6 @@ export interface UnifiedListViewProps {
   onTaskComplete: (taskId: string) => void
   onTaskProcess: (taskId: string) => void
   onTaskDelete: (taskId: string) => void
-  onViewModeChange: (mode: 'processing') => void
   
   // Additional props
   currentUserId: string
@@ -113,7 +112,6 @@ const UnifiedListView: React.FC<UnifiedListViewProps> = ({
   onTaskComplete,
   onTaskProcess,
   onTaskDelete,
-  onViewModeChange,
   currentUserId,
   projectMetadata,
   assigneeFilter = 'all',
@@ -412,7 +410,7 @@ const UnifiedListView: React.FC<UnifiedListViewProps> = ({
     // List View specific shortcuts
     if (e.key === 'l' || e.key === 'L') {
       e.preventDefault()
-      onViewModeChange('processing')
+      // Switch to processing view - this can be handled externally
       return
     }
     
@@ -557,7 +555,7 @@ const UnifiedListView: React.FC<UnifiedListViewProps> = ({
           break
       }
     }
-  }, [allVisibleTasks, listViewState, onListViewStateChange, onViewModeChange, onTaskProcess, 
+  }, [allVisibleTasks, listViewState, onListViewStateChange, onTaskProcess, 
       onTaskComplete, onTaskDelete, overlayHandlers])
 
   // Ensure keyboard events work even without browser focus

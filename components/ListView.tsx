@@ -89,7 +89,6 @@ export default function ListView({
         // For now, we'll just call onTaskProcess which handles task removal from the view
         onTaskProcess(taskId)
       }}
-      onViewModeChange={() => {}}
       currentUserId="13801296"
       onOpenOverlay={handleOpenOverlay}
     />

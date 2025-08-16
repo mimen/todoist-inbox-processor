@@ -1,6 +1,5 @@
 import { createRedisClient, RedisClientType } from './redis-client'
 import { GoogleCalendarService, CalendarEvent } from './google-calendar-service'
-import { redisConfig } from './config/redis'
 
 interface CalendarSyncData {
   calendarId: string
