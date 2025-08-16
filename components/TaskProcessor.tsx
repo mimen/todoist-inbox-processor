@@ -643,7 +643,7 @@ export default function TaskProcessor() {
       // Store original values and apply updates
       Object.keys(updates).forEach(key => {
         const updateKey = key as keyof TaskUpdate
-        ;(originalValues as any)[updateKey as string] = (existingTask as any)[updateKey as any]
+        originalValues[updateKey as keyof TodoistTask] = existingTask[updateKey as keyof TodoistTask]
         
         if (updateKey === 'projectId' && updates.projectId !== undefined) {
           updatedTask.projectId = updates.projectId
@@ -724,7 +724,10 @@ export default function TaskProcessor() {
           // Apply other updates
           Object.keys(updates).forEach(key => {
             if (key !== 'dueString' && key !== 'deadline' && key !== 'due') {
-              (updatedTask as any)[key] = updates[key as keyof TaskUpdate]
+              const taskKey = key as keyof TodoistTask
+              if (taskKey in updatedTask) {
+                (updatedTask[taskKey] as any) = updates[key as keyof TaskUpdate]
+              }
             }
           })
         } else if (responseData.task) {
@@ -763,7 +766,10 @@ export default function TaskProcessor() {
           // Apply other updates
           Object.keys(updates).forEach(key => {
             if (key !== 'dueString' && key !== 'deadline' && key !== 'due') {
-              (updatedTask as any)[key] = updates[key as keyof TaskUpdate]
+              const taskKey = key as keyof TodoistTask
+              if (taskKey in updatedTask) {
+                (updatedTask[taskKey] as any) = updates[key as keyof TaskUpdate]
+              }
             }
           })
         }
@@ -791,7 +797,10 @@ export default function TaskProcessor() {
               }
               Object.keys(updates).forEach(key => {
                 if (key !== 'dueString' && key !== 'deadline' && key !== 'due') {
-                  (existingTask as any)[key] = updates[key as keyof TaskUpdate]
+                  const taskKey = key as keyof TodoistTask
+                  if (taskKey in existingTask) {
+                    (existingTask[taskKey] as any) = updates[key as keyof TaskUpdate]
+                  }
                 }
               })
             } else {
@@ -816,7 +825,9 @@ export default function TaskProcessor() {
         const revertedTask = { ...existingTask }
         Object.keys(originalValues).forEach(key => {
           const taskKey = key as keyof TodoistTask
-          ;(revertedTask as any)[taskKey] = originalValues[taskKey]
+          if (taskKey in revertedTask && taskKey in originalValues) {
+            (revertedTask[taskKey] as any) = originalValues[taskKey]
+          }
         })
         
         return {
@@ -1667,6 +1678,7 @@ export default function TaskProcessor() {
             onMarkTaskComplete={handleListViewTaskComplete}
             activeQueue={activeQueue}
             processedTaskIds={processedTaskIds}
+            currentUserId={currentUserId}
           />
         ) : !loadingTasks ? (
           <ProcessingView

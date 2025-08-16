@@ -1,16 +1,15 @@
 'use client'
 
 import React from 'react'
-import { TodoistTask, TodoistProject, TodoistLabel, TaskUpdate } from '@/lib/types'
+import { TodoistTask, TodoistProject, TodoistLabel } from '@/lib/types'
 import { ProcessingMode } from '@/types/processing-mode'
 import { ListViewState } from '@/types/view-mode'
+import { useQueueConfig } from '@/hooks/useQueueConfig'
 import UnifiedListView from './ListView/UnifiedListView'
 
 interface ListViewProps {
   // Data
   allTasks: TodoistTask[]
-  allTasksGlobal: TodoistTask[]
-  taskCounts: Record<string, number>
   projects: TodoistProject[]
   labels: TodoistLabel[]
   projectMetadata: Record<string, any>
@@ -26,18 +25,17 @@ interface ListViewProps {
   onTaskUpdate: (taskId: string, updates: Partial<TodoistTask>) => void
   onTaskProcess: (taskId: string) => void
   onOpenOverlay: (type: string, taskId?: string) => void
-  onToggleEditMode: (taskId: string | null) => void
   onMarkTaskComplete: (taskId: string) => void
   
-  // Queue management
-  activeQueue: string[]
+  // UI State
   processedTaskIds: string[]
+  
+  // User context
+  currentUserId: string
 }
 
 export default function ListView({
   allTasks,
-  allTasksGlobal,
-  taskCounts,
   projects,
   labels,
   projectMetadata,
@@ -49,19 +47,25 @@ export default function ListView({
   onTaskUpdate,
   onTaskProcess,
   onOpenOverlay,
-  onToggleEditMode,
   onMarkTaskComplete,
-  activeQueue,
-  processedTaskIds
+  processedTaskIds,
+  currentUserId
 }: ListViewProps) {
+  const config = useQueueConfig()
+  
   // The onTaskUpdate prop already handles auto-saving
-  const handleTaskUpdate = async (taskId: string, updates: TaskUpdate) => {
+  const handleTaskUpdate = async (taskId: string, updates: Partial<TodoistTask>) => {
     // This already includes auto-save functionality
-    onTaskUpdate(taskId, updates as Partial<TodoistTask>)
+    onTaskUpdate(taskId, updates)
   }
   
   // Convert multiListMode boolean to viewMode
   const viewMode = multiListMode ? 'multi' : 'single'
+  
+  // Use prioritized sequence from config if processingMode is prioritized and multiListMode is on
+  const prioritizedSequence = (processingMode.type === 'prioritized' && multiListMode && config.prioritizedQueue?.enabled) 
+    ? config.prioritizedQueue.sequence 
+    : prioritizedModeOptions
   
   // Handle overlay with unified handler
   const handleOpenOverlay = (type: string, taskId: string) => {
@@ -76,7 +80,7 @@ export default function ListView({
       projectMetadata={projectMetadata}
       viewMode={viewMode}
       processingMode={processingMode}
-      prioritizedSequence={prioritizedModeOptions}
+      prioritizedSequence={prioritizedSequence}
       visibleListCount={3}
       listViewState={listViewState}
       slidingOutTaskIds={processedTaskIds}
@@ -89,7 +93,7 @@ export default function ListView({
         // For now, we'll just call onTaskProcess which handles task removal from the view
         onTaskProcess(taskId)
       }}
-      currentUserId="13801296"
+      currentUserId={currentUserId}
       onOpenOverlay={handleOpenOverlay}
     />
   )

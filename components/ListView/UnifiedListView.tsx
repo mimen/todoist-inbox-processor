@@ -1,8 +1,8 @@
 'use client'
 
 import React, { useMemo, useCallback, memo, useEffect, useRef, useState } from 'react'
-import { TodoistTask, TodoistProject, TodoistLabel, TaskUpdate, TodoistUser } from '@/lib/types'
-import { ProcessingMode } from '@/types/processing-mode'
+import { TodoistTask, TodoistProject, TodoistLabel, TodoistUser } from '@/lib/types'
+import { ProcessingMode, ProcessingModeType } from '@/types/processing-mode'
 import { ListViewState, getDisplayContext } from '@/types/view-mode'
 import { filterTasksByMode } from '@/lib/task-filters'
 import { AssigneeFilterType } from '@/components/AssigneeFilter'
@@ -10,7 +10,7 @@ import { useQueueConfig } from '@/hooks/useQueueConfig'
 import { usePrioritizedOptions } from '@/hooks/usePrioritizedOptions'
 import { useSettingsContext } from '@/contexts/SettingsContext'
 import { useListViewIntegration } from '@/hooks/useListViewIntegration'
-import { useOverlayManager } from '@/hooks/useOverlayManager'
+import { useOverlayManager, OverlayType } from '@/hooks/useOverlayManager'
 import TaskListItem from './TaskListItem'
 import ListHeader from './ListHeader'
 import MultiListHeader from './MultiListHeader'
@@ -37,7 +37,7 @@ export interface UnifiedListViewProps {
   listViewState: ListViewState
   slidingOutTaskIds: string[]
   onListViewStateChange: (state: ListViewState) => void
-  onTaskUpdate: (taskId: string, updates: TaskUpdate) => Promise<void>
+  onTaskUpdate: (taskId: string, updates: Partial<TodoistTask>) => Promise<void>
   onTaskComplete: (taskId: string) => void
   onTaskProcess: (taskId: string) => void
   onTaskDelete: (taskId: string) => void
@@ -145,7 +145,7 @@ const UnifiedListView: React.FC<UnifiedListViewProps> = ({
       // Use context directly
       const task = masterTasks?.[taskId] || allTasks.find(t => t.id === taskId)
       if (task) {
-        contextOpenOverlay(type as any)
+        contextOpenOverlay(type as OverlayType)
       }
     }
   }, [onOpenOverlay, contextOpenOverlay, masterTasks, allTasks])
@@ -224,7 +224,8 @@ const UnifiedListView: React.FC<UnifiedListViewProps> = ({
     }
     
     // Multi-list mode - build from prioritized options
-    const shownTaskIds = effectiveSettings?.listView?.duplicateFiltering ? new Set<string>() : null
+    const enableDuplicateFiltering = effectiveSettings?.listView?.duplicateFiltering && viewMode === 'multi'
+    const shownTaskIds = enableDuplicateFiltering ? new Set<string>() : null
     
     const rawLists = prioritizedOptions.map((option, index) => {
       // Parse the filter details from the option
@@ -247,7 +248,7 @@ const UnifiedListView: React.FC<UnifiedListViewProps> = ({
       
       // Get tasks for this specific queue/list
       const listProcessingMode: ProcessingMode = {
-        type: filterType as any,
+        type: filterType as ProcessingModeType,
         value: filterValue,
         displayName: option.label
       }
@@ -260,15 +261,16 @@ const UnifiedListView: React.FC<UnifiedListViewProps> = ({
         currentUserId
       )
       
-      // Apply duplicate filtering if enabled
+      // Apply duplicate filtering if enabled (only in multi-list mode)
       if (shownTaskIds) {
-        tasks = tasks.filter(task => {
-          if (shownTaskIds.has(task.id)) {
-            return false // Skip tasks we've already shown
+        const filteredTasks: TodoistTask[] = []
+        for (const task of tasks) {
+          if (!shownTaskIds.has(task.id)) {
+            shownTaskIds.add(task.id)
+            filteredTasks.push(task)
           }
-          shownTaskIds.add(task.id) // Mark this task as shown
-          return true
-        })
+        }
+        tasks = filteredTasks
       }
       
       return {
@@ -304,7 +306,7 @@ const UnifiedListView: React.FC<UnifiedListViewProps> = ({
     const tasks: { task: TodoistTask; listId: string; listIndex: number }[] = []
     visibleLists.forEach((list, listIndex) => {
       // Sort tasks within each list based on list-specific sort
-      const listState = listViewState as any // We'll type this properly later
+      const listState = listViewState // Type is already ListViewState
       const sortBy = listState?.listStates?.get(list.id)?.sortBy || listViewState.sortBy || 'default'
       
       const sortedTasks = [...list.tasks]
@@ -569,7 +571,7 @@ const UnifiedListView: React.FC<UnifiedListViewProps> = ({
           !isAnyOverlayOpen &&
           !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
         // Convert to React keyboard event and call our handler
-        handleKeyDown(e as any)
+        handleKeyDown(e as unknown as React.KeyboardEvent)
       }
     }
 
