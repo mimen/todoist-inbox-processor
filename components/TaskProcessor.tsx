@@ -1,10 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { TodoistTask, TodoistProject, TodoistLabel, ProcessingState, TaskUpdate, TodoistUser, CollaboratorsData } from '@/lib/types'
-import { generateMockSuggestions } from '@/lib/mock-data'
+import { TodoistTask, TodoistProject, TodoistLabel, TaskUpdate, TodoistUser, CollaboratorsData } from '@/lib/types'
 import { suggestionsCache } from '@/lib/suggestions-cache'
 import { ProcessingMode, PROCESSING_MODE_OPTIONS } from '@/types/processing-mode'
 import { ViewMode, ListViewState, createDefaultListViewState } from '@/types/view-mode'
@@ -49,16 +47,16 @@ function extractProjectMetadata(tasks: TodoistTask[]): Record<string, any> {
   return metadata
 }
 import { KeyboardShortcuts } from './overlays'
-import ProcessingModeSelector, { ProcessingModeSelectorRef } from './ProcessingModeSelector'
+import { ProcessingModeSelector, ProcessingModeSelectorRef } from './header'
 import Toast from './Toast'
-import AssigneeFilter, { AssigneeFilterType } from './AssigneeFilter'
+import { AssigneeFilter, AssigneeFilterType } from './header'
 import QueueCompletionView from './QueueCompletionView'
-import ViewModeToggle from './ViewModeToggle'
-import SyncStatus from './SyncStatus'
+import { ViewModeToggle } from './header'
+import { SyncStatus } from './header'
 import { useSettingsContext } from '@/contexts/SettingsContext'
-import SettingsButton from './SettingsButton'
+import { SettingsButton } from './header'
 import { SettingsModal } from './overlays'
-import MultiListModeIndicator from './MultiListModeIndicator'
+import { MultiListModeIndicator } from './header'
 import DebugInfo from './DebugInfo'
 import { ProcessingView } from './views/processing'
 import { ListView } from './views/list'
@@ -78,7 +76,6 @@ export default function TaskProcessor() {
   // MAIN STATE
   const [projects, setProjects] = useState<TodoistProject[]>([])
   const [labels, setLabels] = useState<TodoistLabel[]>([])
-  const [filters, setFilters] = useState<any[]>([])
   const [projectHierarchy, setProjectHierarchy] = useState<any>(null)
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -98,7 +95,6 @@ export default function TaskProcessor() {
   const [currentTaskAssignee, setCurrentTaskAssignee] = useState<TodoistUser | undefined>(undefined)
   const [assigneeFilter, setAssigneeFilter] = useState<AssigneeFilterType>('not-assigned-to-others')
   const [projectCollaborators, setProjectCollaborators] = useState<Record<string, TodoistUser[]>>({})
-  const [dateLoadingStates, setDateLoadingStates] = useState<Record<string, 'due' | 'deadline' | null>>({})
   
   // Settings state
   const { settings } = useSettingsContext()
@@ -286,12 +282,11 @@ export default function TaskProcessor() {
         setLoading(true)
         setError(null)
 
-        // Fetch critical data first (projects, labels, filters, and collaborators)
+        // Fetch critical data first (projects, labels, and collaborators)
         // Use sync API for projects to ensure consistent IDs with tasks
-        const [projectsRes, labelsRes, filtersRes, collaboratorsRes] = await Promise.all([
+        const [projectsRes, labelsRes, collaboratorsRes] = await Promise.all([
           fetch('/api/todoist/projects-sync'),
           fetch('/api/todoist/labels'),
-          fetch('/api/todoist/filters'),
           fetch('/api/todoist/collaborators-sync'),
         ])
 
@@ -299,10 +294,9 @@ export default function TaskProcessor() {
           throw new Error('Failed to fetch data from Todoist API')
         }
 
-        const [projectsResponse, labelsData, filtersData, collaboratorsData] = await Promise.all([
+        const [projectsResponse, labelsData, collaboratorsData] = await Promise.all([
           projectsRes.json(),
           labelsRes.json(),
-          filtersRes.ok ? filtersRes.json() : [],
           collaboratorsRes.ok ? collaboratorsRes.json() : null,
         ])
         
@@ -311,7 +305,6 @@ export default function TaskProcessor() {
 
         setProjects(projectsData)
         setLabels(labelsData)
-        setFilters(filtersData)
         
         // Set collaborators data and pre-populate project collaborators
         if (collaboratorsData) {
