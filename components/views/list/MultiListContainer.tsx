@@ -5,7 +5,7 @@ import { TodoistTask, TodoistProject, TodoistLabel, TaskUpdate, TodoistUser } fr
 import { ProcessingMode } from '@/types/processing-mode'
 import { ListViewState } from '@/types/view-mode'
 import { filterTasksByMode } from '@/lib/task-filters'
-import { AssigneeFilterType } from '@/components/AssigneeFilter'
+import { AssigneeFilterType } from '@/components/header'
 import { useQueueConfig } from '@/hooks/useQueueConfig'
 import { usePrioritizedOptions } from '@/hooks/usePrioritizedOptions'
 import { useSettingsContext } from '@/contexts/SettingsContext'

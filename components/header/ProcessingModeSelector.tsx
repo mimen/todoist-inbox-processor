@@ -4,14 +4,16 @@ import React, { useState, useImperativeHandle, forwardRef, useRef, useEffect, us
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { ProcessingMode, ProcessingModeType, PROCESSING_MODE_OPTIONS } from '@/types/processing-mode';
-import ProjectDropdown from './ProjectDropdown';
-import PriorityDropdown from './PriorityDropdown';
-import LabelDropdown from './LabelDropdown';
-import DateDropdown from './DateDropdown';
-import DeadlineDropdown from './DeadlineDropdown';
-import PresetDropdown from './PresetDropdown';
-import AllTasksDropdown from './AllTasksDropdown';
-import PrioritizedDropdown from './PrioritizedDropdown';
+import {
+  ProjectDropdown,
+  PriorityDropdown,
+  LabelDropdown,
+  DateDropdown,
+  DeadlineDropdown,
+  PresetDropdown,
+  AllTasksDropdown,
+  PrioritizedDropdown
+} from '../dropdowns';
 import { AssigneeFilterType } from './AssigneeFilter';
 import { TodoistTask, TodoistLabel, TodoistProject } from '@/lib/types';
 import { useQueueProgression } from '@/hooks/useQueueProgression';

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { TodoistTask, TodoistProject, TodoistLabel, TaskUpdate, MockAISuggestion } from '@/lib/types'
-import ProjectDropdown from '../../ProjectDropdown'
+import { ProjectDropdown } from '../../dropdowns'
 
 interface TaskFormProps {
   task: TodoistTask

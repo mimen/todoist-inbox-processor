@@ -3,14 +3,16 @@
 import React, { useState, useRef, forwardRef, useImperativeHandle } from 'react'
 import { ProcessingMode, ProcessingModeType, PROCESSING_MODE_OPTIONS } from '@/types/processing-mode'
 import { ChevronDown, Check } from 'lucide-react'
-import ProjectDropdown from './ProjectDropdown'
-import PriorityDropdown from './PriorityDropdown'
-import LabelDropdown from './LabelDropdown'
-import DateDropdown from './DateDropdown'
-import DeadlineDropdown from './DeadlineDropdown'
-import PresetDropdown from './PresetDropdown'
-import AllTasksDropdown from './AllTasksDropdown'
-import PrioritizedDropdown from './PrioritizedDropdown'
+import {
+  ProjectDropdown,
+  PriorityDropdown,
+  LabelDropdown,
+  DateDropdown,
+  DeadlineDropdown,
+  PresetDropdown,
+  AllTasksDropdown,
+  PrioritizedDropdown
+} from '../dropdowns'
 import { TodoistProject, TodoistTask, TodoistLabel } from '@/lib/types'
 import { getActiveTasks, getQueueTaskCount } from '@/lib/task-filters'
 import { useQueueConfig } from '@/hooks/useQueueConfig'

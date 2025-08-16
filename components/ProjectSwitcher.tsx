@@ -1,7 +1,7 @@
 'use client'
 
 import { TodoistProject } from '@/lib/types'
-import ProjectDropdown from './ProjectDropdown'
+import { ProjectDropdown } from './dropdowns'
 
 interface ProjectSwitcherProps {
   projects: TodoistProject[]

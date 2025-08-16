@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { CheckCircle2, AlertCircle, RefreshCw, Info } from 'lucide-react'
-import { SyncStatusModal } from './overlays'
+import { SyncStatusModal } from '../overlays'
 
 interface SyncStatusData {
   lastSync: string | null

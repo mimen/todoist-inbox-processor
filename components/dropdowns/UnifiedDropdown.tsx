@@ -8,8 +8,8 @@ import {
   UnifiedDropdownRef 
 } from '@/types/dropdown'
 import { ProcessingModeType } from '@/types/processing-mode'
-import OptionIcon from './OptionIcon'
-import PriorityBadge from './PriorityBadge'
+import OptionIcon from '../OptionIcon'
+import PriorityBadge from '../PriorityBadge'
 import { SortDropdown, SortDropdownRef } from './SortDropdown'
 import { DROPDOWN_SORT_OPTIONS, getDefaultSortOption, type SortOption } from '@/constants/dropdown-sort-options'
 import { sortDropdownOptions } from '@/utils/dropdown-sorting'
