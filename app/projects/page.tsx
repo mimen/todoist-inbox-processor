@@ -3,9 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { TodoistProject } from '@/lib/types'
-import EnhancedProjectCard from '@/components/EnhancedProjectCard'
-import DraggableProjectCard from '@/components/DraggableProjectCard'
-import PriorityDropZone from '@/components/PriorityDropZone'
+import { EnhancedProjectCard, PriorityDropZone } from '@/components/projects'
 import {
   DndContext,
   DragOverlay,

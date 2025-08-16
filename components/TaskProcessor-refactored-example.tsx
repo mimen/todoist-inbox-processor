@@ -6,7 +6,7 @@
 import { useEffect } from 'react'
 import { useFocusedTask } from '@/contexts/FocusedTaskContext'
 import { useTaskKeyboardShortcuts } from '@/hooks/useTaskKeyboardShortcuts'
-import OverlayManager from './OverlayManager'
+import { OverlayManager } from './overlays'
 
 export default function TaskProcessorRefactoredExample() {
   // ✅ SIMPLIFIED: Use focused task context instead of overlayTask + currentTask

@@ -14,6 +14,7 @@ interface TaskCardProps {
   assignee?: TodoistUser
   hasCollaborators?: boolean
   dateLoadingState?: 'due' | 'deadline' | null
+  isNew?: boolean
   onContentChange?: (newContent: string) => void
   onDescriptionChange?: (newDescription: string) => void
   onProjectClick?: () => void
@@ -32,6 +33,7 @@ export default function TaskCard({
   assignee,
   hasCollaborators = false,
   dateLoadingState = null,
+  isNew = false,
   onContentChange, 
   onDescriptionChange,
   onProjectClick,
@@ -46,7 +48,7 @@ export default function TaskCard({
   const [description, setDescription] = useState(task.description || '')
   const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null)
   const [showDebug, setShowDebug] = useState(false)
-  const [isEditingContent, setIsEditingContent] = useState(false)
+  const [isEditingContent, setIsEditingContent] = useState(isNew)
   const [isEditingDescription, setIsEditingDescription] = useState(false)
   const contentRef = useRef<HTMLTextAreaElement>(null)
   const descriptionRef = useRef<HTMLTextAreaElement>(null)
@@ -58,6 +60,14 @@ export default function TaskCard({
     setContent(task.content)
     setDescription(task.description || '')
   }, [task.id, task.content, task.description])
+
+  // Auto-focus content when isNew
+  useEffect(() => {
+    if (isNew && isEditingContent && contentRef.current) {
+      contentRef.current.focus()
+      contentRef.current.select()
+    }
+  }, [isNew, isEditingContent])
 
   // Auto-save with debounce
   const debouncedSave = useCallback((type: 'content' | 'description', value: string) => {

@@ -9,9 +9,9 @@ import TaskForm from './TaskForm'
 import TaskCard from './TaskCard'
 import ProjectMetadataDisplay from './ProjectMetadataDisplay'
 import ProjectSuggestions from './ProjectSuggestions'
-import QueueProgressBar from './QueueProgressBar'
-import QueuePreview from './QueuePreview'
-import QueueCompletionView from './QueueCompletionView'
+import QueueProgressBar from '../../QueueProgressBar'
+import QueuePreview from '../../QueuePreview'
+import QueueCompletionView from '../../QueueCompletionView'
 import { ProjectSuggestion } from '@/lib/suggestions-cache'
 
 interface ProcessingViewProps {

@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { ProcessingMode } from '@/types/processing-mode'
-import PriorityFlag from '@/components/PriorityFlag'
+import PriorityFlag from '../../PriorityFlag'
 
 // Todoist color mapping
 const getTodoistColor = (colorName: string) => {
