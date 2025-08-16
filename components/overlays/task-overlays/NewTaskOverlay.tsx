@@ -6,7 +6,7 @@ import { useOverlayContext } from '@/contexts/OverlayContext'
 import { useNewTaskContext } from '@/contexts/NewTaskContext'
 import { useFocusedTask } from '@/contexts/FocusedTaskContext'
 import { ProcessingMode } from '@/types/processing-mode'
-import TaskCard from '../views/processing/TaskCard'
+import TaskCard from '../../views/processing/TaskCard'
 import { X } from 'lucide-react'
 
 interface NewTaskOverlayProps {

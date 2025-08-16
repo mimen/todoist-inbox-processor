@@ -3,12 +3,12 @@
 import React from 'react'
 import { useFocusedTask } from '@/contexts/FocusedTaskContext'
 import { useOverlayContext } from '@/contexts/OverlayContext'
-import PriorityOverlay from './PriorityOverlay'
-import ProjectSelectionOverlay from './ProjectSelectionOverlay'
-import LabelSelectionOverlay from './LabelSelectionOverlay'
-import ScheduledDateSelector from './ScheduledDateSelector'
-import DeadlineSelector from './DeadlineSelector'
-import AssigneeSelectionOverlay from './AssigneeSelectionOverlay'
+import PriorityOverlay from './task-overlays/PriorityOverlay'
+import ProjectSelectionOverlay from './task-overlays/ProjectSelectionOverlay'
+import LabelSelectionOverlay from './task-overlays/LabelSelectionOverlay'
+import ScheduledDateSelector from './task-overlays/ScheduledDateSelector'
+import DeadlineSelector from './task-overlays/DeadlineSelector'
+import AssigneeSelectionOverlay from './task-overlays/AssigneeSelectionOverlay'
 import { TodoistTask, TodoistProject, TodoistLabel, TodoistUser, TaskUpdate } from '@/lib/types'
 
 interface OverlayManagerProps {
